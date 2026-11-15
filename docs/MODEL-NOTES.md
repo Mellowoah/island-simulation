@@ -26,5 +26,6 @@ Both deviations are deterministic, and arbitration order still decides who claim
 
 ## Random numbers
 - Draws are counter-based: `draw(seed, tick, creature, salt)` depends on nothing else. Interventions therefore never shift another creature's draws (test E2).
+- Every simulation process takes its salt from one table, `STREAMS` in `dist/sim.js`. Ranges do not overlap, so two processes cannot draw the same number for the same creature on the same tick (tests S1, S2). Island salts are unchanged from 0.1.3. The Creator's redirect used to sit on 50–67 and 70–87, which overlapped island explore (40–57) and the serpent (77); it now uses 300–317 and 320–337.
 - Worlds created from 0.1.3 on use `rng: 2`, which mixes the seed and each input in turn. The 0.1.1 function correlated nearby seeds (r ≈ −0.45 between seeds 41 and 43).
 - Saves without `rng` keep the original stream, so they continue exactly as before (test E1b).

@@ -102,8 +102,8 @@ With all layers off, the world's digest must be identical.
 
 ## Build order
 1. **Prerequisites** (Edge):
-   - fix `eden.js:157`, where a released creature consults true food stock;
-   - stream registry for random draws;
+   - fix `eden.js` released interrupt, where a creature consulted true food stock — done in 0.3.2 (memory only);
+   - stream registry for random draws — done in 0.3.2 (`STREAMS` in `dist/sim.js`, every call site);
    - per-creature ledger of harm, exposure and benefit;
    - ODD write-up;
    - digest test that reproduces 0.3.0 with every new flag off.

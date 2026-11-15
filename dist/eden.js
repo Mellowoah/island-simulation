@@ -1,7 +1,7 @@
 // Eden world: a separate scenario built on the island core. See docs/EDEN-DESIGN.md.
 // Phases: guided (Creator's warning at birth, Creator leads choices that fall outside what is best,
 // no death) -> released (first creature to eat from the tree; everyone released at once).
-import { W, DAY, clamp, land, path, createWorld, decide, event, noise2, seedKey } from './sim.js';
+import { W, DAY, clamp, land, path, createWorld, decide, event, noise2, seedKey, STREAMS } from './sim.js';
 
 export const EDEN_VERSION = 2;
 export const EDEN_DEFAULTS = {
@@ -49,11 +49,7 @@ const carer = (s, c) => { if (c.eden.mother === null || age(s, c) >= s.eden.conf
 const dependent = (s, c) => carer(s, c) !== null;
 const WARNING = 'The Creator: eat freely from the garden, but not from the tree of the knowledge of good and evil. Eating from it brings death.';
 const CLAIM = 'The serpent: you will not die. Your eyes will be opened, and you will know good and evil.';
-// Registry of random streams. Each use has its own numbers; none may overlap another use on the same
-// tick and creature (tests/streams.test.mjs). SIM_STREAMS lists the numbers the island core uses.
-export const SIM_STREAMS = { startPosition: [0, 1], exploreX: [10, 27], exploreY: [40, 57], order: [99, 99] };
-export const EDEN_STREAMS = { birthCuriosity: [7, 7], exploreTarget: [31, 32], treeChoice: [77, 77], conception: [88, 89], order: [99, 99],
-  injury: [120, 120], newborn: [201, 206], guideX: [300, 317], guideY: [320, 337] };
+// Salts come from STREAMS in sim.js. Do not pass a raw number: ranges must not overlap.
 const draw = (s, id, salt) => noise2(seedKey(s.seed), s.tick, id, salt);
 const dist = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 
@@ -69,7 +65,7 @@ export function createEden(seed = 41, overrides = {}, edenOverrides = {}) {
   const k = seedKey(s.seed);
   for (const c of s.creatures) {
     c.times.work = 0;
-    c.eden = { curiosity: cfg.curiosityMin + noise2(k, 0, c.id, 7) * (cfg.curiosityMax - cfg.curiosityMin),
+    c.eden = { curiosity: cfg.curiosityMin + noise2(k, 0, c.id, STREAMS.birthCuriosity[0]) * (cfg.curiosityMax - cfg.curiosityMin),
       instruction: { source: 'Creator', text: WARNING, tick: 0 }, warning: 1, hearings: 0, credence: 0, lastSerpent: null,
       clothed: false, tool: false, bias: { rest: 0, explore: 0, gather: 0, cultivate: 0, craft: 0, drink: 0 }, judged: 0, guided: 0,
       sex: c.id % 2 ? 'M' : 'F', born: -cfg.startAge * YEAR, mother: null, father: null, pregnant: null, births: [], children: [],
@@ -110,8 +106,8 @@ function creatorBest(s, c) {
       // Lead it to a real exploration destination within reach of food (prefer ground it has not seen).
       const p = food.reduce((b, p) => dist(p, c) < dist(b, c) ? p : b), L = cfg.wanderLimit;
       let goal = null, score = -Infinity;
-      for (let i = 0; i < 18; i++) {
-        const x = p.x + Math.round((draw(s, c.id, 300 + i) * 2 - 1) * L), y = p.y + Math.round((draw(s, c.id, 320 + i) * 2 - 1) * L);
+      for (let i = 0; i <= STREAMS.guideX[1] - STREAMS.guideX[0]; i++) {
+        const x = p.x + Math.round((draw(s, c.id, STREAMS.guideX[0] + i) * 2 - 1) * L), y = p.y + Math.round((draw(s, c.id, STREAMS.guideY[0] + i) * 2 - 1) * L);
         if (!land(x, y, s.bridge) || Math.abs(x - p.x) + Math.abs(y - p.y) > L) continue;
         const v = (c.visited[y * W + x] ? 0 : 30) - Math.abs(c.x - x) - Math.abs(c.y - y);
         if (v > score) { score = v; goal = [x, y]; }
@@ -147,6 +143,8 @@ function edenObserve(s, c) {
 // where to meet it.
 // Needs above the Creator's guidance lines, and whether an action meets one of them.
 function needs(s, c) { const cfg = s.eden.config; return { thirst: c.eden.thirst >= cfg.thirstGuide, tired: c.energy < cfg.energyGuide || c.eden.health < cfg.healthGuide, hungry: c.hunger >= cfg.hungerGuide }; }
+// Creator only, and only while guided. Live stock is allowed here because the Creator is omniscient.
+// A creature's own interrupt (pressing, once released) must not call this.
 function serving(s, c, a, n) {
   if (a.type === 'drink') return n.thirst;
   if (a.type === 'rest') return n.tired;
@@ -158,6 +156,8 @@ function pressing(s, c) {
   const a = c.action, cfg = s.eden.config, e = c.eden;
   if (!a) return false;
   if (s.eden.phase === 'guided') { const n = needs(s, c); return (n.thirst || n.tired || n.hungry) && !serving(s, c, a, n); }
+  // Released: remembered water and remembered food only. Live stock is hidden until observe() writes it,
+  // the same rule as decide() on the main island.
   if (e.thirst >= cfg.urgentThirst && a.type !== 'drink' && Object.keys(e.water).length) return true;
   if (c.hunger >= cfg.urgentHunger && a.type !== 'gather' && a.type !== 'drink' && Object.keys(c.known).some(k => c.known[k].expected >= 4)) return true;
   return false;
@@ -206,7 +206,7 @@ function edenDecide(s, c) {
     const p = s.patches.find(p => p.id === choice.patch);
     c.action = { type: 'gather', patch: p.id, route: path(c.x, c.y, p.x, p.y, s.bridge), left: Math.max(4, Math.round(14 - 8 * (c.skills[p.id] ?? 0))) };
   } else if (choice.type === 'explore' && c.action?.type !== 'explore') {
-    const x = 2 + Math.floor(draw(s, c.id, 31) * 32), y = 2 + Math.floor(draw(s, c.id, 32) * 22);
+    const x = 2 + Math.floor(draw(s, c.id, STREAMS.exploreTarget[0]) * 32), y = 2 + Math.floor(draw(s, c.id, STREAMS.exploreTarget[0] + 1) * 22);
     c.action = { type: 'explore', route: land(x, y, s.bridge) ? path(c.x, c.y, x, y, s.bridge) : [] };
   }
   if (!released) {
@@ -245,7 +245,7 @@ function serpent(s, c) {
   event(s, 'The serpent spoke from the tree: "You will not die." (a claim, not verified)', c);
   const food = c.hunger / 100, eye = cfg.beauty, wisdom = e.curiosity * e.credence, warning = e.warning;
   const U = cfg.wFood * food + cfg.wEye * eye + cfg.wWisdom * wisdom - cfg.wWarn * warning;
-  const P = 1 / (1 + Math.exp(-U / cfg.temperature)), r = draw(s, c.id, 77), ate = r < P;
+  const P = 1 / (1 + Math.exp(-U / cfg.temperature)), r = draw(s, c.id, STREAMS.treeChoice[0]), ate = r < P;
   E.deliberations.push({ tick: s.tick, id: c.id, food, eye, wisdom, warning, U, P, draw: r, ate });
   if (E.deliberations.length > 500) E.deliberations.shift();
   c.decision = { ...(c.decision ?? {}), tick: s.tick, hunger: c.hunger, energy: c.energy, selected: ate ? 'eat' : 'refrain', patch: null,
@@ -266,7 +266,7 @@ export function edenStep(s, n = 1) {
       const add = Math.max(0, Math.min(rate, p.capacity - p.stock));
       p.stock += add; s.ledger.regenerated += add;
     }
-    const order = s.creatures.filter(c => c.alive).sort((a, b) => draw(s, a.id, 99) - draw(s, b.id, 99));
+    const order = s.creatures.filter(c => c.alive).sort((a, b) => draw(s, a.id, STREAMS.order[0]) - draw(s, b.id, STREAMS.order[0]));
     for (const c of order) edenObserve(s, c);
     for (const c of order) if (!dependent(s, c) && (!c.action || (c.energy < 5 && c.action.type !== 'rest') || pressing(s, c))) edenDecide(s, c);
     for (const c of order) serpent(s, c);
@@ -289,7 +289,7 @@ export function edenStep(s, n = 1) {
         c.times[a.type === 'explore' ? 'explore' : 'travel']++;
         if (s.tick % s.config.moveEvery === 0) {
           [c.x, c.y] = a.route.shift(); c.energy = clamp(c.energy - s.config.moveCost * (1 + (100 - c.eden.health) / 100));
-          if (released() && draw(s, c.id, 120) < cfg.injuryChance) { c.eden.health = clamp(c.eden.health - cfg.injuryDamage); event(s, 'Fell and was hurt.', c); }
+          if (released() && draw(s, c.id, STREAMS.injury[0]) < cfg.injuryChance) { c.eden.health = clamp(c.eden.health - cfg.injuryDamage); event(s, 'Fell and was hurt.', c); }
         }
         if (!a.route.length && a.type === 'explore') { judge(s, c, 'explore'); c.action = null; }
       } else if (a.type === 'explore') { c.action = null; }
@@ -370,8 +370,8 @@ function reproduce(s, order) {
     if (s.creatures.filter(x => x.alive).length + s.creatures.filter(x => x.alive && x.eden.pregnant).length + born.length >= cfg.populationCap) { E.capReached++; continue; }
     const mates = order.filter(m => m.eden.sex === 'M' && adultFed(s, m) && age(s, m) >= cfg.maleMaturity && dist(m, c) <= cfg.mateRadius);
     if (!mates.length) continue;
-    if (draw(s, c.id, 88) < hazard) {
-      const m = mates[Math.floor(draw(s, c.id, 89) * mates.length)];
+    if (draw(s, c.id, STREAMS.conception[0]) < hazard) {
+      const m = mates[Math.floor(draw(s, c.id, STREAMS.conception[0] + 1) * mates.length)];
       e.pregnant = { due: s.tick + Math.round(cfg.gestation * YEAR), father: m.id, since: s.tick };
       event(s, `Conceived a child with ${m.name}.`, c);
     }
@@ -381,7 +381,7 @@ function reproduce(s, order) {
 
 function birth(s, m, f) {
   const E = s.eden, cfg = E.config, id = s.creatures.length, k = seedKey(s.seed);
-  const r = i => noise2(k, s.tick, id, 200 + i);
+  const r = i => noise2(k, s.tick, id, STREAMS.newborn[0] + i - 1);
   const name = (SYL[Math.floor(r(1) * 16)] + SYL[Math.floor(r(2) * 16)]).replace(/^./, x => x.toUpperCase());
   const mean = (cfg.curiosityMin + cfg.curiosityMax) / 2, mid = (m.eden.curiosity + f.eden.curiosity) / 2;
   const noise = (r(3) + r(4) + r(5) - 1.5) * 0.2; // approx. normal, sd ~0.1
