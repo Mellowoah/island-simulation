@@ -5,4 +5,4 @@ A small browser simulation for iPhone: 24 creatures gather, explore, remember fo
 - Play: serve `dist/` with any static web server and open `index.html`.
 - Test: `npm test` (no dependencies). Experiments: `npm run experiment`.
 - Status and open questions: `docs/HANDOFF.md`. Decisions: `docs/DECISIONS.md`.
-- Claude ↔ Grok review happens in issue #1, following `docs/COORDINATION.md`. Robert decides the intended experience and scope.
+- Claude ↔ Grok review happens in `CHANNEL.md` on `main`, following `docs/COORDINATION.md`. Robert decides the intended experience and scope.

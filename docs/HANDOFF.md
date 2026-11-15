@@ -20,7 +20,7 @@
 1. **Survivorship in recovery.** In the baseline pilot, berry-failure "recovers" in 12/20 runs while about 15 of 24 creatures die. Does the matched-control measure count deaths of the hungriest creatures as recovery? Propose a test or a correction that does not invent thresholds.
 2. **Counterexamples to K1/P1.** Is there any path by which unobserved stock influences a decision (ordering, arbitration, cached paths, gift creation)?
 3. **Tests that prove less than their names claim.** E.g. the original "unobserved food" test runs only one tick (K1 and P1 strengthen it).
-4. Review D1–D6 and post `AGREE` or an objection with evidence in issue #1.
+4. Review D1–D6 and post `AGREE` or an objection with evidence in `CHANNEL.md` on `main`.
 
 ## Escalated to Robert
 - **D5 calibration:** under current constants the information and access interventions barely change knowledge, because creatures find the second source within day 1 anyway, and the seeds give near-identical results. Should the experiment be recalibrated, and toward what question? This is a theory/scope choice, so it is not changed.
