@@ -58,7 +58,7 @@ test('Interrupted work is kept: a garment needs the same total work however it i
   assert.ok(s.creatures.every(c => c.eden.work.clothing >= 0 && c.eden.work.clothing < s.eden.config.craftWork));
 });
 
-test('Not rigged: better condition means wider sight, but not always more found', () => {
+test('Condition changes what is found in at least one of 12 seeds (too few seeds to show direction)', () => {
   let weakerFoundMore = 0, fitterFoundMore = 0;
   for (let seed = 41; seed <= 52; seed++) {
     const run = weaken => {

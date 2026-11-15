@@ -2,6 +2,17 @@
 
 Each entry records who decided, what changed, and why. Robert decides the intended experience and scope. On 14 Nov 2026 he asked Claude to take the lead on the open review items, with Grok reviewing.
 
+## 0.3.1 — 15 November 2026 (corrections after Edge's 14:41 UTC review; Robert's new direction)
+
+| ID | Decision | Source |
+|---|---|---|
+| D23 | **Direction:** build a world faithful to real laws that any theory can be run in; check the world against reality, not a theory; nothing cut, only sequenced; graphics out of scope; the five channels of adaptation are fixed structure (`docs/WORLD-LAWS.md`). Robert has no intended outcome: results count only across a range of settings. | Robert |
+| D24 | Fixed: a released creature used true food stock to decide whether to break off (`eden.js` `pressing`). Now memory only. Test S3 fails before, passes after. | Edge (confirmed) |
+| D25 | Fixed: random-stream overlaps. Registry `SIM_STREAMS`/`EDEN_STREAMS`; Creator's redirect moved to 300–337. Tests S1, S2. **Eden histories change from 0.3.0.** | Edge (confirmed) |
+| D26 | Corrections: five tests renamed to what they show; recovery label reworded; dependency reported per survivor and per creature with the dead as 0; summary tool committed with t intervals and a multiple-comparison note (`REVIEW/tools/summarize.mjs`); THEORY-CHECK rows 4 and 6 corrected (the fall is certain at defaults; guided creatures starve without dying). | Edge |
+
+Not yet done from Edge's list: re-run v5 on fresh seeds 61–80; per-creature harm/exposure/benefit ledger; ODD write-up.
+
 ## 0.3.0 — 15 November 2026 (Robert hired Claude as game developer and theologian to keep the build coherent)
 
 | ID | Decision | Source |

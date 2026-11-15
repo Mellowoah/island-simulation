@@ -8,7 +8,7 @@ const ageAt = (c, tick) => (tick - c.eden.born) / DAY;
 const early = createEden(50); edenStep(early, 8 * DAY);   // falls on day 0: almost all births after release
 const guided = createEden(42); edenStep(guided, 4 * DAY); // stays guided for these years
 
-test('Births follow the demographic rules: sexes, ages 15-40, ~3-year spacing', () => {
+test('Births follow the demographic rules: sexes, ages 15-40, spacing at least postpartum + gestation (mean accepted 2.55-6 years)', () => {
   for (const s of [early, guided]) {
     const cfg = s.eden.config;
     for (const k of s.creatures.filter(c => c.eden.mother !== null)) {

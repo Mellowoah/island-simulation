@@ -1,6 +1,6 @@
 # World laws register
 
-Status: **draft 1, 15 November 2026. No law below is built to this standard yet.** Written before any code, at Robert's direction.
+Status: **draft 2, 15 November 2026. No law below is built to this standard yet.** Written before any code, at Robert's direction.
 
 ## Purpose
 Robert's aim is a **world**, not an experiment shaped around one theory. Its laws should be as true to ours as we can make them, so that any theory can be run inside it: The Moving Bar, the Eden account, both forks, and others not yet written. The world stays the same; only the question changes.
@@ -58,7 +58,8 @@ Source status key: **have** = cited in this project already; **named** = a sourc
 | Reproduction | Monthly chance of conception 0.15–0.25; 9-month pregnancy; births about 3 years apart; fertile to about 40 | Genetics of fertility | Birth interval and children per woman | **have** ([Britannica](https://www.britannica.com/science/population-biology-and-anthropology/Biological-factors-affecting-human-fertility); [Evolution and Human Behavior 10.4](https://boisestate.pressbooks.pub/evolutionhumanbehavior/chapter/10-4-demographic-influences/)) |
 | Childbirth risk | Risk to mother and child | Obstetrics | Pre-modern maternal and infant death rates | find |
 | Growth | Children's needs and abilities change with age | Development detail | Age of self-sufficiency plausible | find |
-| Inheritance | Several traits passed with variation (regression to the mean) | Genes | Parent–child resemblance matches chosen heritability | find |
+| Genome and inheritance | Each agent carries a set of numbers from both parents, mixed and occasionally mutated, covering body and temperament traits | Molecular genetics | Parent–child resemblance matches chosen heritability; traits can shift over generations under selection | find |
+| Drive to reproduce | A need like hunger, with strength carried in the genome; partner seeking and choice | Courtship, culture | Not assigned an outcome: weak-drive lines leave fewer descendants | find |
 
 ## D. Mind
 | Law | Level of detail | Left out | Validation check | Source |
@@ -78,6 +79,7 @@ Source status key: **have** = cited in this project already; **named** = a sourc
 | Signals and speech | A channel exists; meaning and honesty are not built in | Language | Honest and lying speakers start equal | find |
 | Trust | Learned per speaker from outcomes | Reputation systems | Trust separates through experience alone | find |
 | Sharing and care | Helping costs the helper | Kin selection theory | Sharing can lower the sharer's survival | find |
+| Carrying, storing, giving | Food and materials can be carried (slows travel), stored (can spoil or be taken) and given (the giver has less) | Property, trade | Provision is possible but never free; hoarding, sharing or neither can all occur | find |
 | Practice and know-how | Precautions and crafts are discovered or taught; cost something; can fail | Technology trees | Harm per exposure falls only if practice spreads | find |
 
 ## The five channels of adaptation (fixed structure for every agent)

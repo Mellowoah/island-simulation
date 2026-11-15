@@ -16,7 +16,7 @@ test('Every creature is born warned; the serpent\'s claim is never stored as kno
   assert.equal(createWorld(41).mode, undefined, 'the main island is untouched');
 });
 
-test('While guided no one dies; every override records the creature\'s own intention and a reason', () => {
+test('Death is switched off while guided (by construction); every override records the creature\'s own intention and a reason', () => {
   const s = createEden(42, { regenA: 0.05, regenB: 0.05 }); // scarce garden
   for (let t = 0; t < 3 * DAY; t++) {
     edenStep(s);
@@ -31,7 +31,7 @@ test('While guided no one dies; every override records the creature\'s own inten
   assert.ok(s.eden.overrides > 0 && s.eden.overrides <= s.eden.decisions);
 });
 
-test('Eating is never predetermined: it comes from each creature\'s own state and draw, and varies by seed', () => {
+test('Each tree choice is uncertain (0<P<1) and follows the creature\'s own draw; who eats and when vary by seed (a fall itself is near-certain at default settings)', () => {
   const outcomes = [];
   for (let seed = 41; seed <= 48; seed++) {
     const s = createEden(seed);

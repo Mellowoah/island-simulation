@@ -1,15 +1,15 @@
 # Theory check: Robert's statements → code → evidence
 
-Purpose: stop drift. Each line is something Robert stated, how the model does it, and the test or run that shows it. Last checked: 0.3.0 (step 1: senses and needs), 15 November 2026.
+Purpose: stop drift. Each line is something Robert stated, how the model does it, and the test or run that shows it. Last checked: 0.3.1 (defect fixes and corrections after Edge's review), 15 November 2026.
 
 | # | Robert's statement | How the model does it | Evidence |
 |---|---|---|---|
 | 1 | "Warned in the beginning of their lives about not eating" | Every founder, and every child born before anyone eats, gets the Creator's instruction and `warning = 1` at birth | `eden.test` (born warned); `eden-family.test` (children born before release are warned) |
 | 2 | "If they don't eat… I lead them in positive directions when their curiosity carries them outside of what is best" | Guided phase: the Creator overrides only choices outside what is best (hunger, tiredness, wandering beyond reach of food). Each override records the intended choice and a reason | `eden.test` (overrides recorded with reasons); browser check shows "This was not its own decision" |
 | 3 | "In whole they are not making their own decision" | True **for each overridden decision**, and the share is reported (`guidedShare`). Choices inside the bounds are labelled their own. *The size of the share comes from the bounds (D12), not from evidence.* | 20-seed run: 13–84% overridden |
-| 4 | "If they never eat, that's okay" | Nothing forces eating. In a guided world nobody dies, indefinitely. | 20 seeds × 20 days before reproduction: seed 42 never fell |
+| 4 | "If they never eat, that's okay" | Nothing forces any single choice. **But at the default settings a fall is certain:** belief in the serpent only rises, the warning never changes, the tree stands where they live, and hunger rises as the population grows. Death is switched off while guided, so nobody dies, **but they do starve**. | Observed on 0.3.1, seeds 41–60: 20/20 worlds fell within 10 years; while guided, 26.5% of creature-minutes after year 4 were at hunger ≥ 99 (`REVIEW/logs/v031-eden-fall-starvation.txt`). Confirms Edge's finding. |
 | 5 | The serpent hides in the tree and deceives one independent agent | The serpent speaks only within one tile of the tree, once per creature per year. Its claim is stored as a claim, never as knowledge. | `eden.test` (claim not in `known`) |
-| 6 | Eating comes from "their own agency" (research theology + gaming) | Genesis 3:6 factors against the remembered warning; logistic weighted chance with the creature's own draw; every deliberation logged. Never certain either way. | `eden.test` (0 < P < 1; ate ⇔ draw < P; outcomes vary by seed) |
+| 6 | Eating comes from "their own agency" (research theology + gaming) | Genesis 3:6 factors against the remembered warning; logistic weighted chance with the creature's own draw; every deliberation logged. Never certain either way. | `eden.test` (0 < P < 1; ate ⇔ draw < P; outcomes vary by seed) Each single choice is uncertain; whether *anyone ever* eats is not (row 4). |
 | 7 | "God releases man to their own devices", triggered by one agent eating; everyone released | The first eating moves the whole world to released; no override happens after that | `eden.test` (no guidance after release) |
 | 8 | After release: death begins, they judge for themselves | Starvation can kill only after release. Self-judgement reinforces each creature's own preferences. | `eden.test` (judgements recorded); no deaths before release in every test |
 | 9 | After release: "options for producing all necessary items… statistically possible, like creation theory" | Fields (one per adult; ~1.2× one adult's need, first harvest after half a year), clothing (stops exposure), tools. The ground yields 50% (Genesis 3:17–19). | `eden.test` (production and reconciled accounting) |
@@ -28,6 +28,11 @@ Purpose: stop drift. Each line is something Robert stated, how the model does it
 - **Births could overshoot the population cap.** Pregnancies in progress now count toward it.
 
 ## Built in by construction (do not report as findings)
+- **The fall itself.** Certain at default settings (row 4). Only who eats and when is open.
+- **"No one dies while guided."** A switch, not an achievement. Guided creatures can be starving.
+- **The Creator knows true food stock and every spring.** Omniscient by design; creatures never do.
+- **A thirsty creature heading to food counts as meeting a real need,** so the Creator does not redirect it to water.
+- **Any single-setting result.** A result counts only when shown across a range of settings, including where it fails.
 - Guided creatures do well because death is off and an overseer that knows everything corrects them.
 - Released creatures face hardship because Genesis 3 consequences are written in.
 - Birth spacing matches the real figures because the real figures were put in.

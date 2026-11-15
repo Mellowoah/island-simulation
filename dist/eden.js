@@ -49,6 +49,11 @@ const carer = (s, c) => { if (c.eden.mother === null || age(s, c) >= s.eden.conf
 const dependent = (s, c) => carer(s, c) !== null;
 const WARNING = 'The Creator: eat freely from the garden, but not from the tree of the knowledge of good and evil. Eating from it brings death.';
 const CLAIM = 'The serpent: you will not die. Your eyes will be opened, and you will know good and evil.';
+// Registry of random streams. Each use has its own numbers; none may overlap another use on the same
+// tick and creature (tests/streams.test.mjs). SIM_STREAMS lists the numbers the island core uses.
+export const SIM_STREAMS = { startPosition: [0, 1], exploreX: [10, 27], exploreY: [40, 57], order: [99, 99] };
+export const EDEN_STREAMS = { birthCuriosity: [7, 7], exploreTarget: [31, 32], treeChoice: [77, 77], conception: [88, 89], order: [99, 99],
+  injury: [120, 120], newborn: [201, 206], guideX: [300, 317], guideY: [320, 337] };
 const draw = (s, id, salt) => noise2(seedKey(s.seed), s.tick, id, salt);
 const dist = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 
@@ -75,7 +80,7 @@ export function createEden(seed = 41, overrides = {}, edenOverrides = {}) {
   return s;
 }
 
-// The Creator's view: knows true stocks. Returns a replacement action only when the creature's
+// The Creator's view: knows true stocks and every spring BY DESIGN (omniscient). Creatures never do. Returns a replacement action only when the creature's
 // own choice falls outside what is best for it; otherwise null (the choice stands as its own).
 function creatorBest(s, c) {
   const cfg = s.eden.config, own = c.action, n = needs(s, c);
@@ -106,7 +111,7 @@ function creatorBest(s, c) {
       const p = food.reduce((b, p) => dist(p, c) < dist(b, c) ? p : b), L = cfg.wanderLimit;
       let goal = null, score = -Infinity;
       for (let i = 0; i < 18; i++) {
-        const x = p.x + Math.round((draw(s, c.id, 50 + i) * 2 - 1) * L), y = p.y + Math.round((draw(s, c.id, 70 + i) * 2 - 1) * L);
+        const x = p.x + Math.round((draw(s, c.id, 300 + i) * 2 - 1) * L), y = p.y + Math.round((draw(s, c.id, 320 + i) * 2 - 1) * L);
         if (!land(x, y, s.bridge) || Math.abs(x - p.x) + Math.abs(y - p.y) > L) continue;
         const v = (c.visited[y * W + x] ? 0 : 30) - Math.abs(c.x - x) - Math.abs(c.y - y);
         if (v > score) { score = v; goal = [x, y]; }
@@ -154,7 +159,7 @@ function pressing(s, c) {
   if (!a) return false;
   if (s.eden.phase === 'guided') { const n = needs(s, c); return (n.thirst || n.tired || n.hungry) && !serving(s, c, a, n); }
   if (e.thirst >= cfg.urgentThirst && a.type !== 'drink' && Object.keys(e.water).length) return true;
-  if (c.hunger >= cfg.urgentHunger && a.type !== 'gather' && a.type !== 'drink' && Object.keys(c.known).some(k => s.patches.find(p => p.id === k)?.stock >= 4 || c.known[k].expected >= 4)) return true;
+  if (c.hunger >= cfg.urgentHunger && a.type !== 'gather' && a.type !== 'drink' && Object.keys(c.known).some(k => c.known[k].expected >= 4)) return true;
   return false;
 }
 
