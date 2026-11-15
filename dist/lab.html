@@ -46,7 +46,7 @@
 <script type="module">
 import { createLab, labStep, labCommand, labMetrics, isLand, confidence } from './lab.js';
 const $ = id => document.getElementById(id), T = 12;
-let seed = 41, world, selected = 0, paused = false, speed = 1, acc = 0, last = performance.now();
+let seed = 41, world, selected = 0, paused = false, speed = 1, acc = 0, last = performance.now(), lastPanel = 0;
 const cv = $('map'), g = cv.getContext('2d');
 const start = () => { world = createLab(seed, { falseInformationRate: Number($('false').value) }); selected = 0; toast(`World ${seed}`); };
 const toast = t => { $('toast').textContent = t; };
@@ -91,7 +91,7 @@ function update() {
 
 function frame(now) {
   if (!paused) { acc += Math.min(now - last, 200) * speed; const n = Math.min(Math.floor(acc / 50), 400); if (n) { labStep(world, n); acc -= n * 50; } }
-  last = now; update(); requestAnimationFrame(frame);
+  last = now; if (now - lastPanel > 250) { update(); lastPanel = now; } else draw(); requestAnimationFrame(frame); // text panels refresh 4 times a second; the map every frame
 }
 $('pause').onclick = () => { paused = !paused; $('pause').textContent = paused ? 'Resume' : 'Pause'; };
 $('speed').onclick = () => { speed = speed === 1 ? 4 : speed === 4 ? 16 : 1; $('speed').textContent = speed + '×'; };
