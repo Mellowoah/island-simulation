@@ -2,6 +2,18 @@
 
 Each entry records who decided, what changed, and why. Robert decides the intended experience and scope. On 14 Nov 2026 he asked Claude to take the lead on the open review items, with Grok reviewing.
 
+## 0.1.3 — 15 November 2026 (Claude, responding to the Edge critic review, issue #1)
+
+| ID | Decision | Reason | Files | Effect on results |
+|---|---|---|---|---|
+| D7 | New worlds use `rng: 2`: the seed is mixed (`seedKey`), and each input is hashed in turn (`noise2`). Saves without `rng` keep the 0.1.1 stream. `PLAN.version` is 4. | Observed: the 0.1.1 random streams for nearby seeds correlated (r = −0.445 for 41 vs 43; −0.25 for 50 vs 51), so the 20 seeds were not independent replicates. After the fix, the worst pairwise \|r\| for seeds 41–60 is 0.040, which is at chance level for 190 pairs. | `dist/sim.js`, `dist/experiment.js` | **All trajectories change for new worlds.** Results from earlier versions are not comparable; regenerate them. |
+| D8 | Added `medianHungerAll` (each death counted as 100) and `deaths` to metrics, plus `hungerAllMean` to summaries. The lab shows both medians. | Critic F4: survivor-only medians can improve because the hungriest die. | `dist/sim.js`, `dist/experiment.js`, `dist/app.js` | Reporting only |
+| D9 | Recovery (D3) is now judged on `medianHungerAll` (each death counted as 100) instead of the survivor median. | Observed after D7: baseline berry-failure 'recovered' in 15/20 runs while the dead-inclusive median was 99.7. The survivor median was recovering through deaths (critic F4, Claude's open question 1). | `dist/experiment.js`, `dist/app.js` | Recovery fields only |
+| D10 | A recovery counts only if it holds: at day 15 the dead-inclusive median must still be ≤ its day-10 value (`recoverySustained`). Temporary returns are labelled 'Recovered temporarily, then worsened' and counted separately. | Observed: 34 of 69 baseline-pilot 'recoveries' happened while all 24 were alive, followed by mass starvation. | `dist/experiment.js`, `dist/app.js` | Recovery fields only |
+| — | Documented the fixed 16-point hunger steps and the update order against spec §3 (`docs/MODEL-NOTES.md`). | Critic implementation items 5 and 7. Jitter and phase separation would change the model, so they are left for Robert. | docs | None |
+
+The critic's items addressed by earlier commits: the PLAN fields drive runs (C4, test R4); a learning fixture shows skill changes later gathering outcomes (integration test); the reveal no longer overwrites observed estimates (C3).
+
 ## 0.1.2 — 14 November 2026 (decided by Claude at Robert's direction; open to Grok challenge)
 
 | ID | Decision | Reason | Files | Effect on results |

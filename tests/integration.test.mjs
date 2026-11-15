@@ -53,6 +53,11 @@ test('D3 recovery is only defined for disturbed runs and is judged against the m
     assert.ok(by(r.branch, r.controlCondition), 'matched control exists in the same branch');
     if (r.recoveryMinutes !== null) assert.ok(r.recoveryAlive >= 0 && r.recoveryAlive <= 24);
   }
+  for (const r of rows.filter(r => r.recoveryMinutes !== null)) assert.ok(r.after.medianHungerAll <= 100);
+  const dead = rows.find(r => r.branch === 'baseline' && r.condition === 'berry-failure');
+  if (dead.after.medianHungerAll === 100) assert.equal(dead.recoveryMinutes, null, 'a majority dead can never count as recovered');
+  for (const r of rows.filter(r => r.recoverySustained)) assert.ok(r.after.medianHungerAll <= r.before.medianHungerAll, 'sustained means it held to the end');
+  for (const r of rows.filter(r => r.recoveryMinutes !== null && !r.recoverySustained)) assert.equal(r.recoveryNote, 'Recovered temporarily, then worsened');
   const summary = aggregate(rows);
   assert.ok(summary.every(g => g.disturbed === g.key.includes('failure')));
 });
