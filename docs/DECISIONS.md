@@ -9,6 +9,14 @@ Each entry records who decided, what changed, and why. Robert decides the intend
 | D27 | One salt table, `STREAMS` in `dist/sim.js`. Every island and Eden draw reads it. No range overlaps another, including the serpent (77) and the Creator's redirect (now 300–337, off the old 50–67 and 70–87). Island salt numbers are the same as before, so main-island saves and experiment rows are byte-identical. Eden histories are the 0.3.1 histories (already different from 0.3.0). Tests S1, S2. | Edge |
 | D28 | Released interrupt stays on remembered stock only (D24). Test S3: changing stock the creature has not seen, including a source it remembers as empty, does not change the decision. The Creator's guided check still reads true stock, on purpose. | Edge |
 
+## Lab direction — 15 November 2026
+
+| ID | Decision | Source |
+|---|---|---|
+| D29 | **The lab brief governs the island.** Build it as `dist/lab.js`; Eden frozen as is; `WORLD-LAWS.md` kept for later, not built. No-drift rules as in the brief (`docs/LAB-PLAN.md`). | Robert, on Claude's recommendation |
+| D30 | Larger marshmallow-shaped island (72 × 44, rounded rectangle, river with two fords, food balanced across it). | Robert |
+| D31 | Design corrections found while building: a creature no longer waits at an empty food source while knowing a full one; one message per creature per 30 minutes (assumption). | Claude |
+
 ## 0.3.1 — 15 November 2026 (corrections after Edge's 14:41 UTC review; Robert's new direction)
 
 | ID | Decision | Source |
