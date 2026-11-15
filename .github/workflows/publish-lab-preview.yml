@@ -18,9 +18,8 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v5
-        with:
-          enablement: true
+      # Pages must be enabled by a repository administrator in Settings > Pages.
+      # Do not attempt to create the Pages site with the restricted Actions token.
       - name: Make Island Lab the playable homepage
         run: |
           mkdir -p _site
