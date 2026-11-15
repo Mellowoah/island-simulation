@@ -66,5 +66,9 @@ Requested by Robert, 14–15 November 2026. Eden is a **separate world**: the ma
 - "While guided they are not making their own decisions" is true **exactly for the overridden decisions**, and the model reports how many there were. Choices inside the bounds are recorded as their own.
 - Post-release hardship (cursed ground, exposure, death) is written in from Genesis 3. Whether creatures then survive depends on what they do and on the provisional rates; nothing awards a bonus for hardship or for obedience.
 
+## Moving bar (0.4.0-proto, off by default)
+
+A caller can pass `movingBar` to `createEden`. The app does not. After release, one falling tree can injure a creature who steps into it, and the creature can take a longer path around it when its own threshold says the harm is too much. The threshold is separate from the felt signal. The whole specification, including every default reserved for Robert, is `docs/PROTO-MOVING-BAR.md`. With the argument omitted, this section changes nothing in the world.
+
 ## Not modelled (deferred)
 Trust between creatures, teaching, testimony spreading, ageing and death from old age, a Creator's later interventions after release, any judgement of who is "good". Eden can be exported; it cannot yet be re-imported or saved in the browser.

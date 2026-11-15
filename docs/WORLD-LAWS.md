@@ -97,6 +97,7 @@ From The Moving Bar. These stay intact: every agent adapts through all five, and
 - **Creator's warning and guidance; the serpent; release and its consequences** (Eden account).
 - **Restoration** (with-God fork): accounting only. It shows the same history two ways and changes nothing in the world.
 - **Help experiments** (provision, access, information, ration).
+- **Moving bar** (0.4.0-proto): felt adaptation and an acceptable-harm threshold, after release, **off unless the caller passes `movingBar`**. Not a law. Defaults and the pre-registered predictions are in `docs/PROTO-MOVING-BAR.md`.
 
 With all layers off, the world's digest must be identical.
 
@@ -104,7 +105,7 @@ With all layers off, the world's digest must be identical.
 1. **Prerequisites** (Edge):
    - fix `eden.js` released interrupt, where a creature consulted true food stock — done in 0.3.2 (memory only);
    - stream registry for random draws — done in 0.3.2 (`STREAMS` in `dist/sim.js`, every call site);
-   - per-creature ledger of harm, exposure and benefit;
+   - per-creature ledger of harm, exposure and benefit — a grove-only ledger exists behind the moving-bar flag (0.4.0-proto); the world-law ledger for every kind of harm is still not built;
    - ODD write-up;
    - digest test that reproduces 0.3.0 with every new flag off.
 2. **Section 0 decisions**, then rebuild time, space and energy on one scale.

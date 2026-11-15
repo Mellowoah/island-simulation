@@ -2,6 +2,15 @@
 
 Each entry records who decided, what changed, and why. Robert decides the intended experience and scope. On 14 Nov 2026 he asked Claude to take the lead on the open review items, with Grok reviewing.
 
+## 0.4.0-proto — 15 November 2026 (moving bar, flag off by default)
+
+| ID | Decision | Source |
+|---|---|---|
+| D29 | A test build, not a world law. One flag, `movingBar`, omitted by default. Island and Eden save bytes stay the 0.3.2 bytes when it is omitted (digest test). Version label 0.4.0-proto. | Robert's question; built as a prototype |
+| D30 | After release only: one falling tree at (18, 21), radius 2, harm from `STREAMS.hazardHarm` [340, 340], schedule written in `docs/PROTO-MOVING-BAR.md`. Felt is `harm - rho * EMA`. B does not read felt unless the run is the pre-registered felt-coupled boundary. | Prototype spec |
+| D31 | Four conditions: DRIFT, ANCHOR, PEER, ABLATION. Peers read only living creatures' witnessed raw harm. No stock read in the new block (test). Defaults in that doc are reserved for Robert and are not tuned after the 20-seed run. | Prototype spec |
+| D32 | The 20-seed run uses seeds 61–80. An effect is claimed only if the paired 95% interval excludes 0. Results live in `REVIEW/proto-moving-bar-results.md`, labelled observed / inferred / unrun / deferred. | Same claim rule as plan v5 |
+
 ## 0.3.2 — 15 November 2026 (salt registry completed; hidden-stock interrupt stays memory-only)
 
 | ID | Decision | Source |

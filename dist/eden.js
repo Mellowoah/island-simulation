@@ -54,14 +54,18 @@ const draw = (s, id, salt) => noise2(seedKey(s.seed), s.tick, id, salt);
 const dist = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 
 export function createEden(seed = 41, overrides = {}, edenOverrides = {}) {
+  const barSpec = edenOverrides?.movingBar ? movingBarConfig(edenOverrides.movingBar) : null;
+  const edenRest = { ...(edenOverrides ?? {}) };
+  delete edenRest.movingBar;
   const s = createWorld(seed, overrides);
-  const cfg = { ...EDEN_DEFAULTS, ...edenOverrides };
+  const cfg = { ...EDEN_DEFAULTS, ...edenRest };
   const [tx, ty] = cfg.tree;
   if (!land(tx, ty, false)) throw Error('The tree must stand on land');
   s.mode = 'eden';
   s.eden = { version: EDEN_VERSION, births: 0, capReached: 0, phase: 'guided', tree: { x: tx, y: ty }, config: cfg, fallTick: null, firstEater: null,
     decisions: 0, overrides: 0, serpentSpoke: null, deliberations: [], deaths: {},
     springs: cfg.springs.map(([name, x, y], i) => { if (!land(x, y, false)) throw Error('A spring must be on land'); return { id: 'w' + i, name, x, y }; }) };
+  if (barSpec) s.eden.movingBar = newMovingBar(barSpec);
   const k = seedKey(s.seed);
   for (const c of s.creatures) {
     c.times.work = 0;
@@ -70,6 +74,7 @@ export function createEden(seed = 41, overrides = {}, edenOverrides = {}) {
       clothed: false, tool: false, bias: { rest: 0, explore: 0, gather: 0, cultivate: 0, craft: 0, drink: 0 }, judged: 0, guided: 0,
       sex: c.id % 2 ? 'M' : 'F', born: -cfg.startAge * YEAR, mother: null, father: null, pregnant: null, births: [], children: [],
       thirst: 0, parched: 0, health: 100, water: {}, sight: s.config.perception, work: { clothing: 0, tool: 0, cultivate: 0 } };
+    if (barSpec) c.eden.bar = freshBar(barSpec);
     event(s, 'Warned by the Creator: do not eat from the tree.', c);
   }
   event(s, 'Eden begins. Each creature is warned not to eat from the tree. The Creator guides them.');
@@ -195,20 +200,25 @@ function edenDecide(s, c) {
     if (!e.clothed) opts.push({ type: 'craft', item: 'clothing', score: cfg.clothingWeight * (1 - c.energy / 100) + 2 + e.bias.craft, reason: `Exposed: make clothing${e.work.clothing ? ` (${Math.round(100 * e.work.clothing / cfg.craftWork)}% done)` : ''}.` });
     else if (!e.tool && c.energy > 50) opts.push({ type: 'craft', item: 'tool', score: cfg.toolWeight + e.bias.craft, reason: 'Make a tool to work and gather better.' });
   }
+  if (released && s.eden.movingBar && e.bar?.firing) biasOptionsForHazard(s, c, opts);
   const choice = c.energy < 10 ? opts[0] : [...opts].sort((a, b) => b.score - a.score)[0];
   d.options = opts; d.selected = choice.type; d.patch = choice.patch ?? null; d.item = choice.item ?? null; d.spring = choice.spring ?? null;
   d.sight = e.sight; d.thirst = e.thirst; d.health = e.health;
   if (choice.type === 'cultivate') c.action = { type: 'cultivate', route: [], left: Math.max(1, Math.round(cfg.cultivateWork * (e.tool ? cfg.toolSpeed : 1)) - e.work.cultivate) };
   else if (choice.type === 'craft') c.action = { type: 'craft', item: choice.item, route: [], left: Math.max(1, cfg.craftWork - e.work[choice.item]) };
-  else if (choice.type === 'drink') c.action = { type: 'drink', spring: water.w.id, route: water.r, left: 3 };
+  else if (choice.type === 'drink') c.action = { type: 'drink', spring: water.w.id, route: choice.hazardRoute ?? water.r, left: 3 };
   else if (choice.type === 'rest') c.action = { type: 'rest', left: 28 };
   else if (choice.type === 'gather' && !(c.action?.type === 'gather' && c.action.patch === choice.patch)) {
     const p = s.patches.find(p => p.id === choice.patch);
-    c.action = { type: 'gather', patch: p.id, route: path(c.x, c.y, p.x, p.y, s.bridge), left: Math.max(4, Math.round(14 - 8 * (c.skills[p.id] ?? 0))) };
+    c.action = { type: 'gather', patch: p.id, route: choice.hazardRoute ?? path(c.x, c.y, p.x, p.y, s.bridge), left: Math.max(4, Math.round(14 - 8 * (c.skills[p.id] ?? 0))) };
   } else if (choice.type === 'explore' && c.action?.type !== 'explore') {
     const x = 2 + Math.floor(draw(s, c.id, STREAMS.exploreTarget[0]) * 32), y = 2 + Math.floor(draw(s, c.id, STREAMS.exploreTarget[0] + 1) * 22);
-    c.action = { type: 'explore', route: land(x, y, s.bridge) ? path(c.x, c.y, x, y, s.bridge) : [] };
+    const route0 = land(x, y, s.bridge) ? path(c.x, c.y, x, y, s.bridge) : [];
+    const alt = s.eden.movingBar && e.bar?.firing ? avoidanceOf(s, route0, x, y, c.x, c.y) : null;
+    c.action = { type: 'explore', route: alt?.changed ? alt.route : route0 };
+    if (alt?.changed) payAvoidance(s, c, alt.extra);
   }
+  if (choice.hazardRoute && c.action?.route === choice.hazardRoute) payAvoidance(s, c, choice.hazardExtra ?? 0);
   if (!released) {
     E.decisions++;
     const best = creatorBest(s, c);
@@ -267,9 +277,11 @@ export function edenStep(s, n = 1) {
       p.stock += add; s.ledger.regenerated += add;
     }
     const order = s.creatures.filter(c => c.alive).sort((a, b) => draw(s, a.id, STREAMS.order[0]) - draw(s, b.id, STREAMS.order[0]));
+    if (s.eden.movingBar) movingBarTick(s);
     for (const c of order) edenObserve(s, c);
     for (const c of order) if (!dependent(s, c) && (!c.action || (c.energy < 5 && c.action.type !== 'rest') || pressing(s, c))) edenDecide(s, c);
     for (const c of order) serpent(s, c);
+    if (s.eden.movingBar && E.phase === 'released' && s.eden.movingBar.aliveAtStart == null) s.eden.movingBar.aliveAtStart = s.creatures.filter(c => c.alive).length;
     for (const c of order) {
       if (dependent(s, c)) {
         const m = carer(s, c);
@@ -288,8 +300,11 @@ export function edenStep(s, n = 1) {
       } else if (a.route.length) {
         c.times[a.type === 'explore' ? 'explore' : 'travel']++;
         if (s.tick % s.config.moveEvery === 0) {
+          if (s.eden.movingBar && c.eden.bar?.firing) divertIfHazard(s, c);
+          const px = c.x, py = c.y;
           [c.x, c.y] = a.route.shift(); c.energy = clamp(c.energy - s.config.moveCost * (1 + (100 - c.eden.health) / 100));
           if (released() && draw(s, c.id, STREAMS.injury[0]) < cfg.injuryChance) { c.eden.health = clamp(c.eden.health - cfg.injuryDamage); event(s, 'Fell and was hurt.', c); }
+          if (s.eden.movingBar && released() && !inHazard(s, px, py) && inHazard(s, c.x, c.y)) c.eden.bar.pendingStrike = true;
         }
         if (!a.route.length && a.type === 'explore') { judge(s, c, 'explore'); c.action = null; }
       } else if (a.type === 'explore') { c.action = null; }
@@ -328,11 +343,12 @@ export function edenStep(s, n = 1) {
       }
       }
       health(s, c, released());
+      if (c.eden.bar?.pendingStrike) { c.eden.bar.pendingStrike = false; strike(s, c); }
       if (released()) {
         c.starving = c.hunger >= 99 ? c.starving + 1 : 0;
         c.eden.parched = c.eden.thirst >= 99 ? c.eden.parched + 1 : 0;
-        const cause = c.starving >= s.config.starveTicks ? 'Sustained food deprivation' : c.eden.parched >= cfg.thirstDeathTicks ? 'Thirst' : c.eden.health <= 0 ? 'Injury and illness' : null;
-        if (cause) { c.alive = false; c.death = { tick: s.tick, cause }; c.action = null; s.eden.deaths[cause] = (s.eden.deaths[cause] ?? 0) + 1; event(s, `${c.name} died: ${cause.toLowerCase()}.`); }
+        const cause = barDeathCause(s, c);
+        if (cause) { c.alive = false; c.death = { tick: s.tick, cause }; c.action = null; s.eden.deaths[cause] = (s.eden.deaths[cause] ?? 0) + 1; noteBarDeath(s, cause); event(s, `${c.name} died: ${cause.toLowerCase()}.`); }
       } else { c.starving = 0; c.eden.parched = 0; }
     }
     reproduce(s, order);
@@ -393,6 +409,7 @@ function birth(s, m, f) {
       clothed: false, tool: false, bias: { rest: 0, explore: 0, gather: 0, cultivate: 0, craft: 0, drink: 0 }, judged: 0, guided: 0,
       sex: r(6) < cfg.maleRatio ? 'M' : 'F', born: s.tick, mother: m.id, father: f.id, pregnant: null, births: [], children: [],
       thirst: 0, parched: 0, health: 100, water: { ...m.eden.water }, sight: s.config.perception, work: { clothing: 0, tool: 0, cultivate: 0 } } };
+  if (s.eden.movingBar) c.eden.bar = freshBar(s.eden.movingBar.cfg);
   s.creatures.push(c); E.births++;
   m.eden.births.push(s.tick); m.eden.children.push(id); f.eden.children.push(id);
   if (fallen) m.energy = clamp(m.energy - cfg.birthCost);
@@ -409,3 +426,317 @@ export function edenMetrics(s) {
     deathCauses: { ...E.deaths }, meanSight: alive.length ? alive.reduce((n, c) => n + c.eden.sight, 0) / alive.length : 0,
     fields: s.patches.filter(p => p.field).length, clothed: alive.filter(c => c.eden.clothed).length, tools: alive.filter(c => c.eden.tool).length };
 }
+
+// MOVING-BAR START
+// Prototype layer (docs/PROTO-MOVING-BAR.md). Absent unless createEden is passed movingBar.
+// B is a threshold on witnessed harm. It does not read felt unless signal is 'felt'.
+export const MOVING_BAR_DEFAULTS = {
+  enabled: false,
+  rho: 0.7,
+  halfLife: 720,
+  driftHalfLife: 360,
+  peerWeight: 0.35,
+  monitorWeight: 0.5,
+  condition: 'drift',
+  signal: 'harm',
+  harmLo: 4,
+  harmHi: 12,
+  rise: 0.6,
+  riseUntil: 0.5,
+  windowDays: 3,
+  recentK: 8,
+  grove: [18, 21],
+  radius: 2,
+  minPeers: 3,
+  maxHazardDeathShare: 0.25,
+  snap: 1e-4,
+};
+
+export function feltStep(ema, harm, dt, rho, halfLife) {
+  const alpha = 1 - Math.pow(0.5, dt / halfLife);
+  return { felt: harm - rho * ema, ema: ema + alpha * (harm - ema) };
+}
+
+export function hazardMultiplier(u, cfg = MOVING_BAR_DEFAULTS) {
+  const t = Math.max(0, Math.min(1, u));
+  return t < cfg.riseUntil ? 1 + cfg.rise * (t / cfg.riseUntil) : 1 + cfg.rise;
+}
+
+export function barTarget(mean, cfg, ctx) {
+  if (cfg.condition === 'anchor' || cfg.condition === 'ablation') return null;
+  let target = mean;
+  if (cfg.condition === 'peer') {
+    if (ctx.peerMedian != null) target += cfg.peerWeight * (ctx.peerMedian - target);
+    if (ctx.groupPast != null && mean > ctx.groupPast) target += cfg.monitorWeight * (ctx.groupPast - target);
+  }
+  return target;
+}
+
+export function freshBar(cfg) {
+  const B0 = (cfg.harmLo + cfg.harmHi) / 2;
+  return {
+    B: B0, Bown: B0, ema: B0, lastEmaTick: null, lastFelt: null, recent: [], mean: null,
+    firing: false, firingFromPeers: false, killedByHazard: false, pendingStrike: false,
+    harm: 0, exposures: 0, avoidanceCost: 0, benefitFromOthers: 0, finalTicks: 0, finalFiring: 0,
+  };
+}
+
+export function recordExposure(bar, harm, dt, cfg) {
+  const step = feltStep(bar.ema, harm, dt, cfg.rho, cfg.halfLife);
+  const signal = cfg.signal === 'felt' ? step.felt : harm;
+  return {
+    ...bar, ema: step.ema, lastFelt: step.felt, pendingStrike: false,
+    recent: [...bar.recent, signal].slice(-cfg.recentK),
+    harm: bar.harm + harm, exposures: bar.exposures + 1,
+  };
+}
+
+function creepK(cfg) {
+  if (cfg.condition === 'anchor' || cfg.condition === 'ablation') return 0;
+  if (!(cfg.driftHalfLife > 0) || !Number.isFinite(cfg.driftHalfLife)) return 0;
+  return 1 - Math.pow(0.5, 1 / cfg.driftHalfLife);
+}
+
+function approach(value, target, k, snap) {
+  if (target == null || k === 0) return value;
+  return Math.abs(target - value) < snap ? target : value + k * (target - value);
+}
+
+export function creepBar(bar, cfg, ctx) {
+  if (!bar.recent.length) return { ...bar, firing: false, firingFromPeers: false, mean: null };
+  const mean = bar.recent.reduce((a, b) => a + b, 0) / bar.recent.length;
+  const k = creepK(cfg);
+  const target = barTarget(mean, cfg, ctx);
+  const B = approach(bar.B, target, k, cfg.snap);
+  const own = (cfg.condition === 'drift' || cfg.condition === 'peer') ? mean : null;
+  const Bown = approach(bar.Bown, own, k, cfg.snap);
+  const firing = cfg.condition === 'ablation' ? false : mean > B;
+  const firingFromPeers = cfg.condition === 'peer' && firing && !(mean > Bown);
+  return { ...bar, B, Bown, mean, firing, firingFromPeers };
+}
+
+function movingBarConfig(spec) {
+  const cfg = { ...MOVING_BAR_DEFAULTS, ...(spec === true ? {} : spec), enabled: true };
+  cfg.grove = [...cfg.grove];
+  if (!(cfg.rho >= 0 && cfg.rho <= 1)) throw Error('rho must be in [0, 1]');
+  if (!['drift', 'anchor', 'peer', 'ablation'].includes(cfg.condition)) throw Error('unknown bar condition');
+  if (cfg.signal !== 'harm' && cfg.signal !== 'felt') throw Error('unknown bar signal');
+  return cfg;
+}
+
+function newMovingBar(cfg) {
+  return { cfg, records: [], cohort: null, aliveAtStart: null, treeDeaths: 0 };
+}
+
+function medianOf(xs) {
+  const v = [...xs].sort((a, b) => a - b);
+  if (!v.length) return null;
+  const i = (v.length - 1) / 2;
+  return (v[Math.floor(i)] + v[Math.ceil(i)]) / 2;
+}
+
+function peerContext(s, selfId) {
+  const mb = s.eden.movingBar, cfg = mb.cfg;
+  const means = [];
+  for (const o of s.creatures) {
+    if (!o.alive || o.id === selfId || !o.eden.bar || o.eden.bar.exposures < 1) continue;
+    means.push(o.eden.bar.harm / o.eden.bar.exposures);
+  }
+  const cutoff = s.eden.fallTick + Math.floor(cfg.windowDays * DAY * cfg.riseUntil);
+  const living = new Set(s.creatures.filter(c => c.alive).map(c => c.id));
+  const past = mb.records.filter(r => r.tick < cutoff && living.has(r.id)).map(r => r.harm);
+  return { peerMedian: means.length >= cfg.minPeers ? medianOf(means) : null, groupPast: past.length ? medianOf(past) : null };
+}
+
+function movingBarTick(s) {
+  const mb = s.eden.movingBar;
+  if (!mb || s.eden.phase !== 'released' || s.eden.fallTick == null) return;
+  const cfg = mb.cfg;
+  for (const c of s.creatures) {
+    if (!c.alive || !c.eden.bar || dependent(s, c)) continue;
+    Object.assign(c.eden.bar, creepBar(c.eden.bar, cfg, peerContext(s, c.id)));
+  }
+  const windowTicks = cfg.windowDays * DAY;
+  const u0 = s.tick - s.eden.fallTick;
+  const startFinal = Math.floor(windowTicks * 2 / 3);
+  if (u0 >= startFinal && u0 <= windowTicks) {
+    if (!mb.cohort) mb.cohort = s.creatures.filter(c => c.alive && !dependent(s, c)).map(c => c.id);
+    for (const id of mb.cohort) {
+      const c = s.creatures[id];
+      if (!c?.alive || !c.eden.bar) continue;
+      c.eden.bar.finalTicks++;
+      if (c.eden.bar.firing) c.eden.bar.finalFiring++;
+    }
+  }
+}
+
+function inHazard(s, x, y) {
+  const cfg = s.eden.movingBar?.cfg;
+  if (!cfg) return false;
+  const [gx, gy] = cfg.grove;
+  return Math.abs(x - gx) + Math.abs(y - gy) <= cfg.radius && land(x, y, false);
+}
+
+const avoidCache = new Map();
+function pathAvoiding(x, y, tx, ty, bridge, cfg) {
+  const [gx, gy] = cfg.grove;
+  const key = [x, y, tx, ty, bridge ? 1 : 0, gx, gy, cfg.radius].join(',');
+  if (avoidCache.has(key)) { const hit = avoidCache.get(key); return hit ? hit.map(p => [...p]) : null; }
+  const blocked = (a, b) => (a !== x || b !== y) && Math.abs(a - gx) + Math.abs(b - gy) <= cfg.radius && land(a, b, false);
+  const store = route => { if (avoidCache.size > 20000) avoidCache.clear(); avoidCache.set(key, route); return route ? route.map(p => [...p]) : null; };
+  if (blocked(tx, ty) || !land(tx, ty, bridge) || !land(x, y, bridge)) return store(null);
+  const prev = new Map([[y * W + x, -1]]);
+  const q = [[x, y]];
+  for (let i = 0; i < q.length; i++) {
+    const [a, b] = q[i];
+    if (a === tx && b === ty) break;
+    for (const [nx, ny] of [[a + 1, b], [a - 1, b], [a, b + 1], [a, b - 1]]) {
+      if (!land(nx, ny, bridge) || blocked(nx, ny) || prev.has(ny * W + nx)) continue;
+      prev.set(ny * W + nx, b * W + a);
+      q.push([nx, ny]);
+    }
+  }
+  const end = ty * W + tx;
+  if (!prev.has(end)) return store(null);
+  const out = [];
+  for (let n = end; prev.get(n) !== -1; n = prev.get(n)) out.push([n % W, Math.floor(n / W)]);
+  out.reverse();
+  return store(out);
+}
+
+function avoidanceOf(s, direct, tx, ty, x, y) {
+  const route = direct ?? [];
+  const hits = route.some(([a, b]) => inHazard(s, a, b)) || inHazard(s, tx, ty);
+  if (!hits) return { changed: false, route, extra: 0 };
+  const alt = pathAvoiding(x, y, tx, ty, s.bridge, s.eden.movingBar.cfg);
+  if (!alt?.length) return { changed: false, route, extra: 0 };
+  return { changed: true, route: alt, extra: Math.max(0, alt.length - route.length) };
+}
+
+function biasOptionsForHazard(s, c, opts) {
+  for (const o of opts) {
+    let tx, ty, direct;
+    if (o.type === 'gather' && o.patch) {
+      const p = s.patches.find(p => p.id === o.patch);
+      if (!p) continue;
+      tx = p.x; ty = p.y; direct = o.route ?? path(c.x, c.y, tx, ty, s.bridge);
+    } else if (o.type === 'drink' && o.spring) {
+      const w = s.eden.springs.find(w => w.id === o.spring);
+      if (!w) continue;
+      tx = w.x; ty = w.y; direct = path(c.x, c.y, tx, ty, s.bridge);
+    } else continue;
+    const alt = avoidanceOf(s, direct, tx, ty, c.x, c.y);
+    if (!alt.changed) continue;
+    o.score -= alt.extra * 0.35;
+    o.hazardRoute = alt.route;
+    o.hazardExtra = alt.extra;
+  }
+}
+
+function expectedHarm(s) {
+  const cfg = s.eden.movingBar.cfg;
+  const u = Math.max(0, Math.min(1, (s.tick - s.eden.fallTick) / (cfg.windowDays * DAY)));
+  return (cfg.harmLo + cfg.harmHi) / 2 * hazardMultiplier(u, cfg);
+}
+
+function payAvoidance(s, c, extra) {
+  const bar = c.eden.bar;
+  if (!bar) return;
+  bar.avoidanceCost += extra;
+  if (bar.firingFromPeers) bar.benefitFromOthers += expectedHarm(s);
+  if (c.action) c.action.hazardPaid = true;
+}
+
+function routeDestination(s, c) {
+  const a = c.action;
+  if (a?.type === 'gather') { const p = s.patches.find(p => p.id === a.patch); return p ? [p.x, p.y] : null; }
+  if (a?.type === 'drink') { const w = s.eden.springs.find(w => w.id === a.spring); return w ? [w.x, w.y] : null; }
+  if (a?.type === 'explore' && a.route?.length) return a.route[a.route.length - 1];
+  return null;
+}
+
+function divertIfHazard(s, c) {
+  const a = c.action;
+  if (!a?.route?.length || a.hazardPaid) return;
+  const [nx, ny] = a.route[0];
+  if (!inHazard(s, nx, ny)) return;
+  const dest = routeDestination(s, c);
+  if (!dest) return;
+  const direct = path(c.x, c.y, dest[0], dest[1], s.bridge);
+  const alt = avoidanceOf(s, direct, dest[0], dest[1], c.x, c.y);
+  if (!alt.changed || !alt.route.length) return;
+  a.route = alt.route;
+  payAvoidance(s, c, alt.extra);
+}
+
+function strike(s, c) {
+  const mb = s.eden.movingBar, cfg = mb.cfg, bar = c.eden.bar;
+  const u = Math.max(0, Math.min(1, (s.tick - s.eden.fallTick) / (cfg.windowDays * DAY)));
+  const harm = (cfg.harmLo + draw(s, c.id, STREAMS.hazardHarm[0]) * (cfg.harmHi - cfg.harmLo)) * hazardMultiplier(u, cfg);
+  c.eden.health = clamp(c.eden.health - harm);
+  const dt = bar.lastEmaTick == null ? cfg.halfLife : Math.max(1, s.tick - bar.lastEmaTick);
+  const next = recordExposure(bar, harm, dt, cfg);
+  next.lastEmaTick = s.tick;
+  next.killedByHazard = c.eden.health <= 0;
+  Object.assign(bar, next);
+  mb.records.push({ id: c.id, tick: s.tick, harm });
+  event(s, 'A falling tree struck.', c);
+}
+
+function barDeathCause(s, c) {
+  const cfg = s.eden.config;
+  if (c.starving >= s.config.starveTicks) return 'Sustained food deprivation';
+  if (c.eden.parched >= cfg.thirstDeathTicks) return 'Thirst';
+  if (c.eden.bar?.killedByHazard) return 'Falling tree';
+  if (c.eden.health <= 0) return 'Injury and illness';
+  return null;
+}
+
+function noteBarDeath(s, cause) {
+  if (cause === 'Falling tree' && s.eden.movingBar) s.eden.movingBar.treeDeaths++;
+}
+
+export function movingBarReport(s) {
+  const mb = s.eden?.movingBar;
+  if (!mb) return null;
+  const mean = xs => xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null;
+  const members = (mb.cohort ?? []).map(id => s.creatures[id]).filter(c => c?.eden.bar && c.eden.bar.finalTicks > 0);
+  const detecting = members.filter(c => c.eden.bar.finalFiring / c.eden.bar.finalTicks >= 0.5);
+  const exposed = s.creatures.filter(c => c.eden.bar && c.eden.bar.exposures > 0);
+  const barred = s.creatures.filter(c => c.eden.bar);
+  return {
+    released: s.eden.phase === 'released', fallTick: s.eden.fallTick, tick: s.tick,
+    detection: members.length ? detecting.length / members.length : null,
+    cohort: members.length, detecting: detecting.length,
+    aliveAtStart: mb.aliveAtStart, treeDeaths: mb.treeDeaths,
+    hazardDeathShare: mb.aliveAtStart ? mb.treeDeaths / mb.aliveAtStart : null,
+    deaths: s.creatures.filter(c => !c.alive).length,
+    alive: s.creatures.filter(c => c.alive).length, population: s.creatures.length,
+    harmPerExposure: mean(exposed.map(c => c.eden.bar.harm / c.eden.bar.exposures)),
+    exposuresMean: mean(exposed.map(c => c.eden.bar.exposures)),
+    avoidanceCostMean: mean(barred.map(c => c.eden.bar.avoidanceCost)),
+    benefitMean: mean(barred.map(c => c.eden.bar.benefitFromOthers)),
+    payers: barred.filter(c => c.eden.bar.avoidanceCost > 0).length,
+    beneficiaries: barred.filter(c => c.eden.bar.benefitFromOthers > 0).length,
+    bothPayAndBenefit: barred.filter(c => c.eden.bar.avoidanceCost > 0 && c.eden.bar.benefitFromOthers > 0).length,
+    condition: mb.cfg.condition, rho: mb.cfg.rho, signal: mb.cfg.signal,
+    driftHalfLife: Number.isFinite(mb.cfg.driftHalfLife) ? mb.cfg.driftHalfLife : null,
+    peerWeight: mb.cfg.peerWeight, monitorWeight: mb.cfg.monitorWeight,
+  };
+}
+
+export function runMovingBar(seed, spec = true, capDays = 15) {
+  const s = createEden(seed, {}, { movingBar: spec });
+  const cap = capDays * DAY, releaseCap = 12 * DAY;
+  const windowTicks = s.eden.movingBar.cfg.windowDays * DAY;
+  while (s.tick < cap) {
+    edenStep(s);
+    if (s.eden.phase === 'released' && s.tick >= s.eden.fallTick + windowTicks) break;
+    if (s.eden.phase === 'guided' && s.tick >= releaseCap) break;
+  }
+  const report = movingBarReport(s);
+  report.seed = seed;
+  report.excluded = !(s.eden.phase === 'released' && s.eden.fallTick != null && s.eden.fallTick <= releaseCap && s.tick >= s.eden.fallTick + windowTicks);
+  return { world: s, report };
+}
+// MOVING-BAR END
