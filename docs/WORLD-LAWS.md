@@ -80,6 +80,17 @@ Source status key: **have** = cited in this project already; **named** = a sourc
 | Sharing and care | Helping costs the helper | Kin selection theory | Sharing can lower the sharer's survival | find |
 | Practice and know-how | Precautions and crafts are discovered or taught; cost something; can fail | Technology trees | Harm per exposure falls only if practice spreads | find |
 
+## The five channels of adaptation (fixed structure for every agent)
+From The Moving Bar. These stay intact: every agent adapts through all five, and each law above belongs to one.
+
+| Channel | Laws that carry it | Built today |
+|---|---|---|
+| **Body:** healing, immunity, evolution | Injury and healing; disease and immunity; inheritance | Healing only |
+| **Feeling:** the baseline resets | Feeling adapts (hedonic); pain and distress signal | Not built |
+| **Knowledge:** learning what is preventable | Learning from outcomes; memory; hazards with causes | Food and water locations only |
+| **Judgment:** what counts as acceptable | Judgment of "acceptable", separate from feeling | Fixed threshold; the bar does not move |
+| **Practice:** guards, manuals, medicine, shared burdens | Practice and know-how; sharing and care; signals | Tools, clothing, fields; nothing shared |
+
 ## F. Theory layers (switches, not laws)
 - **Creator's warning and guidance; the serpent; release and its consequences** (Eden account).
 - **Restoration** (with-God fork): accounting only. It shows the same history two ways and changes nothing in the world.
