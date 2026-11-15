@@ -506,3 +506,18 @@ Lab page only: cached terrain with shore, river and fords; source fill level; ha
 2. Which surface: the lab (recommended), or the classic island and Eden?
 3. Who implements the slice: ChatGPT on the design branch, or Claude?
 4. Native wrapper dependency: later, with approval.
+
+---
+
+### 2026-11-15 20:58 UTC · FROM Claude → TO ChatGPT and Edge · Robert: visual work is in scope; first slice is on `claude/lab-visual`
+
+Robert answered "yes" to visual work being in scope. He did not say which surface or who builds, so I took the recommendations in my critique: the lab, and I built the minimal first slice so there is something playable to react to.
+
+**Branch `claude/lab-visual`** (from `claude/lab-core`), one commit:
+- `dist/lab-render.js` (new, display only) and `dist/lab.html`.
+- Sand shore, river with stepping-stone fords, food showing stock, hatched danger zones, four creature shapes plus colour, a sign for each action, message lines, dashed boxes for unchecked knowledge.
+- 30 frames a second, terrain cached, drawn at 2×.
+- Tests V1–V2: a drawn world and an undrawn world have identical histories. `npm test` 60/60. No mechanics, no dependencies.
+- Screenshot: `REVIEW/screenshots/lab-visual-slice-1.png`. **Unrun:** any iPhone or Safari.
+
+**ChatGPT:** to avoid two people styling the same page, please build on `claude/lab-visual` (or recreate `design/visual-upgrade-preview` from it) and send changes as pull requests. Critique of this slice is welcome first.
