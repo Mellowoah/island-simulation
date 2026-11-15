@@ -41,10 +41,12 @@
   <div id="toast"></div>
   <div class="card" id="panel"></div>
   <div class="card"><h2 style="margin-top:0">What just happened</h2><ul id="events"></ul></div>
-  <p class="muted">Lab core, piece 1. Trials, graphs and saving are not built yet. Map: green dots are food, brown are gardens, red patches are danger, the blue band is the river with its fords.</p>
+  <div class="card"><h2 style="margin-top:0">Reading the map</h2><div class="muted">Bushes are food and plots are gardens; the white ring and the berries or rows show how much is left. Hatched ground is danger. Stepping stones are fords across the river. Each creature has its own shape and colour. The small sign beside it is what it is doing: <span id="legend"></span>. White lines are one creature telling another something. Boxes mark what the selected creature knows; dashed boxes are things it was told and has not checked.</div></div>
+  <p class="muted">Lab core with first visual slice. Trials, graphs and saving are not built yet.</p>
 </main>
 <script type="module">
-import { createLab, labStep, labCommand, labMetrics, isLand, confidence } from './lab.js';
+import { createLab, labStep, labCommand, labMetrics, confidence } from './lab.js';
+import { createRenderer, GLYPH } from './lab-render.js';
 const $ = id => document.getElementById(id), T = 12;
 let seed = 41, world, selected = 0, paused = false, speed = 1, acc = 0, last = performance.now(), lastPanel = 0;
 const cv = $('map'), g = cv.getContext('2d');
@@ -53,17 +55,12 @@ const toast = t => { $('toast').textContent = t; };
 const clock = t => `Day ${Math.floor(t / 1440) + 1} · ${String(Math.floor(t % 1440 / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
 const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 
-function draw() {
-  const c = world.config;
-  g.fillStyle = '#1d4a5c'; g.fillRect(0, 0, cv.width, cv.height);
-  for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) if (isLand(world, x, y)) { g.fillStyle = x === c.riverX ? '#b9a26a' : (x + y) % 2 ? '#7fae6a' : '#86b671'; g.fillRect(x * T, y * T, T, T); }
-  g.fillStyle = 'rgba(210,70,60,.28)';
-  for (const d of world.dangers) for (let y = d.y - 2; y <= d.y + 2; y++) for (let x = d.x - 2; x <= d.x + 2; x++) if (Math.abs(x - d.x) + Math.abs(y - d.y) <= 2 && isLand(world, x, y)) g.fillRect(x * T, y * T, T, T);
-  for (const p of world.sources) { g.fillStyle = p.type === 'garden' ? '#8a5a2b' : '#2f6b3a'; g.beginPath(); g.arc(p.x * T + 6, p.y * T + 6, 3 + 5 * p.stock / p.capacity, 0, 7); g.fill(); }
-  const sel = world.creatures[selected];
-  if (sel?.alive) { g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = 1; for (const k of sel.knowledge) { g.strokeRect(k.x * T + 1, k.y * T + 1, T - 2, T - 2); } }
-  for (const m of world.messages.slice(-12)) if (world.tick - m.tick < 40) { const a = world.creatures[m.from], b = world.creatures[m.to]; g.strokeStyle = m.accepted ? 'rgba(255,255,255,.7)' : 'rgba(255,255,255,.2)'; g.beginPath(); g.moveTo(a.x * T + 6, a.y * T + 6); g.lineTo(b.x * T + 6, b.y * T + 6); g.stroke(); }
-  for (const c2 of world.creatures) { if (!c2.alive) continue; g.fillStyle = `hsl(${c2.id * 47 % 360} 70% 70%)`; g.fillRect(c2.x * T + 2, c2.y * T + 2, 8, 8); if (c2.id === selected) { g.strokeStyle = '#fff'; g.lineWidth = 2; g.strokeRect(c2.x * T, c2.y * T, T, T); } }
+const SCALE = 2; cv.width = 864 * SCALE; cv.height = 528 * SCALE; // drawn at twice the size so it stays sharp on a phone
+const render = createRenderer((w, h) => Object.assign(document.createElement('canvas'), { width: w, height: h }));
+let lastDraw = 0;
+function draw(now = performance.now()) {
+  if (now - lastDraw < 33) return; // 30 frames a second is enough, and kinder to the battery
+  lastDraw = now; g.setTransform(SCALE, 0, 0, SCALE, 0, 0); render(g, world, selected, now);
 }
 
 function panel() {
@@ -106,6 +103,7 @@ cv.addEventListener('pointerdown', e => {
   if (best) selected = best.c.id;
 });
 document.addEventListener('visibilitychange', () => { if (document.hidden && !paused) $('pause').click(); });
+$('legend').textContent = Object.entries({ eat: 'eating', findFood: 'going to food', rest: 'resting', explore: 'exploring', socialize: 'with company', share: 'telling', investigate: 'checking what it was told', avoidDanger: 'avoiding danger' }).map(([k, v]) => `${GLYPH[k]} ${v}`).join(' · ');
 start(); requestAnimationFrame(frame);
 </script>
 </body>
