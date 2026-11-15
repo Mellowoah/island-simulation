@@ -22,6 +22,29 @@
   .opt.win { color: #c8f0cf; font-weight: 600; } .opt small { display: block; font-weight: 400; color: #93a9a6; }
   ul { margin: 4px 0; padding-left: 18px; } li { margin: 2px 0; }
   #toast { min-height: 20px; color: #f0d9a0; font-size: 13px; }
+
+/* Presentation-only visual pass. No simulation state or actions modified. */
+:root{--deep:#0b2028;--panel:#17343b;--edge:#355a5e;--leaf:#cde7bd;--sand:#ead39a}
+body{background:radial-gradient(ellipse at 50% -10%,#285052 0%,#102d34 42%,#081a22 100%);color:#edf3e9;font-family:system-ui,-apple-system,sans-serif}
+main{max-width:960px;padding:clamp(12px,3vw,28px)}
+h1{font-family:Georgia,serif;font-size:clamp(29px,5vw,44px);letter-spacing:-.045em;margin:4px 0 8px;color:#f6e9c9}
+h2{font-size:12px;letter-spacing:.13em;text-transform:uppercase;color:var(--leaf);margin-top:22px}
+.muted{color:#b4cbc6;line-height:1.5}
+main>h1+.muted{max-width:660px;font-size:14px;margin-bottom:18px}
+canvas{border-radius:16px;border:2px solid #688d88;box-shadow:0 18px 55px #0008,0 0 0 6px #102a31;image-rendering:pixelated;margin:14px 0}
+button,select{min-height:44px;border-radius:12px;border:1px solid #4d7071;background:linear-gradient(#24464b,#17343c);color:#f0f2e9;font-weight:600;box-shadow:inset 0 1px #ffffff12;transition:background .15s ease,transform .15s ease}
+button:active{transform:scale(.97)}button:focus-visible,select:focus-visible{outline:3px solid var(--sand);outline-offset:2px}
+button:hover{background:#31565b}
+#reveal,#cross,#trust{flex:1 1 160px;text-align:center;background:linear-gradient(160deg,#335c50,#1b403e);border-color:#638675}
+.stats{grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:12px 0}
+.stats div{background:linear-gradient(145deg,#24464a,#153039);border:1px solid #3b6263;border-radius:13px;padding:12px}
+.stats b{font-size:clamp(17px,3vw,24px);font-variant-numeric:tabular-nums;color:#f5e8c9}
+.card{background:linear-gradient(160deg,#1b3b41,#112c34);border:1px solid #3a5e60;border-radius:16px;padding:clamp(14px,3vw,24px);box-shadow:0 12px 32px #0003}
+.bar{height:8px;border-radius:10px;background:#315056}.bar i{background:linear-gradient(90deg,#75b5a2,#cce4a5);border-radius:10px}
+.opt{padding:10px 0;border-top-color:#36585b}
+#toast{font-weight:600;color:var(--sand);min-height:24px}
+@media(max-width:520px){main{padding:13px}h1{font-size:32px}.row{gap:7px}.row>button,.row>select{flex:1 1 auto;padding:10px 9px;font-size:12px}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.stats div{min-height:64px;padding:10px}.stats b{font-size:20px}canvas{border-radius:11px;margin:12px 0}.card{padding:14px}}
+@media(prefers-reduced-motion:reduce){button{transition:none}}
 </style>
 </head>
 <body>
