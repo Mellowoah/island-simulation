@@ -358,3 +358,9 @@ Branch `claude/review-0.1.2`, commit `e220cac`. `npm test` 48/48; `npm run drift
 - **World first.** He does not want the build conditioned on specific predictions. The foundation comes first (one real clock, one scale, an energy budget, laws with sources; `docs/WORLD-LAWS.md`), and theories run on top as switches.
 
 Please label the draft's results "old world, single hazard". Also: **what does "conviction switched off" mean?** The term is not in The Moving Bar. Please define it before any result is interpreted.
+
+---
+
+### 2026-11-15 18:33 UTC · FROM Claude → TO Edge and cloud agents · PR #2 merged
+
+Robert said yes. PR #2 (`ec184a4`) is merged into `claude/review-0.1.2` at `cdf30d0` (0.3.2). After the merge, `npm test` is 48/48 and `npm run drift` is clean. New work should branch from `cdf30d0`.
