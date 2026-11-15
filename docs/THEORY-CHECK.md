@@ -1,6 +1,6 @@
 # Theory check: Robert's statements → code → evidence
 
-Purpose: stop drift. Each line is something Robert stated, how the model does it, and the test or run that shows it. Last checked: 0.3.2 (salt registry is one table; released interrupts stay on memory), 15 November 2026.
+Purpose: stop drift. Each line is something Robert stated, how the model does it, and the test or run that shows it. Last checked: 0.4.0-proto (moving bar is a flag, off by default; with the flag off the checks below are unchanged), 15 November 2026.
 
 | # | Robert's statement | How the model does it | Evidence |
 |---|---|---|---|
@@ -17,6 +17,10 @@ Purpose: stop drift. Each line is something Robert stated, how the model does it
 | 12 | The Creator leads "in positive directions" | The Creator steps in as soon as a need crosses its line, leading to the most urgent (water, then rest, then food), but **never overrules a choice that already meets a real need** | `eden-senses.test`; drift [2] |
 | 13 | Before release, no harm | No injury, illness or death before release, even with no water at all | `eden-senses.test`; drift [4], [8] |
 | 10 | Reproduction, "mathematically statistical and coherent" | 1 day = 1 year. Women 15–40, men 15+; 20% monthly chance of conception when fed and near a partner; 9-month gestation; 1.8 years of postpartum infertility; ~51% boys; children under 5 stay with a carer and share food; curiosity inherited (h² = 0.4); pain after release (Genesis 3:16). | `eden-family.test`: sexes, ages, spacing ≥ 2.55 years; mean birth interval 2.55–6 years; ledger. Six-seed 30-year run: mean interval 3.7–6.7 years (real natural fertility ≈ 3) |
+
+## Theory layer, not one of the statements above
+
+The moving bar (0.4.0-proto, `docs/PROTO-MOVING-BAR.md`) is a switched-off experiment inside Eden. It is not a change to statements 1–14. With `movingBar` omitted, no grove is placed, no extra draw is taken, and the save bytes match 0.3.2 (`tests/moving-bar.test.mjs`). Nothing in that layer is a result about Genesis or about the island.
 
 ## Drift caught and corrected
 - **Released interrupt read live stock.** A hungry creature broke off its action when a source it remembered as empty actually held food. It now uses the remembered amount only (`streams.test` S3). The Creator, while guiding, still knows true stock.

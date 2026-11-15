@@ -1,0 +1,19 @@
+… 20/340  seed 62 peer  13s
+… 40/340  seed 63 drift-rho05  30s
+… 60/340  seed 64 anchor-rho05  41s
+… 80/340  seed 65 peer-rho05  52s
+… 100/340  seed 66 peer-nomonitor  63s
+… 120/340  seed 68 drift  74s
+… 140/340  seed 69 ablation  86s
+… 160/340  seed 70 drift-rho1  99s
+… 180/340  seed 71 anchor-rho1  108s
+… 200/340  seed 72 peer-rho1  121s
+… 220/340  seed 73 felt-rho0  135s
+… 240/340  seed 75 anchor  149s
+… 260/340  seed 76 drift-rho0  168s
+… 280/340  seed 77 anchor-rho0  184s
+… 300/340  seed 78 peer-rho0  208s
+… 320/340  seed 79 drift-nodrift  231s
+… 340/340  seed 80 felt-rho1  245s
+done in 246s, rows 340, excluded 0
+EXIT:0

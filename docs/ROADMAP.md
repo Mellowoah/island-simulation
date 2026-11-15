@@ -1,6 +1,6 @@
 # Eden roadmap: inner life, mapped before building
 
-Status: **step 1 built (0.3.0, 15 November 2026); steps 2–5 not built.** Robert's choices: Eden only; learned trust including the Creator's word (step 4); self-model measures in step 2.
+Status: **step 1 built (0.3.0, 15 November 2026); steps 2–5 not built.** A separate prototype, 0.4.0-proto, tests the moving bar behind a flag (`docs/PROTO-MOVING-BAR.md`). It is not step 2 and it does not turn on in the app. Robert's choices: Eden only; learned trust including the Creator's word (step 4); self-model measures in step 2.
 Rule for every step: the *rules* are written in, the *outcomes* are not. Every step must:
 - keep the drift check green;
 - add a THEORY-CHECK row;

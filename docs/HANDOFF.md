@@ -1,10 +1,10 @@
 # Handoff — 0.1.2, 14 November 2026
 
-**Status:** 0.2.2 (experiment plan v5 and anti-drift check added). Adds the Eden world (with reproduction, and a drift check in `docs/THEORY-CHECK.md`) at Robert's direction (`docs/EDEN-DESIGN.md`); the 0.1.3 critic responses are included. Awaiting Grok's review. Not complete; not tested on an iPhone; not independently validated.
+**Status:** 0.4.0-proto adds a moving-bar layer that is **off unless asked for** (`docs/PROTO-MOVING-BAR.md`). With the flag off, island and Eden bytes match 0.3.2. 0.3.2 itself is the salt table and the memory-only interrupt. The Eden world, plan v5, and the drift check are as below. Not complete; not tested on an iPhone; not independently validated.
 
 ## Run it
 - `npm run drift`: anti-drift check (run every ~30 minutes and after every change).
-- `npm test`: 39 tests, all passing (11 original, 7 review regressions, 6 integration, 5 critic-response, 5 Eden, 4 Eden family).
+- `npm test`: 57 tests, all passing (the 0.3.2 set, plus 9 moving-bar tests). With the flag off, digests match 0.3.2.
 - `npm run experiment`: about 3.5 min; writes `results/` (not committed; regenerate it).
 - Browser: serve `dist/` with any static server (e.g. `python3 -m http.server -d dist 8000`). Reviewer browser scripts are in `REVIEW/tools/` (they need a local Playwright; they are not project dependencies).
 

@@ -1,0 +1,21 @@
+OK    [1] Warned at the beginning of life
+OK    [2] Creator leads only choices outside what is best; every override records intention and reason
+OK    [3] Share of overridden decisions is reported, not asserted — guided share 21%
+OK    [4] Never eating is allowed: no death and no forced eating while guided
+OK    [5] Serpent's claim is a claim, never knowledge
+OK    [6] Eating comes from the creature's own state and draw; never certain
+OK    [7] First eating releases everyone; no guidance afterwards
+OK    [8] Death only after release
+OK    [9] After release, production is hard work, not abundance (one field ≈ one person) — one field = 1.20× an adult's need; cursed ground 50%
+OK    [10] Reproduction stays within natural-fertility statistics — mean birth interval 3.15 y
+OK    [L] Food ledger reconciles (Eden)
+OK    [L] Food ledger reconciles (Eden)
+OK    [11] Senses depend on condition (maintain senses and life) — well 4, exhausted 1
+OK    [12] Creator never overrules a choice that already meets a real need
+OK    [13] No harm before release (health stays whole while guided)
+OK    [14] Thirst kills about 7x sooner than hunger (3 days vs 3 weeks) — ratio 6.6
+OK    [I1] Island: deaths stay visible (dead-inclusive metrics present)
+OK    [I2] Island: new worlds use decorrelated randomness
+OK    [D] THEORY-CHECK.md updated with every Eden code change
+
+No drift detected.
