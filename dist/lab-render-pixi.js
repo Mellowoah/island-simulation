@@ -16,7 +16,7 @@ async function loadPixiLib() {
   }
 }
 
-function canvasTexture(w, h, paint, resolution = 2) {
+function canvasTexture(Texture, w, h, paint, resolution = 2) {
   const c = document.createElement('canvas');
   c.width = Math.max(1, Math.round(w * resolution));
   c.height = Math.max(1, Math.round(h * resolution));
@@ -54,13 +54,13 @@ function paintBush(ctx, px, py, hv) {
   if (hv > 0.95) { ctx.fillStyle = '#e0556a'; ctx.beginPath(); ctx.arc(px + 8, py + 6, 0.7, 0, 7); ctx.fill(); }
 }
 
-function bakeLandTexture(world) {
+function bakeLandTexture(Texture, world) {
   const c = world.config, T = TILE, W = c.width * T, H = c.height * T;
   const taken = new Set([
     ...world.sources.map(p => p.y * c.width + p.x),
     ...world.dangers.map(p => p.y * c.width + p.x),
   ]);
-  return canvasTexture(W, H, ctx => {
+  return canvasTexture(Texture, W, H, ctx => {
     for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) {
       if (!isLand(world, x, y)) continue;
       const px = x * T, py = y * T, hv = hash(x, y);
@@ -128,6 +128,7 @@ function shorePoints(world) {
 
 export async function createPixiRenderer(canvas, opts = {}) {
   const { Application, Sprite, TilingSprite, Texture } = await loadPixiLib();
+  const makeTex = (w, h, paint, resolution = 2) => canvasTexture(Texture, w, h, paint, resolution);
   const app = new Application();
   const resolution = opts.resolution ?? Math.min(2, Math.max(1, globalThis.devicePixelRatio || 1));
   await app.init({
@@ -143,7 +144,7 @@ export async function createPixiRenderer(canvas, opts = {}) {
   });
   app.ticker.stop();
 
-  const waterTex = canvasTexture(32, 32, ctx => {
+  const waterTex = makeTex(32, 32, ctx => {
     ctx.fillStyle = '#1b7ca3'; ctx.fillRect(0, 0, 32, 32);
     for (let i = 0; i < 8; i++) {
       ctx.fillStyle = i % 2 ? 'rgba(58,160,196,0.55)' : 'rgba(43,142,182,0.55)';
@@ -152,7 +153,7 @@ export async function createPixiRenderer(canvas, opts = {}) {
       ctx.fillRect((i * 7) % 32, 4 + i * 4, 12, 1);
     }
   });
-  const nightTex = canvasTexture(2, 2, ctx => { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, 2, 2); }, 1);
+  const nightTex = makeTex(2, 2, ctx => { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, 2, 2); }, 1);
 
   const water = new TilingSprite({ texture: waterTex, width: 864, height: 528 });
   const land = new Sprite();
@@ -176,7 +177,7 @@ export async function createPixiRenderer(canvas, opts = {}) {
     const key = `${world.seed},${c.width},${c.height},${world.crossingsOpen.join('.')}`;
     if (key !== cacheKey) {
       if (landTex) landTex.destroy(true);
-      landTex = bakeLandTexture(world);
+      landTex = bakeLandTexture(Texture, world);
       land.texture = landTex;
       shores = shorePoints(world);
       cacheKey = key;
