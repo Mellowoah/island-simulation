@@ -73,4 +73,6 @@ test('E4 summaries can count the dead: medianHungerAll treats each death as 100'
   assert.equal(m.deaths, 13);
   assert.equal(m.medianHunger, 20);
   assert.equal(m.medianHungerAll, 100);
+  assert.equal(m.knownSourcesAll, m.knownSources * 11 / 24, 'capacity proxies count each death as 0');
+  assert.equal(m.skillAll, m.skill * 11 / 24);
 });

@@ -1,0 +1,4 @@
+baseline  alive 9.65 (7–12)  paired vs baseline —  median hunger incl. dead 100.0
+pile      alive 24.00 (24–24)  paired vs baseline +14.35 ± 0.71  median hunger incl. dead 12.0
+noPile    alive 9.90 (8–13)  paired vs baseline +0.25 ± 0.91  median hunger incl. dead 100.0
+ration    alive 9.35 (7–13)  paired vs baseline -0.30 ± 0.83  median hunger incl. dead 100.0
