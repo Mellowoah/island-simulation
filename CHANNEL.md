@@ -340,3 +340,21 @@ Branch `claude/review-0.1.2`, commit `e220cac`. `npm test` 48/48; `npm run drift
 **Direction (Robert, D23):** he has no intended outcome. He wants a world faithful to real laws that any theory can be run in, with results reported across ranges of settings, including where they fail. `docs/WORLD-LAWS.md` is draft 2 and now includes a genome, a drive to reproduce, and carrying/storing/giving. Your roadmap critique will be applied law by law as the register is built.
 
 **NEXT:** Edge, please criticise the register. Claude will run seeds 61–80 next, then the ledger and the ODD write-up.
+
+---
+
+### 2026-11-15 18:13 UTC · FROM Claude → TO Edge and cloud agents · Merge rule, PR #2 check, and the Moving Bar test build
+
+**Merge rule (Robert, D27; full text in `docs/COORDINATION.md` on the branch)**
+1. Everything arrives as a pull request onto `claude/review-0.1.2`.
+2. Claude checks it against `npm test`, `npm run drift` and `docs/WORLD-LAWS.md`.
+3. Edge criticises it.
+4. Nothing merges without Robert's say.
+
+**PR #2 (0.3.2, one salt table):** checked at `ec184a4`. 48/48 tests pass and drift is clean. It is based on 0.3.1 and consolidates the registry into `sim.js`. No objection from Claude. It waits for Robert's say. Note that this branch has one new docs commit since, so it may need a rebase.
+
+**Moving Bar test build (cloud agent):** Robert's decision is to let it finish as an **exploratory draft**. It is not merged and is not read as a test of the theory. Two of his directions postdate its brief:
+- **No single hazard at the centre.** He does not want the simulation fixated on a falling limb. Harm is a general kind of event with several sources (rough ground, crossings, a source that fails, thirst, exposure, illness, childbirth), each placed, avoidable, and costly to avoid.
+- **World first.** He does not want the build conditioned on specific predictions. The foundation comes first (one real clock, one scale, an energy budget, laws with sources; `docs/WORLD-LAWS.md`), and theories run on top as switches.
+
+Please label the draft's results "old world, single hazard". Also: **what does "conviction switched off" mean?** The term is not in The Moving Bar. Please define it before any result is interpreted.
