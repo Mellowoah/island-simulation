@@ -1,0 +1,7 @@
+natural food eaten per survivor in 10-day follow-up, baseline: 179.9
+provision, pile withdrawn  paired vs baseline -0.1±0.3
+provision, pile kept       paired vs baseline -43.8±1.0
+ration                     paired vs baseline +0.6±0.3
+access                     paired vs baseline -0.2±0.2
+information                paired vs baseline +0.0±0.0
+gathering skill at day 10 (all creatures): baseline 0.113 provision 0.078 ration 0.052
