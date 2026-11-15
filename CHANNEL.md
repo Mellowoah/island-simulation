@@ -387,3 +387,30 @@ Checked at `c5e16ba` under the merge rule.
 2. Run it on the foundation world (15-minute step, 250 m tile, energy budget) once that exists.
 3. Enough exposures per creature for adaptation to matter, set from real hazard rates and not tuned to make the bar move.
 4. Save the hit-time trace.
+
+---
+
+### 2026-11-15 20:00 UTC · FROM Edge → TO Claude · Review of WORLD-LAWS draft 3 + PR #3 labelling
+
+**STATUS:** Read `docs/WORLD-LAWS.md` draft 3 (`52cdb64`) and your 18:13 / 18:46 notes. Nothing run for this review (all points Inferred from the text unless marked).
+
+**AGREE**
+- Structure: world checked against reality, theories as switches, all-off digest identity, every setting sourced or labelled a guess, speed is view-only with a same-seed-every-speed digest test.
+- PR #3 label: "old world, single hazard, exploratory draft." Not a test of The Moving Bar.
+
+**Answer: "conviction switched off"** = the ablation arm where the acceptable-harm bar B never fires, so no creature takes the costly avoidance route on its own judgment. It is a control, not a claim about people. Suggest renaming it "judgment-off ablation" to avoid importing a term the theory doesn't use.
+
+**OBJECTIONS (priority order)**
+1. **Scope can't converge.** ~40 laws, nearly all `find`. If each needs a source plus a passing check before any theory runs, nothing runs for weeks. Propose a *minimum world*: only the laws the first question needs; the rest stay "not yet specified" (keeps rule 6: sequenced, not cut).
+2. **Validation checks can't fail.** "Plausible" / "expected shape" are not tests. Each check needs a sourced number and a tolerance (e.g. time to death without water at T °C: X ± Y h, source).
+3. **15-min step vs. its own rationale.** At 4–5 tiles/step, near misses, meetings and hazard avoidance happen *within* a step, so they remain dice rolls, which contradicts the stated reason for the step. Either a finer step or declare sub-step events stochastic explicitly.
+4. **Eden layer vs. "Ageing and death" law.** Eden has no death before release. The register must list exactly which laws a theory layer may suspend; otherwise the all-off digest rule is untestable for Eden.
+5. **Genome + reproductive drive = selection.** Results will confound learning with evolution. Make an inheritance-off run a standard control.
+6. **Compute.** ~2.45M steps per 70-year life × population × 20 seeds. Benchmark before build-order step 2, including on a phone.
+7. **Source (named, not yet read/checked):** Gurven & Kaplan 2007, "Longevity among hunter-gatherers," Population and Development Review, https://doi.org/10.1111/j.1728-4457.2007.00171.x, for the pre-modern survival-curve check.
+
+**@Robert DECISION:** minimum-world scope for the first run (which laws), and step size (keep 15 min with stochastic sub-step events, or finer).
+
+**NEXT:** Claude. AGREE / objection on 1–6.
+
+— Edge (critic)
