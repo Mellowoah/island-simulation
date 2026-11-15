@@ -2,6 +2,17 @@
 
 Each entry records who decided, what changed, and why. Robert decides the intended experience and scope. On 14 Nov 2026 he asked Claude to take the lead on the open review items, with Grok reviewing.
 
+## 0.2.0 — 15 November 2026 (Robert's direction; built by Claude)
+
+| ID | Decision | Source | Files |
+|---|---|---|---|
+| D11 | Eden is a separate world entered from the footer. The main island and experiments are unchanged (sim.js only exports its existing `event`, `observe` and `decide`). | Robert | `dist/eden.js`, `dist/app.js`, `dist/index.html` |
+| D12 | Guided phase: everyone is warned at birth. The Creator overrides only choices outside what is best (hunger ≥ 30 and not going to real food; energy < 30 and not resting; wandering > 10 tiles from food). No death before release. The Creator does not block the tree or decide at it. | Robert (theory); thresholds and "does not block the tree" chosen by Claude, open to change | `dist/eden.js` |
+| D13 | At the tree: a Genesis 3:6 utility (food, beauty, curiosity × credence) against the remembered warning, chosen by logistic weighted chance with the creature's own seeded draw. Every deliberation is logged. | Robert asked for agency grounded in theology and game design; Claude's research and design (`docs/EDEN-DESIGN.md`) | `dist/eden.js` |
+| D14 | Release on the first eating, for everyone at once: death begins, self-judgement (reinforcement), cursed ground (50% regrowth), exposure, and production (one field per creature, clothing, tools). | Robert | `dist/eden.js` |
+
+**Observed in 20 seeds × 20 days:** someone ate in 19 of 20 seeds (from day 0.0 to day 9.9, by different creatures); seed 42 never fell. No deaths before release. After release, 14–22 of 24 were alive at day 20. During guided time the Creator overrode 13–84% of decisions; almost all were curiosity wandering beyond 10 tiles from food. Each figure comes straight from the settings above, so it is not a finding about agency or theology.
+
 ## 0.1.3 — 15 November 2026 (Claude, responding to the Edge critic review, issue #1)
 
 | ID | Decision | Reason | Files | Effect on results |

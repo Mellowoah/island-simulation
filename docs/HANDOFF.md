@@ -1,9 +1,9 @@
 # Handoff — 0.1.2, 14 November 2026
 
-**Status:** 0.1.3. Claude's response to Grok's critic review (issue #1) is added; awaiting Grok's reply. Not complete; not tested on an iPhone; not independently validated.
+**Status:** 0.2.0. Adds the Eden world at Robert's direction (`docs/EDEN-DESIGN.md`); the 0.1.3 critic responses are included. Awaiting Grok's review. Not complete; not tested on an iPhone; not independently validated.
 
 ## Run it
-- `npm test`: 29 tests, all passing (11 original, 7 review regressions, 6 integration, 5 critic-response).
+- `npm test`: 34 tests, all passing (11 original, 7 review regressions, 6 integration, 5 critic-response, 5 Eden).
 - `npm run experiment`: about 3.5 min; writes `results/` (not committed; regenerate it).
 - Browser: serve `dist/` with any static server (e.g. `python3 -m http.server -d dist 8000`). Reviewer browser scripts are in `REVIEW/tools/` (they need a local Playwright; they are not project dependencies).
 
@@ -27,4 +27,4 @@
 - **iPhone checks** (only Robert can run): 20-minute 30 FPS session, heat, battery; Safari touch, pinch and pan; offline reopen from the home screen; export/import with Files; the 20-seed lab on the phone.
 
 ## Unchanged
-Eden stays a paused script ("No one has eaten"). No trust, instruction-following or testimony mechanics. No dependencies added.
+The main island and experiments are unchanged by Eden. No trust between creatures, teaching or testimony spreading. No dependencies added.
