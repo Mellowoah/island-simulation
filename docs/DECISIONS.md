@@ -10,6 +10,7 @@ Each entry records who decided, what changed, and why. Robert decides the intend
 | D24 | Fixed: a released creature used true food stock to decide whether to break off (`eden.js` `pressing`). Now memory only. Test S3 fails before, passes after. | Edge (confirmed) |
 | D25 | Fixed: random-stream overlaps. Registry `SIM_STREAMS`/`EDEN_STREAMS`; Creator's redirect moved to 300–337. Tests S1, S2. **Eden histories change from 0.3.0.** | Edge (confirmed) |
 | D26 | Corrections: five tests renamed to what they show; recovery label reworded; dependency reported per survivor and per creature with the dead as 0; summary tool committed with t intervals and a multiple-comparison note (`REVIEW/tools/summarize.mjs`); THEORY-CHECK rows 4 and 6 corrected (the fall is certain at defaults; guided creatures starve without dying). | Edge |
+| D27 | Merge rule for three builders (`docs/COORDINATION.md`): all work as pull requests onto `claude/review-0.1.2`; Claude checks; Edge criticises; nothing merges without Robert's say; exploratory builds are labelled and not read as theory tests. | Robert |
 
 Not yet done from Edge's list: re-run v5 on fresh seeds 61–80; per-creature harm/exposure/benefit ledger; ODD write-up.
 
