@@ -1,6 +1,6 @@
 # World laws register
 
-Status: **draft 2, 15 November 2026. No law below is built to this standard yet.** Written before any code, at Robert's direction.
+Status: **draft 3, 15 November 2026. No law below is built to this standard yet.** Written before any code, at Robert's direction.
 
 ## Purpose
 Robert's aim is a **world**, not an experiment shaped around one theory. Its laws should be as true to ours as we can make them, so that any theory can be run inside it: The Moving Bar, the Eden account, both forks, and others not yet written. The world stays the same; only the question changes.
@@ -16,13 +16,16 @@ Robert's aim is a **world**, not an experiment shaped around one theory. Its law
 
 Source status key: **have** = cited in this project already; **named** = a source has been named (by Edge or Claude) but not yet read and checked; **find** = to be looked up and cited before the law is built.
 
-## 0. Decisions needed first (proposals)
-| Decision | Proposal | Why |
+## 0. Scale decisions (Robert, 15 November 2026)
+| Decision | Value | Why |
 |---|---|---|
-| Clock | **One real clock: 1 step = 1 hour.** No "1 day = 1 year". | Thirst (days) and lifetimes (decades) must share one scale. A 70-year life is about 613,000 steps, which runs in the background, not live. |
-| Space | **1 tile = 1 km** (island about 36 × 26 km). | Walking pace of a few km per hour gives a few tiles per step. |
-| Energy unit | **Kilocalories**, one budget per body. | Lets food, movement, work, warmth, healing and pregnancy draw on the same store. |
-| Randomness | Counter-based draws with a **registry of stream numbers**, one per use. | Fixes the overlaps Edge found (77 vs 70–87; 50–67 vs 40–57). |
+| Clock | **One real clock: 1 step = 15 minutes** (96 steps a day). No "1 day = 1 year". | Thirst (days) and lifetimes (decades) share one scale. Fine enough that a near miss, a meeting or a race to food happens in the world and is not a dice roll. A day can be compared with real time-use figures. |
+| Space | **1 tile = 250 m.** | Walking pace gives about 4–5 tiles per step. |
+| Energy unit | **Kilocalories**, one budget per body (proposed; no objection recorded yet). | Food, movement, work, warmth, healing and pregnancy draw on the same store. |
+| Randomness | Counter-based draws with one registry of stream numbers (`STREAMS` in `sim.js`, merged in 0.3.2). | One stream per use; no overlaps. |
+| Speed | **Speed is a viewing setting only.** The world's clock never changes. Background runs go as fast as the machine allows. | **Rule:** the same seed must give the same history at every speed (digest test). |
+
+A 70-year life is about 2.45 million steps. Whole lifetimes run in the background; the phone view replays or fast-forwards.
 
 ## A. Foundations
 | Law | Level of detail | Left out | Validation check | Source |
