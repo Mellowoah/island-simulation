@@ -1,0 +1,16 @@
+
+> island@0.1.2 experiment
+> node tests/run-experiments.mjs
+
+baseline 20 seeds completed
+no-learning 5 seeds completed
+low-exploration 5 seeds completed
+high-exploration 5 seeds completed
+low-regeneration 5 seeds completed
+high-regeneration 5 seeds completed
+rule-policy 5 seeds completed
+
+real	3m22.563s
+user	3m15.965s
+sys	0m2.356s
+exit 0

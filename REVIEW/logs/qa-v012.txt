@@ -1,0 +1,28 @@
+PASS  autonomous progression (clock advances with no input) — D1 · 00:01 → D1 · 00:25
+PASS  pause stops time — D1 · 00:29 / D1 · 00:29
+PASS  tap selects a creature while paused — tapped Tavi, inspector shows Tavi
+PASS  inspector shows recorded decision with selected option marked — selected explore
+PASS  raw file input stays hidden
+PASS  lab cancel / return buttons hidden until needed
+PASS  24 creatures have distinct portraits — 24 distinct of 24
+PASS  provide food on dry land (paused) — 219 → 259
+PASS  provide food on water is refused with a message — Choose dry land.
+PASS  open crossing (button then disabled)
+PASS  reveal to selected creature recorded in chronicle — D1 · 00:29 | Root garden revealed to Tavi only.
+PASS  speed toggles to 4×
+PASS  resume at 4× advances time — D1 · 00:39 → D1 · 02:04
+PASS  load restores saved world and pauses — D1 · 02:08 vs D1 · 02:08
+PASS  export produces a save file — Island-save.json
+PASS  malformed import rejected, world kept — Invalid JSON save
+PASS  save with dead creature but no death record: rejected, app keeps running — toast "Invalid or incompatible save"; clock D1 · 02:11 → D1 · 02:30; new page errors: none
+PASS  Eden opens as a script, pauses island, nobody has eaten — Paused before action. No one has eaten.
+PASS  help text makes no access/privacy claim
+PASS  lab single-seed run completes — 10 branch rows; Completed 10 branch outcomes. Calculated from model v3. No winner assigned.
+PASS  inspect loads branch snapshot — Experiment: provision / berry-failure
+PASS  return restores own island — D1 · 02:32 vs D1 · 02:32
+PASS  lab 20-seed pilot completes in worker — Completed 200 branch outcomes. Calculated from model v3. No winner assigned. (140 s headless desktop CPU)
+PASS  hidden page pauses
+PASS  autosave written on hide
+PASS  reopens offline from service-worker cache (desktop Chrome)
+PASS  reopened page restores autosave — clock after reopen D1 · 02:32
+PASS  page errors during session — none
