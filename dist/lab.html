@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Island Lab</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; font: 15px/1.45 system-ui, sans-serif; background: #10222a; color: #e6efe9; }
+  main { max-width: 720px; margin: 0 auto; padding: 14px; }
+  h1 { font-size: 20px; margin: 4px 0 2px; } h2 { font-size: 15px; margin: 18px 0 6px; color: #b9d8c2; }
+  .muted { color: #93a9a6; font-size: 13px; }
+  canvas { width: 100%; border-radius: 10px; background: #1d4a5c; touch-action: manipulation; display: block; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+  button, select { font: inherit; padding: 9px 12px; border-radius: 9px; border: 1px solid #3d5a5e; background: #1b343c; color: inherit; }
+  button:disabled { opacity: .45; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .stats div { background: #172d35; border-radius: 9px; padding: 8px; } .stats b { display: block; font-size: 17px; }
+  .card { background: #172d35; border-radius: 12px; padding: 12px; margin-top: 12px; }
+  .bar { height: 6px; background: #2a444b; border-radius: 3px; overflow: hidden; margin: 2px 0 8px; } .bar i { display: block; height: 100%; background: #9fd3a8; }
+  .opt { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; border-top: 1px solid #25414a; }
+  .opt.win { color: #c8f0cf; font-weight: 600; } .opt small { display: block; font-weight: 400; color: #93a9a6; }
+  ul { margin: 4px 0; padding-left: 18px; } li { margin: 2px 0; }
+  #toast { min-height: 20px; color: #f0d9a0; font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Island Lab</h1>
+  <div class="muted">Creatures act on their own from what they know, need and trust. You change knowledge and conditions, never the creatures.</div>
+  <div class="row">
+    <button id="pause">Pause</button><button id="speed">1×</button>
+    <select id="false" aria-label="False information rate"><option value="0">False info 0%</option><option value="0.05">False info 5%</option><option value="0.1">False info 10%</option><option value="0.25">False info 25%</option></select>
+    <button id="new">New world</button>
+  </div>
+  <canvas id="map" width="864" height="528"></canvas>
+  <div class="muted" id="clock"></div>
+  <div class="stats" id="stats"></div>
+  <h2>Your influence</h2>
+  <div class="row"><button id="reveal">Reveal food to selected</button><button id="cross">Open a crossing</button><button id="trust">Boost trust +20</button></div>
+  <div id="toast"></div>
+  <div class="card" id="panel"></div>
+  <div class="card"><h2 style="margin-top:0">What just happened</h2><ul id="events"></ul></div>
+  <p class="muted">Lab core, piece 1. Trials, graphs and saving are not built yet. Map: green dots are food, brown are gardens, red patches are danger, the blue band is the river with its fords.</p>
+</main>
+<script type="module">
+import { createLab, labStep, labCommand, labMetrics, isLand, confidence } from './lab.js';
+const $ = id => document.getElementById(id), T = 12;
+let seed = 41, world, selected = 0, paused = false, speed = 1, acc = 0, last = performance.now();
+const cv = $('map'), g = cv.getContext('2d');
+const start = () => { world = createLab(seed, { falseInformationRate: Number($('false').value) }); selected = 0; toast(`World ${seed}`); };
+const toast = t => { $('toast').textContent = t; };
+const clock = t => `Day ${Math.floor(t / 1440) + 1} · ${String(Math.floor(t % 1440 / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
+const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+
+function draw() {
+  const c = world.config;
+  g.fillStyle = '#1d4a5c'; g.fillRect(0, 0, cv.width, cv.height);
+  for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) if (isLand(world, x, y)) { g.fillStyle = x === c.riverX ? '#b9a26a' : (x + y) % 2 ? '#7fae6a' : '#86b671'; g.fillRect(x * T, y * T, T, T); }
+  g.fillStyle = 'rgba(210,70,60,.28)';
+  for (const d of world.dangers) for (let y = d.y - 2; y <= d.y + 2; y++) for (let x = d.x - 2; x <= d.x + 2; x++) if (Math.abs(x - d.x) + Math.abs(y - d.y) <= 2 && isLand(world, x, y)) g.fillRect(x * T, y * T, T, T);
+  for (const p of world.sources) { g.fillStyle = p.type === 'garden' ? '#8a5a2b' : '#2f6b3a'; g.beginPath(); g.arc(p.x * T + 6, p.y * T + 6, 3 + 5 * p.stock / p.capacity, 0, 7); g.fill(); }
+  const sel = world.creatures[selected];
+  if (sel?.alive) { g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = 1; for (const k of sel.knowledge) { g.strokeRect(k.x * T + 1, k.y * T + 1, T - 2, T - 2); } }
+  for (const m of world.messages.slice(-12)) if (world.tick - m.tick < 40) { const a = world.creatures[m.from], b = world.creatures[m.to]; g.strokeStyle = m.accepted ? 'rgba(255,255,255,.7)' : 'rgba(255,255,255,.2)'; g.beginPath(); g.moveTo(a.x * T + 6, a.y * T + 6); g.lineTo(b.x * T + 6, b.y * T + 6); g.stroke(); }
+  for (const c2 of world.creatures) { if (!c2.alive) continue; g.fillStyle = `hsl(${c2.id * 47 % 360} 70% 70%)`; g.fillRect(c2.x * T + 2, c2.y * T + 2, 8, 8); if (c2.id === selected) { g.strokeStyle = '#fff'; g.lineWidth = 2; g.strokeRect(c2.x * T, c2.y * T, T, T); } }
+}
+
+function panel() {
+  const c = world.creatures[selected], d = c.decision, bar = (label, v) => `<div>${label} <span class="muted">${Math.round(v)}</span></div><div class="bar"><i style="width:${v}%"></i></div>`;
+  if (!c.alive) { $('panel').innerHTML = `<h2 style="margin-top:0">${c.name}</h2>Died: ${esc(c.death.cause)} on ${clock(c.death.tick)}.`; return; }
+  const trusted = Object.entries(c.trust).sort((a, b) => b[1] - a[1]);
+  $('panel').innerHTML = `<h2 style="margin-top:0">${c.name} <span class="muted">tap a creature on the map to select</span></h2>
+    ${bar('Hunger (lower is better)', c.needs.hunger)}${bar('Energy', c.needs.energy)}${bar('Safety', c.needs.safety)}${bar('Social', c.needs.social)}
+    <div class="muted">Personality: curiosity ${c.traits.curiosity} · risk tolerance ${c.traits.risk} · trustfulness ${c.traits.trustfulness} · persistence ${c.traits.persistence} · social preference ${c.traits.social}</div>
+    <h2>Chosen action: ${d ? esc(d.chosen) : '–'} ${d ? `<span class="muted">total ${d.total}</span>` : ''}</h2>
+    ${d ? `<div class="muted">${esc(d.reason)}</div>` + [...d.options].sort((a, b) => b.total - a.total).map(o => `<div class="opt ${o.type === d.chosen ? 'win' : ''}"><span>${esc(o.type)}<small>${esc(o.reason)}${o.bonus ? ` · persistence +${o.bonus}` : ''}</small></span><span>${o.total}</span></div>`).join('') : ''}
+    <h2>Known places (${c.knowledge.length})</h2><ul>${c.knowledge.map(k => `<li>${k.type} at ${k.x},${k.y} · confidence ${Math.round(confidence(world, k))}% · source ${esc(k.source)}${k.chain.length > 2 ? ` (first found by ${world.creatures[k.chain[0]].name})` : ''} · ${world.tick - k.tick} min old${k.verified ? '' : ' · not yet checked'}</li>`).join('') || '<li class="muted">None yet</li>'}</ul>
+    <h2>Trust</h2><div class="muted">${trusted.length ? trusted.slice(0, 4).map(([id, v]) => `${world.creatures[id].name} ${Math.round(v)}`).join(' · ') + (trusted.length > 4 ? ` … lowest: ${world.creatures[trusted.at(-1)[0]].name} ${Math.round(trusted.at(-1)[1])}` : '') : 'Has not been told anything yet'}</div>
+    <h2>Recent decisions</h2><div class="muted">${c.recent.map(r => `${r.action} (${r.score})`).join(' → ') || '–'}</div>`;
+}
+
+function update() {
+  const m = labMetrics(world);
+  $('clock').textContent = `${clock(world.tick)} · seed ${world.seed} · false information ${Math.round(world.config.falseInformationRate * 100)}%`;
+  $('stats').innerHTML = [['Alive', `${m.alive} / ${world.creatures.length}`], ['Avg hunger', m.hunger?.toFixed(0) ?? '–'], ['Avg safety', m.safety?.toFixed(0) ?? '–'], ['Knowledge spread', Math.round(m.knowledgeSpread * 100) + '%'], ['Avg trust', m.trustMean.toFixed(0)], ['Messages', `${m.messages.accepted} of ${m.messages.sent} accepted`]].map(([a, b]) => `<div><span class="muted">${a}</span><b>${b}</b></div>`).join('');
+  $('events').innerHTML = world.events.slice(0, 8).map(e => `<li><span class="muted">${clock(e.tick)}</span> ${e.id !== null ? world.creatures[e.id].name + ': ' : ''}${esc(e.text)}</li>`).join('');
+  $('cross').disabled = world.crossingsOpen.length >= world.config.crossings.length;
+  panel(); draw();
+}
+
+function frame(now) {
+  if (!paused) { acc += Math.min(now - last, 200) * speed; const n = Math.min(Math.floor(acc / 50), 400); if (n) { labStep(world, n); acc -= n * 50; } }
+  last = now; update(); requestAnimationFrame(frame);
+}
+$('pause').onclick = () => { paused = !paused; $('pause').textContent = paused ? 'Resume' : 'Pause'; };
+$('speed').onclick = () => { speed = speed === 1 ? 4 : speed === 4 ? 16 : 1; $('speed').textContent = speed + '×'; };
+$('new').onclick = () => { seed++; start(); };
+$('false').onchange = start;
+$('reveal').onclick = () => { try { labCommand(world, { type: 'revealFood', id: selected }); toast(`Revealed a food source to ${world.creatures[selected].name} only.`); } catch (e) { toast(e.message); } };
+$('cross').onclick = () => { try { labCommand(world, { type: 'openCrossing' }); toast('A second ford is open.'); } catch (e) { toast(e.message); } };
+$('trust').onclick = () => { labCommand(world, { type: 'boostTrust', amount: 20 }); toast('Everyone trusts everyone 20 points more.'); };
+cv.addEventListener('pointerdown', e => {
+  const r = cv.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * world.config.width, y = (e.clientY - r.top) / r.height * world.config.height;
+  let best = null; for (const c of world.creatures) { if (!c.alive) continue; const d = Math.hypot(c.x + .5 - x, c.y + .5 - y); if (d < 4 && (!best || d < best.d)) best = { c, d }; }
+  if (best) selected = best.c.id;
+});
+document.addEventListener('visibilitychange', () => { if (document.hidden && !paused) $('pause').click(); });
+start(); requestAnimationFrame(frame);
+</script>
+</body>
+</html>
