@@ -76,3 +76,26 @@ test('E4 summaries can count the dead: medianHungerAll treats each death as 100'
   assert.equal(m.knownSourcesAll, m.knownSources * 11 / 24, 'capacity proxies count each death as 0');
   assert.equal(m.skillAll, m.skill * 11 / 24);
 });
+
+test('E5 real withdrawal and matched-food ration keep the ledger honest and saves valid', async () => {
+  const { serialize, deserialize } = await import('../dist/sim.js');
+  const { runSeed } = await import('../dist/experiment.js');
+  const s = createWorld(45);
+  for (let i = 0; i < PLAN.trainingDays * DAY; i++) schedule(s, 'provision');
+  const left = metrics(s).giftRemaining;
+  command(s, { type: 'withdraw' });
+  assert.equal(metrics(s).giftRemaining, 0);
+  assert.equal(s.ledger.withdrawn, left);
+  const l = s.ledger;
+  assert.ok(Math.abs(l.initial + l.regenerated + l.gifted - l.consumed - l.withdrawn - metrics(s).food) < 1e-6);
+  assert.equal(serialize(deserialize(serialize(s))), serialize(s), 'withdrawn ledger survives save/load');
+  const r = createWorld(45), p = createWorld(45);
+  for (let i = 0; i < PLAN.trainingDays * DAY; i++) { schedule(r, 'ration'); schedule(p, 'provision'); }
+  assert.equal(r.ledger.gifted, p.ledger.gifted, 'ration gives the same food as provision');
+  assert.equal(metrics(r).giftRemaining, 0, 'ration leaves no pile');
+  const rl = r.ledger;
+  assert.ok(Math.abs(rl.initial + rl.regenerated + rl.gifted - rl.consumed - metrics(r).food) < 1e-6);
+  const rows = runSeed(45);
+  assert.deepEqual([...new Set(rows.map(x => x.branch))], PLAN.branches);
+  assert.ok(rows.some(x => x.condition === 'root-failure') && rows.some(x => x.condition === 'withdrawn+berry-failure'));
+});

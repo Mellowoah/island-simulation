@@ -48,7 +48,7 @@ test('D3 recovery is only defined for disturbed runs and is judged against the m
     assert.equal(r.recoveryMinutes, null);
   }
   for (const r of rows.filter(r => r.condition.includes('failure'))) {
-    assert.equal(r.controlCondition, r.condition === 'berry-failure' ? 'unchanged' : 'continued-provision');
+    assert.equal(r.controlCondition, r.condition.startsWith('withdrawn') ? 'withdrawn' : r.condition.startsWith('continued') ? 'continued-provision' : 'unchanged');
     assert.ok(Number.isFinite(r.controlMaxMedianHunger));
     assert.ok(by(r.branch, r.controlCondition), 'matched control exists in the same branch');
     if (r.recoveryMinutes !== null) assert.ok(r.recoveryAlive >= 0 && r.recoveryAlive <= 24);

@@ -1,1 +1,1 @@
-{"name":"island","version":"0.2.1","type":"module","scripts":{"test":"node --test tests/*.test.mjs","experiment":"node tests/run-experiments.mjs"}}
+{"name":"island","version":"0.2.2","type":"module","scripts":{"test":"node --test tests/*.test.mjs","experiment":"node tests/run-experiments.mjs","drift":"node tools/drift-check.mjs"}}

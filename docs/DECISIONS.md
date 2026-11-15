@@ -2,6 +2,15 @@
 
 Each entry records who decided, what changed, and why. Robert decides the intended experience and scope. On 14 Nov 2026 he asked Claude to take the lead on the open review items, with Grok reviewing.
 
+## 0.2.2 — 15 November 2026 (Robert: "as long as we can test theories within the confines of what we're building I'm OK with what we change")
+
+| ID | Decision | Source | Files |
+|---|---|---|---|
+| D18 | Experiment plan v5: a **ration** branch (the same food as provision, handed straight to the living, no pile); **real withdrawal** (leftover gifts removed at day 10 and recorded as `ledger.withdrawn`); a **root failure** alongside the berry failure; **10-day follow-up**; **20 seeds for every variant**. Recovery is matched to the right control (withdrawn ↔ withdrawn, continued ↔ continued). | Grok F1, F2, F5 design proposals; approved by Robert | `dist/sim.js` (`withdraw`, `ration` commands, ledger), `dist/experiment.js`, `tests/run-experiments.mjs`, `dist/index.html` |
+| D19 | Anti-drift check: `npm run drift` (`tools/drift-check.mjs`) re-tests every THEORY-CHECK statement plus the island reporting rules, and flags Eden code changed after THEORY-CHECK.md. It runs at every 30-minute check-in and after every change. | Robert | `tools/drift-check.mjs`, `package.json` |
+
+Not done: hunger jitter. It changes the creatures' basic needs, so it waits for an explicit yes.
+
 ## 0.2.1 — 15 November 2026 (Robert's direction; built by Claude)
 
 | ID | Decision | Source |
