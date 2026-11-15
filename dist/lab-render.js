@@ -93,20 +93,49 @@ export function createRenderer(makeCanvas) {
     for (const cr of world.creatures) {
       if (!cr.alive) continue;
       const x = cr.x * T + 6, y = cr.y * T + 6, shape = SHAPES[cr.id % 4];
-      g.fillStyle = `hsl(${cr.id * 47 % 360} 75% 72%)`; g.strokeStyle = '#1a2a2e'; g.lineWidth = 1.5; g.beginPath();
-      if (shape === 'circle') g.arc(x, y, 5, 0, 7);
-      else if (shape === 'square') g.rect(x - 4.5, y - 4.5, 9, 9);
-      else if (shape === 'triangle') { g.moveTo(x, y - 6); g.lineTo(x + 5.5, y + 4.5); g.lineTo(x - 5.5, y + 4.5); g.closePath(); }
-      else { g.moveTo(x, y - 6); g.lineTo(x + 6, y); g.lineTo(x, y + 6); g.lineTo(x - 6, y); g.closePath(); }
+      // Presentation only: body, facing, a light bob and colour from existing needs and trust. Never writes to the world.
+      const act = cr.action;
+      let tx = cr.x, ty = cr.y;
+      if (act?.route?.length) { tx = act.route[0][0]; ty = act.route[0][1]; }
+      else if (Number.isFinite(act?.target?.x)) { tx = act.target.x; ty = act.target.y; }
+      else if (act?.target && act.target.id != null && world.creatures[act.target.id]) { const o = world.creatures[act.target.id]; tx = o.x; ty = o.y; }
+      const face = tx < cr.x ? -1 : 1;
+      const walking = act && (['findFood', 'explore', 'investigate', 'avoidDanger'].includes(act.type) || ((act.type === 'socialize' || act.type === 'share') && (tx !== cr.x || ty !== cr.y)));
+      const phase = now / (walking ? 140 : 420), bob = Math.sin(phase) * (walking ? 1.2 : 0.45), squash = 1 + Math.sin(phase) * (walking ? 0.1 : 0.03);
+      const hunger = cr.needs?.hunger ?? 20, energy = cr.needs?.energy ?? 80, safety = cr.needs?.safety ?? 80;
+      const trustVals = Object.values(cr.trust || {});
+      const trust = trustVals.length ? trustVals.reduce((n, v) => n + v, 0) / trustVals.length : 50;
+      const hue = cr.id * 47 % 360;
+      const sat = Math.max(42, Math.min(82, 62 + (50 - hunger) * 0.15 + (trust - 50) * 0.12));
+      const light = Math.max(38, Math.min(76, 52 + energy * 0.16 + safety * 0.05 - hunger * 0.08));
+      const body = `hsl(${hue} ${sat}% ${light}%)`, shade = `hsl(${hue} ${Math.max(30, sat - 8)}% ${Math.max(22, light - 18)}%)`;
+      g.save(); g.translate(x, y + bob); g.scale(face, squash);
+      g.fillStyle = 'rgba(16,30,34,.35)'; g.beginPath(); g.ellipse(0, 6.2, 5, 1.6, 0, 0, 7); g.fill();
+      const step = walking ? Math.sin(phase) * 2 : 0;
+      g.fillStyle = shade;
+      if (shape === 'diamond') { // fins
+        g.beginPath(); g.moveTo(-6, 1); g.lineTo(-9, 4); g.lineTo(-3.5, 4); g.closePath(); g.fill();
+        g.beginPath(); g.moveTo(6, 1); g.lineTo(9, 4); g.lineTo(3.5, 4); g.closePath(); g.fill();
+      } else { g.fillRect(-4.2, 3 + step, 2.6, 4.2); g.fillRect(1.6, 3 - step, 2.6, 4.2); }
+      g.fillStyle = body; g.strokeStyle = '#1a2a2e'; g.lineWidth = 1.2; g.beginPath();
+      if (shape === 'square') { g.moveTo(-5, -2); g.lineTo(5, -2); g.lineTo(5, 6); g.lineTo(-5, 6); g.closePath(); }
+      else if (shape === 'triangle') { g.moveTo(0, -4); g.lineTo(6.2, 5.5); g.lineTo(-6.2, 5.5); g.closePath(); }
+      else if (shape === 'diamond') g.ellipse(0, 1.2, 6.2, 4.3, 0, 0, 7);
+      else g.ellipse(0, 1, 5.6, 5.1, 0, 0, 7);
       g.fill(); g.stroke();
-      // Pixel-scale creature personality without changing identity, position or selection.
-      // Feet, face and highlight make the four existing silhouettes read as tiny characters.
-      g.fillStyle = '#162b2d'; g.fillRect(x - 4, y + 4, 2, 2); g.fillRect(x + 2, y + 4, 2, 2);
-      g.fillStyle = '#f9f3df'; g.fillRect(x - 3, y - 2, 2, 2); g.fillRect(x + 1, y - 2, 2, 2);
-      g.fillStyle = '#152e35'; g.fillRect(x - 2, y - 1, 1, 1); g.fillRect(x + 2, y - 1, 1, 1);
-      g.fillStyle = 'rgba(255,255,255,.45)'; g.fillRect(x - 3, y - 4, 2, 1);
+      g.beginPath();
+      if (shape === 'triangle') { g.moveTo(1.5, -6.5); g.lineTo(7, -2.2); g.lineTo(0.5, -1.2); g.closePath(); }
+      else g.arc(0, -5.1, 3.7, 0, 7);
+      g.fill(); g.stroke();
+      if (shape === 'circle' || shape === 'square') {
+        g.fillStyle = shade; g.beginPath(); g.arc(-2.3, -8, 1.5, 0, 7); g.fill(); g.beginPath(); g.arc(2.3, -8, 1.5, 0, 7); g.fill();
+      }
+      g.fillStyle = '#f9f3df'; g.fillRect(0.5, -6.3, 2.3, 2.2); g.fillRect(-2.5, -6.3, 2, 2);
+      g.fillStyle = '#152e35'; g.fillRect(1.5, -5.7, 1.1, 1.2); g.fillRect(-1.3, -5.7, 1, 1.1);
+      g.fillStyle = 'rgba(255,255,255,.38)'; g.fillRect(-2.2, 0.2, 3.2, 1.6);
+      g.restore();
       const glyph = GLYPH[cr.action?.type]; if (glyph) { g.fillStyle = 'rgba(20,34,40,.85)'; g.fillRect(x + 3, y - 13, 9, 9); g.fillStyle = '#fff'; g.fillText(glyph, x + 7.5, y - 5.5); }
-      if (cr.id === selected) { g.strokeStyle = '#fff'; g.lineWidth = 2; g.beginPath(); g.arc(x, y, 9 + Math.sin(now / 250), 0, 7); g.stroke(); }
+      if (cr.id === selected) { g.strokeStyle = '#fff'; g.lineWidth = 2; g.beginPath(); g.arc(x, y, 10 + Math.sin(now / 250), 0, 7); g.stroke(); }
     }
   };
 }
