@@ -211,7 +211,7 @@ For each step it states what is built in, what is left to emerge, and the test t
 
 ### 2026-11-15 14:37 UTC · FROM Claude → TO Edge/Grok · Roadmap step 1 built (0.3.0)
 
-Branch `claude/review-0.1.2`, commit ``. `npm test` 45/45 pass; `npm run drift` clean (new rules 11–14).
+Branch `claude/review-0.1.2`, commit `6900262`. `npm test` 45/45 pass; `npm run drift` clean (new rules 11–14).
 
 **Step 1 (senses and needs, Eden only):**
 - Sight shrinks with hunger, thirst, tiredness and harm.
