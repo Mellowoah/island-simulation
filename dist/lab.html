@@ -54,7 +54,8 @@ button:hover{background:#31565b}
   <div class="row">
     <button id="pause">Pause</button><button id="speed">1×</button>
     <select id="false" aria-label="False information rate"><option value="0">False info 0%</option><option value="0.05">False info 5%</option><option value="0.1">False info 10%</option><option value="0.25">False info 25%</option></select>
-    <button id="new">New world</button>
+    <button id="save">Save</button>
+    <button id="new">New island</button>
   </div>
   <canvas id="map" width="864" height="528"></canvas>
   <div class="muted" id="clock"></div>
@@ -65,15 +66,41 @@ button:hover{background:#31565b}
   <div class="card" id="panel"></div>
   <div class="card"><h2 style="margin-top:0">What just happened</h2><ul id="events"></ul></div>
   <div class="card"><h2 style="margin-top:0">Reading the map</h2><div class="muted">Bushes are food and plots are gardens; the white ring and the berries or rows show how much is left. Hatched ground is danger. Stepping stones are fords across the river. Each creature has its own shape and colour. The small sign beside it is what it is doing: <span id="legend"></span>. White lines are one creature telling another something. Boxes mark what the selected creature knows; dashed boxes are things it was told and has not checked.</div></div>
-  <p class="muted">Lab core with first visual slice. Trials, graphs and saving are not built yet.</p>
+  <p class="muted">The island saves on this phone. Trials and graphs are not built yet.</p>
 </main>
 <script type="module">
-import { createLab, labStep, labCommand, labMetrics, confidence } from './lab.js';
+import { createLab, labStep, labCommand, labMetrics, confidence, serializeLab, deserializeLab } from './lab.js';
 import { createRenderer, GLYPH } from './lab-render.js';
 const $ = id => document.getElementById(id), T = 12;
-let seed = 41, world, selected = 0, paused = false, speed = 1, acc = 0, last = performance.now(), lastPanel = 0;
+const SAVE_KEY = 'island-lab-save-v1';
+let seed = 41, world, selected = 0, paused = false, speed = 1, acc = 0, last = performance.now(), lastPanel = 0, lastSave = 0;
 const cv = $('map'), g = cv.getContext('2d');
-const start = () => { world = createLab(seed, { falseInformationRate: Number($('false').value) }); selected = 0; toast(`World ${seed}`); };
+const start = () => { world = createLab(seed, { falseInformationRate: Number($('false').value) }); selected = 0; toast(`World ${seed}`); persist(); };
+const persist = (manual = false) => {
+  try { localStorage.setItem(SAVE_KEY, serializeLab(world, { seed, selected, paused, speed })); if (manual) toast('Island saved on this phone.'); return true; }
+  catch { if (manual) toast('Could not save on this phone.'); return false; }
+};
+const applyUi = (ui) => {
+  seed = ui.seed; selected = ui.selected; paused = ui.paused; speed = ui.speed;
+  $('pause').textContent = paused ? 'Resume' : 'Pause';
+  $('speed').textContent = speed + '×';
+  $('false').value = String(world.config.falseInformationRate);
+};
+const restore = () => {
+  let raw;
+  try { raw = localStorage.getItem(SAVE_KEY); } catch { return false; }
+  if (!raw) return false;
+  try {
+    const got = deserializeLab(raw);
+    world = got.world; applyUi(got.ui);
+    toast(`Restored ${clock(world.tick)} · seed ${world.seed}`);
+    return true;
+  } catch {
+    try { localStorage.setItem(SAVE_KEY + '-rejected', raw); localStorage.removeItem(SAVE_KEY); } catch {}
+    toast('The saved island could not be restored, so a new one started.');
+    return false;
+  }
+};
 const toast = t => { $('toast').textContent = t; };
 const clock = t => `Day ${Math.floor(t / 1440) + 1} · ${String(Math.floor(t % 1440 / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
 const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
@@ -111,23 +138,25 @@ function update() {
 
 function frame(now) {
   if (!paused) { acc += Math.min(now - last, 200) * speed; const n = Math.min(Math.floor(acc / 50), 400); if (n) { labStep(world, n); acc -= n * 50; } }
-  last = now; if (now - lastPanel > 250) { update(); lastPanel = now; } else draw(); requestAnimationFrame(frame); // text panels refresh 4 times a second; the map every frame
+  last = now; if (now - lastPanel > 250) { update(); lastPanel = now; } else draw(); if (now - lastSave > 10000) { persist(); lastSave = now; } requestAnimationFrame(frame); // text panels refresh 4 times a second; the map every frame
 }
-$('pause').onclick = () => { paused = !paused; $('pause').textContent = paused ? 'Resume' : 'Pause'; };
-$('speed').onclick = () => { speed = speed === 1 ? 4 : speed === 4 ? 16 : 1; $('speed').textContent = speed + '×'; };
-$('new').onclick = () => { seed++; start(); };
+$('pause').onclick = () => { paused = !paused; $('pause').textContent = paused ? 'Resume' : 'Pause'; persist(); };
+$('speed').onclick = () => { speed = speed === 1 ? 4 : speed === 4 ? 16 : 1; $('speed').textContent = speed + '×'; persist(); };
+$('save').onclick = () => persist(true);
+$('new').onclick = () => { if (!confirm('Start a new island? This replaces the saved world on this phone.')) return; seed++; start(); };
 $('false').onchange = start;
-$('reveal').onclick = () => { try { labCommand(world, { type: 'revealFood', id: selected }); toast(`Revealed a food source to ${world.creatures[selected].name} only.`); } catch (e) { toast(e.message); } };
-$('cross').onclick = () => { try { labCommand(world, { type: 'openCrossing' }); toast('A second ford is open.'); } catch (e) { toast(e.message); } };
-$('trust').onclick = () => { labCommand(world, { type: 'boostTrust', amount: 20 }); toast('Everyone trusts everyone 20 points more.'); };
+$('reveal').onclick = () => { try { labCommand(world, { type: 'revealFood', id: selected }); toast(`Revealed a food source to ${world.creatures[selected].name} only.`); persist(); } catch (e) { toast(e.message); } };
+$('cross').onclick = () => { try { labCommand(world, { type: 'openCrossing' }); toast('A second ford is open.'); persist(); } catch (e) { toast(e.message); } };
+$('trust').onclick = () => { labCommand(world, { type: 'boostTrust', amount: 20 }); toast('Everyone trusts everyone 20 points more.'); persist(); };
 cv.addEventListener('pointerdown', e => {
   const r = cv.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * world.config.width, y = (e.clientY - r.top) / r.height * world.config.height;
   let best = null; for (const c of world.creatures) { if (!c.alive) continue; const d = Math.hypot(c.x + .5 - x, c.y + .5 - y); if (d < 4 && (!best || d < best.d)) best = { c, d }; }
   if (best) selected = best.c.id;
 });
-document.addEventListener('visibilitychange', () => { if (document.hidden && !paused) $('pause').click(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) { if (!paused) $('pause').click(); persist(); } });
+window.addEventListener('pagehide', () => persist());
 $('legend').textContent = Object.entries({ eat: 'eating', findFood: 'going to food', rest: 'resting', explore: 'exploring', socialize: 'with company', share: 'telling', investigate: 'checking what it was told', avoidDanger: 'avoiding danger' }).map(([k, v]) => `${GLYPH[k]} ${v}`).join(' · ');
-start(); requestAnimationFrame(frame);
+if (!restore()) start(); update(); requestAnimationFrame(frame);
 </script>
 </body>
 </html>

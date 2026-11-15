@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { STREAMS } from '../dist/sim.js';
-import { createLab, labStep, labCommand, labMetrics, runTrial, isLand, confidence, LAB_STREAMS, LAB_DEFAULTS, ACTIONS } from '../dist/lab.js';
+import { createLab, labStep, labCommand, labMetrics, runTrial, isLand, confidence, LAB_STREAMS, LAB_DEFAULTS, ACTIONS, serializeLab, deserializeLab, LAB_VERSION, LAB_SAVE_FORMAT } from '../dist/lab.js';
 
 test('L1 same seed and settings give the same history; a different seed gives another', () => {
   const a = createLab(41), b = createLab(41), c = createLab(42);
@@ -119,4 +119,37 @@ test('L10 lab random streams are registered and overlap nothing', () => {
     if (a.startsWith('core.') && b.startsWith('core.')) continue;
     assert.ok(a1 < b0 || b1 < a0, `${a} overlaps ${b}`);
   }
+});
+
+test('L11 a snapshot restores the same world, and later steps match an unrestored twin', () => {
+  const a = createLab(41), b = createLab(41);
+  labStep(a, 400); labStep(b, 400);
+  labCommand(a, { type: 'boostTrust', amount: 20 }); labCommand(b, { type: 'boostTrust', amount: 20 });
+  labCommand(a, { type: 'openCrossing' }); labCommand(b, { type: 'openCrossing' });
+  labStep(a, 80); labStep(b, 80);
+  const text = serializeLab(a, { seed: 41, selected: 3, paused: true, speed: 4 });
+  const { world: c, ui } = deserializeLab(text);
+  assert.equal(ui.selected, 3);
+  assert.equal(ui.paused, true);
+  assert.equal(ui.speed, 4);
+  assert.equal(JSON.stringify(c), JSON.stringify(a));
+  labStep(a, 200); labStep(c, 200); labStep(b, 200);
+  assert.equal(JSON.stringify(c), JSON.stringify(a));
+  assert.equal(JSON.stringify(c), JSON.stringify(b));
+});
+
+test('L12 corrupt or incompatible saves fail clearly and do not throw on later valid worlds', () => {
+  const s = createLab(41); labStep(s, 20);
+  const good = serializeLab(s, { seed: 41, selected: 0, paused: false, speed: 1 });
+  assert.equal(JSON.parse(good).format, LAB_SAVE_FORMAT);
+  assert.equal(JSON.parse(good).version, LAB_VERSION);
+  assert.throws(() => deserializeLab('not-json'), /Invalid save/);
+  assert.throws(() => deserializeLab('{}'), /Incompatible save/);
+  assert.throws(() => deserializeLab(JSON.stringify({ format: LAB_SAVE_FORMAT, version: 999, world: s })), /Incompatible save/);
+  assert.throws(() => deserializeLab(JSON.stringify({ format: 'island-save', version: LAB_VERSION, world: s })), /Incompatible save/);
+  const broken = JSON.parse(good); broken.world.creatures = [{ id: 99 }];
+  assert.throws(() => deserializeLab(JSON.stringify(broken)), /Invalid save/);
+  const again = deserializeLab(good);
+  assert.equal(again.world.seed, 41);
+  assert.equal(again.world.creatures.length, 24);
 });

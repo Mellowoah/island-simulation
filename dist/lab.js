@@ -258,6 +258,39 @@ export function labMetrics(s) {
     messages: { ...s.stats }, food: s.sources.reduce((n, p) => n + p.stock, 0) };
 }
 
+
+// Snapshot and restore only. Does not change how a world steps.
+export const LAB_SAVE_FORMAT = 'island-lab-save';
+export function serializeLab(s, ui = {}) {
+  return JSON.stringify({ format: LAB_SAVE_FORMAT, version: LAB_VERSION, world: s, ui });
+}
+export function deserializeLab(text) {
+  if (typeof text !== 'string' || !text) throw Error('Invalid save');
+  if (text.length > 5000000) throw Error('Save too large');
+  let e;
+  try { e = JSON.parse(text); } catch { throw Error('Invalid save'); }
+  if (e?.format !== LAB_SAVE_FORMAT || e.version !== LAB_VERSION) throw Error('Incompatible save');
+  const s = e.world;
+  if (!s || s.mode !== 'lab' || s.version !== LAB_VERSION) throw Error('Incompatible save');
+  if (!Number.isInteger(s.seed) || !Number.isInteger(s.tick) || s.tick < 0 || s.tick > 1e9) throw Error('Invalid save');
+  if (!s.config || typeof s.config !== 'object' || !Array.isArray(s.creatures) || !Array.isArray(s.sources) || !Array.isArray(s.dangers) || !Array.isArray(s.crossingsOpen) || !Array.isArray(s.events)) throw Error('Invalid save');
+  if (!Array.isArray(s.messages) || !Array.isArray(s.samples) || !s.ledger || !s.stats) throw Error('Invalid save');
+  if (s.creatures.length < 1 || s.creatures.length > 200 || s.sources.length < 1 || s.sources.length > 200) throw Error('Invalid save');
+  s.config = { ...LAB_DEFAULTS, ...s.config };
+  if (!Number.isInteger(s.config.width) || !Number.isInteger(s.config.height)) throw Error('Invalid save');
+  for (const [i, c] of s.creatures.entries()) {
+    if (c.id !== i || typeof c.name !== 'string' || c.name.length > 40 || !Number.isInteger(c.x) || !Number.isInteger(c.y) || typeof c.alive !== 'boolean') throw Error('Invalid save');
+    if (!c.needs || !c.traits || !Array.isArray(c.knowledge) || typeof c.trust !== 'object' || c.trust == null || !Array.isArray(c.recent)) throw Error('Invalid save');
+  }
+  s.key = seedKey(s.seed >>> 0);
+  Object.defineProperty(s, 'routes', { value: new Map(), enumerable: false });
+  const uiIn = e.ui && typeof e.ui === 'object' ? e.ui : {};
+  const speed = [1, 4, 16].includes(uiIn.speed) ? uiIn.speed : 1;
+  const selected = Number.isInteger(uiIn.selected) && uiIn.selected >= 0 && uiIn.selected < s.creatures.length ? uiIn.selected : 0;
+  const seed = Number.isInteger(uiIn.seed) ? uiIn.seed : s.seed;
+  return { world: s, ui: { seed, selected, paused: !!uiIn.paused, speed } };
+}
+
 export function runTrial(seed, config = {}, interventions = [], ticks = 4320) {
   const s = createLab(seed, config), plan = [...interventions].sort((a, b) => a.tick - b.tick);
   for (let t = 0; t < ticks; t++) { while (plan.length && plan[0].tick <= s.tick) labCommand(s, plan.shift().command); labStep(s); }
