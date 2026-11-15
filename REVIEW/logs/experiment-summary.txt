@@ -1,0 +1,117 @@
+
+## baseline (20 seeds)
+branch / condition                         runs alive(min-max) hungerMed known gifted
+baseline / unchanged                         20  24.00 (24-24)     12.0   2.00      0
+baseline / berry-failure                     20    9.35 (6-12)     31.8   2.00      0
+provision / unchanged                        20  24.00 (24-24)     12.0   2.00   2400
+provision / berry-failure                    20  24.00 (24-24)     12.8   2.00   2400
+provision / continued-provision              20  24.00 (24-24)     12.0   2.00   3600
+provision / continued-provision+failure      20  24.00 (24-24)     12.0   2.00   3600
+access / unchanged                           20  24.00 (24-24)     12.0   2.00      0
+access / berry-failure                       20    9.35 (7-12)     34.9   2.00      0
+information / unchanged                      20  24.00 (24-24)     12.0   2.00      0
+information / berry-failure                  20    9.75 (7-12)     33.2   2.00      0
+
+## no-learning (5 seeds)
+branch / condition                         runs alive(min-max) hungerMed known gifted
+baseline / unchanged                          5  24.00 (24-24)     12.0   2.00      0
+baseline / berry-failure                      5    9.80 (6-12)     36.7   2.00      0
+provision / unchanged                         5  24.00 (24-24)     12.0   2.00   2400
+provision / berry-failure                     5  24.00 (24-24)     12.0   2.00   2400
+provision / continued-provision               5  24.00 (24-24)     12.0   2.00   3600
+provision / continued-provision+failure       5  24.00 (24-24)     12.0   2.00   3600
+access / unchanged                            5  24.00 (24-24)     12.0   2.00      0
+access / berry-failure                        5    9.20 (7-11)     34.9   2.00      0
+information / unchanged                       5  24.00 (24-24)     12.0   2.00      0
+information / berry-failure                   5   10.00 (6-12)     38.0   2.00      0
+
+## low-exploration (5 seeds)
+branch / condition                         runs alive(min-max) hungerMed known gifted
+baseline / unchanged                          5  24.00 (24-24)      7.1   2.00      0
+baseline / berry-failure                      5     8.00 (6-9)     12.0   2.00      0
+provision / unchanged                         5  24.00 (24-24)      7.1   2.00   2400
+provision / berry-failure                     5  24.00 (24-24)     11.9   2.00   2400
+provision / continued-provision               5  24.00 (24-24)      7.1   2.00   3600
+provision / continued-provision+failure       5  24.00 (24-24)      6.3   2.00   3600
+access / unchanged                            5  24.00 (24-24)      6.7   2.00      0
+access / berry-failure                        5     8.00 (6-9)     12.6   2.00      0
+information / unchanged                       5  24.00 (24-24)      7.1   2.00      0
+information / berry-failure                   5     8.00 (7-9)     10.9   2.00      0
+
+## high-exploration (5 seeds)
+branch / condition                         runs alive(min-max) hungerMed known gifted
+baseline / unchanged                          5  24.00 (24-24)     12.0   2.00      0
+baseline / berry-failure                      5    8.80 (6-11)     34.3   2.00      0
+provision / unchanged                         5  24.00 (24-24)     12.0   2.00   2400
+provision / berry-failure                     5  24.00 (24-24)     13.7   2.00   2400
+provision / continued-provision               5  24.00 (24-24)     12.0   2.00   3600
+provision / continued-provision+failure       5  24.00 (24-24)     12.0   2.00   3600
+access / unchanged                            5  24.00 (24-24)     12.0   2.00      0
+access / berry-failure                        5    9.60 (8-11)     36.0   2.00      0
+information / unchanged                       5  24.00 (24-24)     12.0   2.00      0
+information / berry-failure                   5    9.00 (7-11)     28.1   2.00      0
+
+## low-regeneration (5 seeds)
+branch / condition                         runs alive(min-max) hungerMed known gifted
+baseline / unchanged                          5  20.80 (19-22)     54.4   2.00      0
+baseline / berry-failure                      5     6.40 (5-8)     15.1   2.00      0
+provision / unchanged                         5  24.00 (24-24)     12.0   2.00   2400
+provision / berry-failure                     5  24.00 (24-24)     20.0   2.00   2400
+provision / continued-provision               5  24.00 (24-24)     12.0   2.00   3600
+provision / continued-provision+failure       5  24.00 (24-24)     12.0   2.00   3600
+access / unchanged                            5  20.60 (20-22)     47.9   2.00      0
+access / berry-failure                        5     6.40 (6-7)     15.4   2.00      0
+information / unchanged                       5  20.20 (19-21)     50.1   2.00      0
+information / berry-failure                   5     5.20 (4-6)     16.1   2.00      0
+
+## high-regeneration (5 seeds)
+branch / condition                         runs alive(min-max) hungerMed known gifted
+baseline / unchanged                          5  24.00 (24-24)     12.0   2.00      0
+baseline / berry-failure                      5  14.20 (13-16)     53.1   2.00      0
+provision / unchanged                         5  24.00 (24-24)     12.0   2.00   2400
+provision / berry-failure                     5  24.00 (24-24)     13.0   2.00   2400
+provision / continued-provision               5  24.00 (24-24)     12.0   2.00   3600
+provision / continued-provision+failure       5  24.00 (24-24)     12.0   2.00   3600
+access / unchanged                            5  24.00 (24-24)     12.0   2.00      0
+access / berry-failure                        5  14.00 (12-16)     51.2   2.00      0
+information / unchanged                       5  24.00 (24-24)     12.0   2.00      0
+information / berry-failure                   5  14.40 (13-18)     58.3   2.00      0
+
+## rule-policy (5 seeds)
+branch / condition                         runs alive(min-max) hungerMed known gifted
+baseline / unchanged                          5  24.00 (24-24)     28.0   2.00      0
+baseline / berry-failure                      5  11.20 (10-13)     34.0   2.00      0
+provision / unchanged                         5  24.00 (24-24)     28.0   2.00   2400
+provision / berry-failure                     5  24.00 (24-24)     28.0   2.00   2400
+provision / continued-provision               5  24.00 (24-24)     28.0   2.00   3600
+provision / continued-provision+failure       5  24.00 (24-24)     28.0   2.00   3600
+access / unchanged                            5  24.00 (24-24)     28.0   2.00      0
+access / berry-failure                        5   10.80 (5-13)     37.6   2.00      0
+information / unchanged                       5  24.00 (24-24)     28.0   2.00      0
+information / berry-failure                   5  11.20 (10-13)     33.6   2.00      0
+
+## recovery notes (baseline 20 seeds)
+baseline/unchanged                         {"Recovered after sampled worsening":20}
+baseline/berry-failure                     {"Recovered after sampled worsening":20}
+provision/unchanged                        {"Recovered after sampled worsening":20}
+provision/berry-failure                    {"Recovered after sampled worsening":20}
+provision/continued-provision              {"Recovered after sampled worsening":20}
+provision/continued-provision+failure      {"Recovered after sampled worsening":20}
+access/unchanged                           {"Recovered after sampled worsening":20}
+access/berry-failure                       {"Recovered after sampled worsening":20}
+information/unchanged                      {"Recovered after sampled worsening":20}
+information/berry-failure                  {"Recovered after sampled worsening":20}
+
+## mean gathering skill (0-1) at day 15, unchanged
+baseline       0.170 max 0.170
+provision      0.117 max 0.119
+access         0.170 max 0.170
+information    0.170 max 0.170
+
+## deaths during training (per branch run): [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+food stock at day 10 (all patches) baseline: 216 provision: 1299
+seed 41 provision day10 patches: a:111 b:108 g2:1072
+baseline: tick anyone first knows root garden: [177,285,229,177,109,125,105,265,161,117,133,161,129,201,193,213,85,145,233,137]
+baseline: tick creature 0 first knows root garden: [1033,721,665,1417,1141,965,873,1309,937,553,585,901,233,397,345,1337,669,941,1189,341]
+berry-failure deaths individual ids, seed 41 baseline: 0,3,4,8,9,10,13,15,17,19,20,23
+creature 0 alive after berry-failure: baseline 8 /20, information 10 /20

@@ -1,0 +1,80 @@
+
+> island@0.1.1 test
+> node --test tests/*.test.mjs
+
+TAP version 13
+# Subtest: repeatability and mid-action save restore
+ok 1 - repeatability and mid-action save restore
+  ---
+  duration_ms: 86.251821
+  type: 'test'
+  ...
+# Subtest: food accounting reconciles
+ok 2 - food accounting reconciles
+  ---
+  duration_ms: 261.571192
+  type: 'test'
+  ...
+# Subtest: unobserved food cannot affect decisions
+ok 3 - unobserved food cannot affect decisions
+  ---
+  duration_ms: 1.721548
+  type: 'test'
+  ...
+# Subtest: reveal gives one creature location but no actual stock
+ok 4 - reveal gives one creature location but no actual stock
+  ---
+  duration_ms: 0.183418
+  type: 'test'
+  ...
+# Subtest: crossing shortens a real route
+ok 5 - crossing shortens a real route
+  ---
+  duration_ms: 0.541635
+  type: 'test'
+  ...
+# Subtest: learning can be removed without removing gathering
+ok 6 - learning can be removed without removing gathering
+  ---
+  duration_ms: 42.587168
+  type: 'test'
+  ...
+# Subtest: deprivation causes death; losses remain recorded
+ok 7 - deprivation causes death; losses remain recorded
+  ---
+  duration_ms: 127.846561
+  type: 'test'
+  ...
+# Subtest: invalid saves fail without mutating current world
+ok 8 - invalid saves fail without mutating current world
+  ---
+  duration_ms: 1.514602
+  type: 'test'
+  ...
+# Subtest: gifts are accounted separately
+ok 9 - gifts are accounted separately
+  ---
+  duration_ms: 25.381691
+  type: 'test'
+  ...
+# Subtest: commands can replay exactly at original ticks
+ok 10 - commands can replay exactly at original ticks
+  ---
+  duration_ms: 20.373427
+  type: 'test'
+  ...
+# Subtest: invalid routes and unknown targets rejected
+ok 11 - invalid routes and unknown targets rejected
+  ---
+  duration_ms: 0.504256
+  type: 'test'
+  ...
+1..11
+# tests 11
+# suites 0
+# pass 11
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 656.387526
