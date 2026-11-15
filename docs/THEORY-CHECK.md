@@ -1,6 +1,6 @@
 # Theory check: Robert's statements → code → evidence
 
-Purpose: stop drift. Each line is something Robert stated, how the model does it, and the test or run that shows it. Last checked: 0.3.1 (defect fixes and corrections after Edge's review), 15 November 2026.
+Purpose: stop drift. Each line is something Robert stated, how the model does it, and the test or run that shows it. Last checked: 0.3.2 (salt registry is one table; released interrupts stay on memory), 15 November 2026.
 
 | # | Robert's statement | How the model does it | Evidence |
 |---|---|---|---|
@@ -19,6 +19,8 @@ Purpose: stop drift. Each line is something Robert stated, how the model does it
 | 10 | Reproduction, "mathematically statistical and coherent" | 1 day = 1 year. Women 15–40, men 15+; 20% monthly chance of conception when fed and near a partner; 9-month gestation; 1.8 years of postpartum infertility; ~51% boys; children under 5 stay with a carer and share food; curiosity inherited (h² = 0.4); pain after release (Genesis 3:16). | `eden-family.test`: sexes, ages, spacing ≥ 2.55 years; mean birth interval 2.55–6 years; ledger. Six-seed 30-year run: mean interval 3.7–6.7 years (real natural fertility ≈ 3) |
 
 ## Drift caught and corrected
+- **Released interrupt read live stock.** A hungry creature broke off its action when a source it remembered as empty actually held food. It now uses the remembered amount only (`streams.test` S3). The Creator, while guiding, still knows true stock.
+- **Random draws shared salts.** The serpent's 77 sat inside the Creator's 70–87, and the Creator's 50–67 sat inside island explore 40–57. One table, `STREAMS`, gives each process its own range (`streams.test` S1, S2). Island salts were not moved.
 - **Step 1, loop between creature and Creator:** a creature that was hungry and thirsty chose water, the Creator sent it to food, it chose water again, and so on (69,000 overrides; thirst never met). The Creator now accepts any choice that meets a real need.
 - **Step 1, work lost on interruption:** urgent thirst broke off crafting, and the half-made garment vanished, so no one was ever clothed. Work is now kept and resumed.
 - **Step 1, guided creatures half-blind:** they only reconsidered at the end of long trips, so thirst ran high and sight fell to ~1.9 tiles. Pressing needs now interrupt.

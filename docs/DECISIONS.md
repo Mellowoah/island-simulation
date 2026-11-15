@@ -2,6 +2,13 @@
 
 Each entry records who decided, what changed, and why. Robert decides the intended experience and scope. On 14 Nov 2026 he asked Claude to take the lead on the open review items, with Grok reviewing.
 
+## 0.3.2 — 15 November 2026 (salt registry completed; hidden-stock interrupt stays memory-only)
+
+| ID | Decision | Source |
+|---|---|---|
+| D27 | One salt table, `STREAMS` in `dist/sim.js`. Every island and Eden draw reads it. No range overlaps another, including the serpent (77) and the Creator's redirect (now 300–337, off the old 50–67 and 70–87). Island salt numbers are the same as before, so main-island saves and experiment rows are byte-identical. Eden histories are the 0.3.1 histories (already different from 0.3.0). Tests S1, S2. | Edge |
+| D28 | Released interrupt stays on remembered stock only (D24). Test S3: changing stock the creature has not seen, including a source it remembers as empty, does not change the decision. The Creator's guided check still reads true stock, on purpose. | Edge |
+
 ## 0.3.1 — 15 November 2026 (corrections after Edge's 14:41 UTC review; Robert's new direction)
 
 | ID | Decision | Source |
