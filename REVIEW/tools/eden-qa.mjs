@@ -17,7 +17,7 @@ await page.screenshot({ path: 'shots/eden-01-start.png' });
 await page.locator('#speed').tap(); await wait(15000);
 await page.locator('details summary').tap(); await wait(300);
 const knowledge = await txt('#knowledge'); const decision = await txt('#decision');
-rec('inspector shows sex, age, curiosity, serpent and guidance', /(Female|Male) · age \d+/.test(knowledge) && /Curiosity \d+%/.test(knowledge) && /led by the Creator/.test(knowledge), knowledge.replace(/\n/g, ' | '));
+rec('inspector shows sex, age, curiosity, serpent and guidance', /(Female|Male) · age \d+/.test(knowledge) && /Sight \d+ tiles/.test(knowledge) && /Curiosity \d+%/.test(knowledge) && /led by the Creator/.test(knowledge), knowledge.replace(/\n/g, ' | '));
 await page.screenshot({ path: 'shots/eden-02-running.png', fullPage: true });
 let guidedSeen = false;
 for (let i = 0; i < 24 && !guidedSeen; i++) { if (/not its own decision/.test(await txt('#decision'))) guidedSeen = true; else { await page.locator('#next').tap(); await wait(80); } }

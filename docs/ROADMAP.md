@@ -1,6 +1,6 @@
 # Eden roadmap: inner life, mapped before building
 
-Status: **draft for Robert and Grok, 15 November 2026. Nothing below is built yet.**
+Status: **step 1 built (0.3.0, 15 November 2026); steps 2–5 not built.** Robert's choices: Eden only; learned trust including the Creator's word (step 4); self-model measures in step 2.
 Rule for every step: the *rules* are written in, the *outcomes* are not. Every step must:
 - keep the drift check green;
 - add a THEORY-CHECK row;

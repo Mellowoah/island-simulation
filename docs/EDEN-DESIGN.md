@@ -22,6 +22,17 @@ Requested by Robert, 14–15 November 2026. Eden is a **separate world**: the ma
      - **Make clothing** ("garments of skin"): `craftWork` ticks. Removes exposure.
      - **Make a tool** ("implements of bronze and iron"): `craftWork` ticks. +1 food per completed gather and faster cultivation.
 
+## Senses and needs (0.3.0, roadmap step 1)
+- **Sight.** Sight depends on condition: radius = 4 × min(1, (100 − hunger)/50, (100 − thirst)/50, energy/40, health/50), never below a quarter (1 tile). A neglected body perceives less, so it finds less.
+- **Water.** The River of Eden (Genesis 2:10) is in the garden, with two springs east of the channel; all must be discovered by sight.
+  - Thirst rises 0.4 per minute. After release, 40 minutes at full thirst kills.
+  - From full health, death by thirst comes ~7× sooner than death by hunger, matching the ~3 days without water vs ~3 weeks without food rule of thumb.
+- **Health.** Injury (a fall on 0.2% of steps, −15) and illness (losing health while starving or parched) **begin only after release**. Rest heals fastest. Low health slows movement and dims sight, and at zero it kills (after release).
+- **Interruptions.**
+  - **While guided:** the Creator steps in as soon as a need crosses its line, leading to the most urgent need (water, then rest, then food). It never overrules a choice that already meets a real need.
+  - **Once released:** a creature breaks off what it is doing when thirst ≥ 60 or hunger ≥ 70, if it knows where to go.
+  - **Work in progress:** work on clothing, tools and fields is kept when interrupted and resumed later.
+
 ## Family (0.2.1)
 - **Time scale:** 1 simulated day = 1 year.
 - **Fertility:** women can conceive from 15 to 40, men from 15. The chance is 20% per month (couples: 15–25%) while both are fed (hunger < 40, energy > 40) and within 4 tiles of each other.

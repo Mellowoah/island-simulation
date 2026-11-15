@@ -2,6 +2,14 @@
 
 Each entry records who decided, what changed, and why. Robert decides the intended experience and scope. On 14 Nov 2026 he asked Claude to take the lead on the open review items, with Grok reviewing.
 
+## 0.3.0 — 15 November 2026 (Robert hired Claude as game developer and theologian to keep the build coherent)
+
+| ID | Decision | Source |
+|---|---|---|
+| D20 | Roadmap choices: Eden only; learned trust including the Creator's word (step 4); self-model measures (step 2); map before building | Robert, on Claude's recommendation |
+| D21 | Step 1: senses depend on condition; water (River of Eden, Genesis 2:10, plus two springs); thirst ~7× deadlier than hunger; health with injury and illness only after release | Claude (developer/theologian); figures from the 3-days/3-weeks rule of thumb |
+| D22 | Coherence fixes found while building step 1: the Creator accepts any choice meeting a real need (no override loops); pressing needs interrupt actions; interrupted work is kept | Claude, drift check and diagnosis |
+
 ## 0.2.2 — 15 November 2026 (Robert: "as long as we can test theories within the confines of what we're building I'm OK with what we change")
 
 | ID | Decision | Source | Files |

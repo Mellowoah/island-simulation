@@ -24,7 +24,7 @@ test('While guided no one dies; every override records the creature\'s own inten
     for (const c of s.creatures) {
       const g = c.decision?.guided;
       if (g && c.decision.tick === s.tick) {
-        assert.ok(g.intended && g.to && /^(Tired|Hungry|Curiosity)/.test(g.reason), g.reason);
+        assert.ok(g.intended && g.to && /^(Thirsty|Tired|Hungry|Curiosity)/.test(g.reason), g.reason);
       }
     }
   }

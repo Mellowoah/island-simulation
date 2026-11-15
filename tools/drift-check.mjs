@@ -14,7 +14,7 @@ const g = createEden(42); let preDeath = false, overrideOk = true;
 for (let t = 0; t < 3 * DAY; t++) {
   edenStep(g);
   if (g.eden.phase === 'guided' && g.creatures.some(c => !c.alive)) preDeath = true;
-  for (const c of g.creatures) { const d = c.decision; if (d?.guided && d.tick === g.tick && !(d.guided.intended && /^(Tired|Hungry|Curiosity)/.test(d.guided.reason))) overrideOk = false; }
+  for (const c of g.creatures) { const d = c.decision; if (d?.guided && d.tick === g.tick && !(d.guided.intended && /^(Thirsty|Tired|Hungry|Curiosity)/.test(d.guided.reason))) overrideOk = false; }
 }
 const e = createEden(50); edenStep(e, 4 * DAY);
 const all = [g, e];
@@ -32,6 +32,14 @@ check(9, 'After release, production is hard work, not abundance (one field ≈ o
 const iv = edenMetrics(e).birthIntervals, mean = iv.length ? iv.reduce((a, b) => a + b, 0) / iv.length : NaN;
 check(10, 'Reproduction stays within natural-fertility statistics', EDEN_DEFAULTS.fecundability >= 0.15 && EDEN_DEFAULTS.fecundability <= 0.25 && EDEN_DEFAULTS.menarche === 15 && EDEN_DEFAULTS.menopause === 40 && (iv.length === 0 || mean >= EDEN_DEFAULTS.gestation + EDEN_DEFAULTS.postpartum), iv.length ? `mean birth interval ${mean.toFixed(2)} y` : 'no intervals yet');
 for (const s of all) { const l = s.ledger; check('L', 'Food ledger reconciles (Eden)', Math.abs(l.initial + l.regenerated + l.gifted - l.consumed - (l.withdrawn ?? 0) - metrics(s).food) < 1e-6); }
+
+const { senseRadius } = await import('../dist/eden.js');
+{ const t = createEden(41), c = t.creatures[0], full = t.config.perception; const o = c.energy; c.energy = 5; const low = senseRadius(t, c); c.energy = o;
+  check(11, 'Senses depend on condition (maintain senses and life)', senseRadius(t, c) === full && low < full && low >= 1, `well ${full}, exhausted ${low}`); }
+check(12, 'Creator never overrules a choice that already meets a real need', all.every(s => s.creatures.every(c => !(c.decision?.guided && c.decision.guided.intended === 'drink' && c.decision.thirst >= s.eden.config.thirstGuide))));
+check(13, 'No harm before release (health stays whole while guided)', g.eden.phase !== 'guided' || g.creatures.every(c => c.eden.health === 100));
+{ const cfg = EDEN_DEFAULTS, r = (80 / 0.05 + 300) / (100 / cfg.thirstRate + cfg.thirstDeathTicks);
+  check(14, 'Thirst kills about 7x sooner than hunger (3 days vs 3 weeks)', r > 5 && r < 9, `ratio ${r.toFixed(1)}`); }
 
 // Island: reporting rules from the critic review must still hold.
 const w = createWorld(41, { regenA: 0, regenB: 0 }); step(w, 12000); const m = metrics(w);

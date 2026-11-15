@@ -1,6 +1,6 @@
 # Theory check: Robert's statements → code → evidence
 
-Purpose: stop drift. Each line is something Robert stated, how the model does it, and the test or run that shows it. Last checked: 0.2.1, 15 November 2026.
+Purpose: stop drift. Each line is something Robert stated, how the model does it, and the test or run that shows it. Last checked: 0.3.0 (step 1: senses and needs), 15 November 2026.
 
 | # | Robert's statement | How the model does it | Evidence |
 |---|---|---|---|
@@ -13,9 +13,15 @@ Purpose: stop drift. Each line is something Robert stated, how the model does it
 | 7 | "God releases man to their own devices", triggered by one agent eating; everyone released | The first eating moves the whole world to released; no override happens after that | `eden.test` (no guidance after release) |
 | 8 | After release: death begins, they judge for themselves | Starvation can kill only after release. Self-judgement reinforces each creature's own preferences. | `eden.test` (judgements recorded); no deaths before release in every test |
 | 9 | After release: "options for producing all necessary items… statistically possible, like creation theory" | Fields (one per adult; ~1.2× one adult's need, first harvest after half a year), clothing (stops exposure), tools. The ground yields 50% (Genesis 3:17–19). | `eden.test` (production and reconciled accounting) |
+| 11 | "Constraints and direction to maintain senses and life" | Sight shrinks with hunger, thirst, tiredness and harm (never below 1 tile). Water from the River of Eden (Genesis 2:10) and two springs. Thirst kills ~7× sooner than hunger, after release only. Health: injury and illness after release only; rest heals. | `eden-senses.test` (sight, ratio 5–9×); browser |
+| 12 | The Creator leads "in positive directions" | The Creator steps in as soon as a need crosses its line, leading to the most urgent (water, then rest, then food), but **never overrules a choice that already meets a real need** | `eden-senses.test`; drift [2] |
+| 13 | Before release, no harm | No injury, illness or death before release, even with no water at all | `eden-senses.test`; drift [4], [8] |
 | 10 | Reproduction, "mathematically statistical and coherent" | 1 day = 1 year. Women 15–40, men 15+; 20% monthly chance of conception when fed and near a partner; 9-month gestation; 1.8 years of postpartum infertility; ~51% boys; children under 5 stay with a carer and share food; curiosity inherited (h² = 0.4); pain after release (Genesis 3:16). | `eden-family.test`: sexes, ages, spacing ≥ 2.55 years; mean birth interval 2.55–6 years; ledger. Six-seed 30-year run: mean interval 3.7–6.7 years (real natural fertility ≈ 3) |
 
 ## Drift caught and corrected
+- **Step 1, loop between creature and Creator:** a creature that was hungry and thirsty chose water, the Creator sent it to food, it chose water again, and so on (69,000 overrides; thirst never met). The Creator now accepts any choice that meets a real need.
+- **Step 1, work lost on interruption:** urgent thirst broke off crafting, and the half-made garment vanished, so no one was ever clothed. Work is now kept and resumed.
+- **Step 1, guided creatures half-blind:** they only reconsidered at the end of long trips, so thirst ran high and sight fell to ~1.9 tiles. Pressing needs now interrupt.
 - **Fields were 4–5× too productive** (86 food a day against an adult need of 18), making life after the fall richer than the garden. That contradicts statements 8–9 and Genesis 3:17–19. Now ~22 a day.
 - **Growth time ignored the 1 day = 1 year scale** (2 "years" to first harvest). Now half a year.
 - **Babies could forage alone if orphaned.** They now stay with their father.

@@ -1,9 +1,9 @@
 // Eden world: a separate scenario built on the island core. See docs/EDEN-DESIGN.md.
 // Phases: guided (Creator's warning at birth, Creator leads choices that fall outside what is best,
 // no death) -> released (first creature to eat from the tree; everyone released at once).
-import { W, DAY, clamp, land, path, createWorld, observe, decide, event, noise2, seedKey } from './sim.js';
+import { W, DAY, clamp, land, path, createWorld, decide, event, noise2, seedKey } from './sim.js';
 
-export const EDEN_VERSION = 1;
+export const EDEN_VERSION = 2;
 export const EDEN_DEFAULTS = {
   tree: [13, 12],          // "in the midst of the garden"; next to where creatures begin
   curiosityMin: 0.2, curiosityMax: 0.9,
@@ -29,6 +29,17 @@ export const EDEN_DEFAULTS = {
   maleRatio: 0.512,         // probability a birth is male (~105 boys per 100 girls)
   heritability: 0.4,        // curiosity: child = mean + h2 x (midparent - mean) + noise
   populationCap: 96,        // technical limit for phone performance; conception stops at the cap (reported)
+  // Step 1: senses and needs. "A river went out of Eden to water the garden" (Gen 2:10).
+  springs: [['River of Eden', 11, 14], ['East spring', 25, 9], ['South-east spring', 24, 19]],
+  thirstRate: 0.4,          // per minute; with thirstDeathTicks, death by thirst comes ~7x sooner than by hunger
+  thirstDeathTicks: 40,     //   (rule of thumb: ~3 days without water vs ~3 weeks without food)
+  thirstWeight: 1.1, thirstGuide: 30,
+  senseFloor: 0.25,         // sight never falls below a quarter of normal
+  senseHungerSpan: 50, senseThirstSpan: 50, senseEnergySpan: 40, senseHealthSpan: 50,
+  injuryChance: 0.002, injuryDamage: 15, // per step on the ground, after release only
+  illnessRate: 0.05,        // health lost per minute while starving or parched (hunger or thirst >= 80), after release only
+  restHeal: 0.15, baseHeal: 0.01, healthRestWeight: 0.3, healthGuide: 30,
+  urgentThirst: 60, urgentHunger: 70, // a released creature breaks off what it is doing when a need becomes urgent (if it knows where to go)
 };
 const YEAR = DAY;
 const SYL = ['ka','lo','mi','ne','ra','su','te','vi','ze','do','an','el','or','ul','ya','be'];
@@ -48,14 +59,16 @@ export function createEden(seed = 41, overrides = {}, edenOverrides = {}) {
   if (!land(tx, ty, false)) throw Error('The tree must stand on land');
   s.mode = 'eden';
   s.eden = { version: EDEN_VERSION, births: 0, capReached: 0, phase: 'guided', tree: { x: tx, y: ty }, config: cfg, fallTick: null, firstEater: null,
-    decisions: 0, overrides: 0, serpentSpoke: null, deliberations: [] };
+    decisions: 0, overrides: 0, serpentSpoke: null, deliberations: [], deaths: {},
+    springs: cfg.springs.map(([name, x, y], i) => { if (!land(x, y, false)) throw Error('A spring must be on land'); return { id: 'w' + i, name, x, y }; }) };
   const k = seedKey(s.seed);
   for (const c of s.creatures) {
     c.times.work = 0;
     c.eden = { curiosity: cfg.curiosityMin + noise2(k, 0, c.id, 7) * (cfg.curiosityMax - cfg.curiosityMin),
       instruction: { source: 'Creator', text: WARNING, tick: 0 }, warning: 1, hearings: 0, credence: 0, lastSerpent: null,
-      clothed: false, tool: false, bias: { rest: 0, explore: 0, gather: 0, cultivate: 0, craft: 0 }, judged: 0, guided: 0,
-      sex: c.id % 2 ? 'M' : 'F', born: -cfg.startAge * YEAR, mother: null, father: null, pregnant: null, births: [], children: [] };
+      clothed: false, tool: false, bias: { rest: 0, explore: 0, gather: 0, cultivate: 0, craft: 0, drink: 0 }, judged: 0, guided: 0,
+      sex: c.id % 2 ? 'M' : 'F', born: -cfg.startAge * YEAR, mother: null, father: null, pregnant: null, births: [], children: [],
+      thirst: 0, parched: 0, health: 100, water: {}, sight: s.config.perception, work: { clothing: 0, tool: 0, cultivate: 0 } };
     event(s, 'Warned by the Creator: do not eat from the tree.', c);
   }
   event(s, 'Eden begins. Each creature is warned not to eat from the tree. The Creator guides them.');
@@ -65,12 +78,14 @@ export function createEden(seed = 41, overrides = {}, edenOverrides = {}) {
 // The Creator's view: knows true stocks. Returns a replacement action only when the creature's
 // own choice falls outside what is best for it; otherwise null (the choice stands as its own).
 function creatorBest(s, c) {
-  const cfg = s.eden.config, own = c.action;
-  if (c.energy < cfg.energyGuide && own.type !== 'rest')
-    return { type: 'rest', patch: null, action: { type: 'rest', left: 28 }, reason: 'Tired: the Creator leads it to rest.' };
-  if (c.hunger >= cfg.hungerGuide) {
-    const target = own.type === 'gather' ? s.patches.find(p => p.id === own.patch) : null;
-    if (target && target.stock >= 4) return null;
+  const cfg = s.eden.config, own = c.action, n = needs(s, c);
+  if (n.thirst || n.tired || n.hungry) {
+    if (serving(s, c, own, n)) return null; // its own choice already meets a real need: it stands
+    if (n.thirst) {
+      const b = nearestWater(s, c, false);
+      if (b) return { type: 'drink', patch: null, action: { type: 'drink', spring: b.w.id, route: b.r, left: 3 }, reason: `Thirsty: the Creator leads it to ${b.w.name}.` };
+    }
+    if (n.tired) return { type: 'rest', patch: null, action: { type: 'rest', left: 28 }, reason: 'Tired: the Creator leads it to rest.' };
     let best = null;
     for (const p of s.patches) {
       if (p.stock < 4) continue;
@@ -104,49 +119,106 @@ function creatorBest(s, c) {
   return null;
 }
 
+// Sight depends on condition: starving, parched, exhausted or hurt creatures see less.
+export function senseRadius(s, c) {
+  const e = c.eden, cfg = s.eden.config;
+  const f = Math.min(1, (100 - c.hunger) / cfg.senseHungerSpan, (100 - e.thirst) / cfg.senseThirstSpan, c.energy / cfg.senseEnergySpan, e.health / cfg.senseHealthSpan);
+  return Math.max(1, Math.round(s.config.perception * Math.max(cfg.senseFloor, f)));
+}
+
+function edenObserve(s, c) {
+  const r = c.eden.sight = senseRadius(s, c);
+  c.visited[c.y * W + c.x] = true;
+  for (const p of s.patches) if (Math.abs(p.x - c.x) + Math.abs(p.y - c.y) <= r) {
+    if (!c.known[p.id]) event(s, `Discovered ${p.name}.`, c);
+    const k = c.known[p.id], a = s.config.expectationRate;
+    c.known[p.id] = { expected: k ? k.expected * (1 - a) + p.stock * a : p.stock, last: s.tick };
+  }
+  for (const w of s.eden.springs) if (!c.eden.water[w.id] && Math.abs(w.x - c.x) + Math.abs(w.y - c.y) <= r) { c.eden.water[w.id] = true; event(s, `Found water: ${w.name}.`, c); }
+}
+
+// A pressing need interrupts the current action. While guided, the Creator steps in as soon as a need
+// crosses its guidance line; once released, a creature breaks off only when the need is urgent and it knows
+// where to meet it.
+// Needs above the Creator's guidance lines, and whether an action meets one of them.
+function needs(s, c) { const cfg = s.eden.config; return { thirst: c.eden.thirst >= cfg.thirstGuide, tired: c.energy < cfg.energyGuide || c.eden.health < cfg.healthGuide, hungry: c.hunger >= cfg.hungerGuide }; }
+function serving(s, c, a, n) {
+  if (a.type === 'drink') return n.thirst;
+  if (a.type === 'rest') return n.tired;
+  if (a.type === 'gather') return n.hungry && (s.patches.find(p => p.id === a.patch)?.stock ?? 0) >= 4;
+  return false;
+}
+
+function pressing(s, c) {
+  const a = c.action, cfg = s.eden.config, e = c.eden;
+  if (!a) return false;
+  if (s.eden.phase === 'guided') { const n = needs(s, c); return (n.thirst || n.tired || n.hungry) && !serving(s, c, a, n); }
+  if (e.thirst >= cfg.urgentThirst && a.type !== 'drink' && Object.keys(e.water).length) return true;
+  if (c.hunger >= cfg.urgentHunger && a.type !== 'gather' && a.type !== 'drink' && Object.keys(c.known).some(k => s.patches.find(p => p.id === k)?.stock >= 4 || c.known[k].expected >= 4)) return true;
+  return false;
+}
+
+function nearestWater(s, c, knownOnly) {
+  let best = null;
+  for (const w of s.eden.springs) {
+    if (knownOnly && !c.eden.water[w.id]) continue;
+    const r = path(c.x, c.y, w.x, w.y, s.bridge);
+    if (!r.length && (c.x !== w.x || c.y !== w.y)) continue;
+    if (!best || r.length < best.r.length) best = { w, r };
+  }
+  return best;
+}
+
 function scarcity(s, c) {
   const known = Object.values(c.known).reduce((n, k) => n + k.expected, 0);
   return 1 - Math.min(1, known / s.eden.config.scarcityRef);
 }
 
 function edenDecide(s, c) {
-  decide(s, c); // the creature's own scored choice (same rules as the main island)
-  const E = s.eden, cfg = E.config, d = c.decision;
-  if (E.phase === 'guided') {
+  decide(s, c); // the creature's own scored options (same rules as the main island)
+  const E = s.eden, cfg = E.config, d = c.decision, released = E.phase === 'released', e = c.eden;
+  // Its own choice, from its own needs (and, once released, its own learned judgements).
+  const opts = d.options.map(o => ({ ...o, score: o.score + (released ? (e.bias[o.type] ?? 0) : 0) }));
+  const rest = opts.find(o => o.type === 'rest');
+  if (rest && e.health < 100) { rest.score += (100 - e.health) * cfg.healthRestWeight; rest.reason += ` Health ${Math.round(e.health)}.`; }
+  const water = nearestWater(s, c, true);
+  if (water) opts.push({ type: 'drink', spring: water.w.id, score: (e.thirst - 8) * cfg.thirstWeight - water.r.length * 0.35 + (released ? e.bias.drink : 0), reason: `Thirst ${Math.round(e.thirst)} · ${water.w.name} ${water.r.length} tiles away` });
+  if (released) {
+    const here = !s.patches.some(p => p.x === c.x && p.y === c.y) && !(c.x === E.tree.x && c.y === E.tree.y);
+    const ownsField = s.patches.some(p => p.field && p.owner === c.id);
+    if (here && !ownsField && c.energy > 40) opts.push({ type: 'cultivate', score: cfg.cultivateWeight * scarcity(s, c) * (c.energy / 100) + e.bias.cultivate, reason: `Food I know of feels scarce (${Math.round(scarcity(s, c) * 100)}%). Till the ground here.` });
+    if (!e.clothed) opts.push({ type: 'craft', item: 'clothing', score: cfg.clothingWeight * (1 - c.energy / 100) + 2 + e.bias.craft, reason: `Exposed: make clothing${e.work.clothing ? ` (${Math.round(100 * e.work.clothing / cfg.craftWork)}% done)` : ''}.` });
+    else if (!e.tool && c.energy > 50) opts.push({ type: 'craft', item: 'tool', score: cfg.toolWeight + e.bias.craft, reason: 'Make a tool to work and gather better.' });
+  }
+  const choice = c.energy < 10 ? opts[0] : [...opts].sort((a, b) => b.score - a.score)[0];
+  d.options = opts; d.selected = choice.type; d.patch = choice.patch ?? null; d.item = choice.item ?? null; d.spring = choice.spring ?? null;
+  d.sight = e.sight; d.thirst = e.thirst; d.health = e.health;
+  if (choice.type === 'cultivate') c.action = { type: 'cultivate', route: [], left: Math.max(1, Math.round(cfg.cultivateWork * (e.tool ? cfg.toolSpeed : 1)) - e.work.cultivate) };
+  else if (choice.type === 'craft') c.action = { type: 'craft', item: choice.item, route: [], left: Math.max(1, cfg.craftWork - e.work[choice.item]) };
+  else if (choice.type === 'drink') c.action = { type: 'drink', spring: water.w.id, route: water.r, left: 3 };
+  else if (choice.type === 'rest') c.action = { type: 'rest', left: 28 };
+  else if (choice.type === 'gather' && !(c.action?.type === 'gather' && c.action.patch === choice.patch)) {
+    const p = s.patches.find(p => p.id === choice.patch);
+    c.action = { type: 'gather', patch: p.id, route: path(c.x, c.y, p.x, p.y, s.bridge), left: Math.max(4, Math.round(14 - 8 * (c.skills[p.id] ?? 0))) };
+  } else if (choice.type === 'explore' && c.action?.type !== 'explore') {
+    const x = 2 + Math.floor(draw(s, c.id, 31) * 32), y = 2 + Math.floor(draw(s, c.id, 32) * 22);
+    c.action = { type: 'explore', route: land(x, y, s.bridge) ? path(c.x, c.y, x, y, s.bridge) : [] };
+  }
+  if (!released) {
     E.decisions++;
     const best = creatorBest(s, c);
     if (best) {
-      E.overrides++; c.eden.guided++;
+      E.overrides++; e.guided++;
       d.guided = { intended: d.selected, intendedPatch: d.patch, to: best.type, patch: best.patch, reason: best.reason };
       c.action = best.action;
     }
-  } else {
-    // Released: own choice, with own learned judgements and the means to produce.
-    const opts = d.options.map(o => ({ ...o, score: o.score + (c.eden.bias[o.type] ?? 0) }));
-    const here = !s.patches.some(p => p.x === c.x && p.y === c.y) && !(c.x === E.tree.x && c.y === E.tree.y);
-    const ownsField = s.patches.some(p => p.field && p.owner === c.id);
-    if (here && !ownsField && c.energy > 40) opts.push({ type: 'cultivate', score: cfg.cultivateWeight * scarcity(s, c) * (c.energy / 100) + c.eden.bias.cultivate, reason: `Food I know of feels scarce (${Math.round(scarcity(s, c) * 100)}%). Till the ground here.` });
-    if (!c.eden.clothed) opts.push({ type: 'craft', item: 'clothing', score: cfg.clothingWeight * (1 - c.energy / 100) + 2 + c.eden.bias.craft, reason: 'Exposed: make clothing.' });
-    else if (!c.eden.tool && c.energy > 50) opts.push({ type: 'craft', item: 'tool', score: cfg.toolWeight + c.eden.bias.craft, reason: 'Make a tool to work and gather better.' });
-    const choice = c.energy < 10 ? opts[0] : [...opts].sort((a, b) => b.score - a.score)[0];
-    d.options = opts; d.selected = choice.type; d.patch = choice.patch ?? null; d.item = choice.item ?? null; d.own = true;
-    if (choice.type === 'cultivate') c.action = { type: 'cultivate', route: [], left: Math.round(cfg.cultivateWork * (c.eden.tool ? cfg.toolSpeed : 1)) };
-    else if (choice.type === 'craft') c.action = { type: 'craft', item: choice.item, route: [], left: cfg.craftWork };
-    else if (choice.type === 'rest') c.action = { type: 'rest', left: 28 };
-    else if (choice.type === 'gather' && !(c.action?.type === 'gather' && c.action.patch === choice.patch)) {
-      const p = s.patches.find(p => p.id === choice.patch);
-      c.action = { type: 'gather', patch: p.id, route: path(c.x, c.y, p.x, p.y, s.bridge), left: Math.max(4, Math.round(14 - 8 * (c.skills[p.id] ?? 0))) };
-    } else if (choice.type === 'explore' && c.action?.type !== 'explore') {
-      const x = 2 + Math.floor(draw(s, c.id, 31) * 32), y = 2 + Math.floor(draw(s, c.id, 32) * 22);
-      c.action = { type: 'explore', route: land(x, y, s.bridge) ? path(c.x, c.y, x, y, s.bridge) : [] };
-    }
-  }
-  c.action.start = { hunger: c.hunger, energy: c.energy };
+  } else d.own = true;
+  c.action.start = { hunger: c.hunger, energy: c.energy, thirst: e.thirst, health: e.health };
 }
 
 function judge(s, c, type, extra = '') {
   if (s.eden.phase !== 'released' || !c.action?.start) return;
-  const st = c.action.start, good = c.hunger < st.hunger - 0.5 || c.energy > st.energy + 1;
+  const st = c.action.start, good = c.hunger < st.hunger - 0.5 || c.energy > st.energy + 1 || c.eden.thirst < (st.thirst ?? 0) - 1 || c.eden.health > (st.health ?? 100) + 1;
   const cfg = s.eden.config, key = type in c.eden.bias ? type : 'explore';
   c.eden.bias[key] = clamp(c.eden.bias[key] + (good ? 1 : -1) * cfg.judgeRate, -cfg.biasCap, cfg.biasCap);
   c.eden.judged++;
@@ -190,28 +262,40 @@ export function edenStep(s, n = 1) {
       p.stock += add; s.ledger.regenerated += add;
     }
     const order = s.creatures.filter(c => c.alive).sort((a, b) => draw(s, a.id, 99) - draw(s, b.id, 99));
-    for (const c of order) observe(s, c);
-    for (const c of order) if (!dependent(s, c) && (!c.action || (c.energy < 5 && c.action.type !== 'rest'))) edenDecide(s, c);
+    for (const c of order) edenObserve(s, c);
+    for (const c of order) if (!dependent(s, c) && (!c.action || (c.energy < 5 && c.action.type !== 'rest') || pressing(s, c))) edenDecide(s, c);
     for (const c of order) serpent(s, c);
     for (const c of order) {
       if (dependent(s, c)) {
         const m = carer(s, c);
         c.x = m.x; c.y = m.y; c.action = null; c.times.rest++;
         c.hunger = clamp(c.hunger + s.config.hungerRate * cfg.childHunger);
+        c.eden.thirst = clamp(c.eden.thirst + cfg.thirstRate * cfg.childHunger);
       } else {
       if (!c.action) edenDecide(s, c); // a child just weaned, or an orphan
       const a = c.action;
       c.hunger = clamp(c.hunger + s.config.hungerRate);
+      c.eden.thirst = clamp(c.eden.thirst + cfg.thirstRate);
       if (released() && !c.eden.clothed) c.energy = clamp(c.energy - cfg.exposureCost);
       if (a.type === 'rest') {
         c.times.rest++; c.energy = clamp(c.energy + s.config.restGain);
         if (--a.left <= 0) { judge(s, c, 'rest'); c.action = null; }
       } else if (a.route.length) {
         c.times[a.type === 'explore' ? 'explore' : 'travel']++;
-        if (s.tick % s.config.moveEvery === 0) { [c.x, c.y] = a.route.shift(); c.energy = clamp(c.energy - s.config.moveCost); }
+        if (s.tick % s.config.moveEvery === 0) {
+          [c.x, c.y] = a.route.shift(); c.energy = clamp(c.energy - s.config.moveCost * (1 + (100 - c.eden.health) / 100));
+          if (released() && draw(s, c.id, 120) < cfg.injuryChance) { c.eden.health = clamp(c.eden.health - cfg.injuryDamage); event(s, 'Fell and was hurt.', c); }
+        }
         if (!a.route.length && a.type === 'explore') { judge(s, c, 'explore'); c.action = null; }
       } else if (a.type === 'explore') { c.action = null; }
-      else if (a.type === 'gather') {
+      else if (a.type === 'drink') {
+        if (--a.left <= 0) {
+          c.eden.thirst = 0;
+          for (const k of c.eden.children.map(i => s.creatures[i]).filter(k => k.alive && dependent(s, k))) k.eden.thirst = 0;
+          const w = s.eden.springs.find(w => w.id === a.spring); c.eden.water[w.id] = true;
+          event(s, `Drank at ${w.name}.`, c); judge(s, c, 'drink'); c.action = null;
+        }
+      } else if (a.type === 'gather') {
         c.times.gather++;
         if (--a.left <= 0) {
           const p = s.patches.find(p => p.id === a.patch), take = Math.min(p.stock, 4 + (c.eden.tool ? cfg.toolBonus : 0));
@@ -226,8 +310,9 @@ export function edenStep(s, n = 1) {
           judge(s, c, 'gather', ` at ${p.name}`); c.action = null;
         }
       } else { // cultivate or craft: work in place
-        c.times.work++; c.energy = clamp(c.energy - cfg.workCost);
+        c.times.work++; c.energy = clamp(c.energy - cfg.workCost); c.eden.work[a.type === 'craft' ? a.item : 'cultivate']++; // progress is kept if interrupted
         if (--a.left <= 0) {
+          c.eden.work[a.type === 'craft' ? a.item : 'cultivate'] = 0;
           if (a.type === 'cultivate' && !s.patches.some(p => p.x === c.x && p.y === c.y) && !s.patches.some(p => p.field && p.owner === c.id)) {
             const p = { id: 'f' + s.patches.length, name: `${c.name}'s field`, x: c.x, y: c.y, stock: 0, capacity: cfg.fieldCapacity, regen: cfg.fieldRegen, gift: false, field: true, readyTick: s.tick + cfg.growTicks, owner: c.id };
             s.patches.push(p); c.known[p.id] = { expected: 0, last: s.tick };
@@ -237,10 +322,13 @@ export function edenStep(s, n = 1) {
         }
       }
       }
+      health(s, c, released());
       if (released()) {
         c.starving = c.hunger >= 99 ? c.starving + 1 : 0;
-        if (c.starving >= s.config.starveTicks) { c.alive = false; c.death = { tick: s.tick, cause: 'Sustained food deprivation' }; c.action = null; event(s, `${c.name} died from sustained food deprivation.`); }
-      } else c.starving = 0;
+        c.eden.parched = c.eden.thirst >= 99 ? c.eden.parched + 1 : 0;
+        const cause = c.starving >= s.config.starveTicks ? 'Sustained food deprivation' : c.eden.parched >= cfg.thirstDeathTicks ? 'Thirst' : c.eden.health <= 0 ? 'Injury and illness' : null;
+        if (cause) { c.alive = false; c.death = { tick: s.tick, cause }; c.action = null; s.eden.deaths[cause] = (s.eden.deaths[cause] ?? 0) + 1; event(s, `${c.name} died: ${cause.toLowerCase()}.`); }
+      } else { c.starving = 0; c.eden.parched = 0; }
     }
     reproduce(s, order);
     for (const c of s.creatures) if (c.alive && dependent(s, c)) { const m = carer(s, c); c.x = m.x; c.y = m.y; } // children move with their carer
@@ -248,7 +336,16 @@ export function edenStep(s, n = 1) {
   return s;
 }
 
-function adultFed(s, c) { const cfg = s.eden.config; return c.alive && !dependent(s, c) && c.hunger < cfg.fedHunger && c.energy > cfg.fedEnergy; }
+// Health: harm only after release (no injury or illness in the garden before the fall).
+function health(s, c, released) {
+  const e = c.eden, cfg = s.eden.config;
+  if (!released) { e.health = 100; return; }
+  if (c.hunger >= 80 || e.thirst >= 80) e.health = clamp(e.health - cfg.illnessRate);
+  else if (c.action?.type === 'rest') e.health = clamp(e.health + cfg.restHeal);
+  else if (c.hunger < 50 && e.thirst < 50) e.health = clamp(e.health + cfg.baseHeal);
+}
+
+function adultFed(s, c) { const cfg = s.eden.config; return c.alive && !dependent(s, c) && c.hunger < cfg.fedHunger && c.energy > cfg.fedEnergy && c.eden.thirst < cfg.fedHunger; }
 
 // Fertility from demographic figures: conception hazard per tick so that P(conceive in one month) = fecundability.
 function reproduce(s, order) {
@@ -288,8 +385,9 @@ function birth(s, m, f) {
   const c = { id, name, x: m.x, y: m.y, alive: true, hunger: 20, energy: 80, starving: 0, known: {}, skills: { a: 0, b: 0 }, visited: {},
     action: null, decision: null, memories: [], consumed: 0, giftConsumed: 0, times: { travel: 0, gather: 0, rest: 0, explore: 0, work: 0 }, death: null,
     eden: { curiosity, instruction: fallen ? null : { source: 'Creator', text: WARNING, tick: s.tick }, warning: fallen ? 0 : 1, hearings: 0, credence: 0, lastSerpent: null,
-      clothed: false, tool: false, bias: { rest: 0, explore: 0, gather: 0, cultivate: 0, craft: 0 }, judged: 0, guided: 0,
-      sex: r(6) < cfg.maleRatio ? 'M' : 'F', born: s.tick, mother: m.id, father: f.id, pregnant: null, births: [], children: [] } };
+      clothed: false, tool: false, bias: { rest: 0, explore: 0, gather: 0, cultivate: 0, craft: 0, drink: 0 }, judged: 0, guided: 0,
+      sex: r(6) < cfg.maleRatio ? 'M' : 'F', born: s.tick, mother: m.id, father: f.id, pregnant: null, births: [], children: [],
+      thirst: 0, parched: 0, health: 100, water: { ...m.eden.water }, sight: s.config.perception, work: { clothing: 0, tool: 0, cultivate: 0 } } };
   s.creatures.push(c); E.births++;
   m.eden.births.push(s.tick); m.eden.children.push(id); f.eden.children.push(id);
   if (fallen) m.energy = clamp(m.energy - cfg.birthCost);
@@ -303,5 +401,6 @@ export function edenMetrics(s) {
     guidedShare: E.decisions ? E.overrides / E.decisions : 0, deliberations: E.deliberations.length,
     population: alive.length, births: E.births, deaths: s.creatures.filter(c => !c.alive).length, children: alive.filter(c => age(s, c) < E.config.menarche).length,
     birthIntervals: s.creatures.flatMap(c => c.eden.births.slice(1).map((t, i) => (t - c.eden.births[i]) / YEAR)), capReached: E.capReached,
+    deathCauses: { ...E.deaths }, meanSight: alive.length ? alive.reduce((n, c) => n + c.eden.sight, 0) / alive.length : 0,
     fields: s.patches.filter(p => p.field).length, clothed: alive.filter(c => c.eden.clothed).length, tools: alive.filter(c => c.eden.tool).length };
 }
