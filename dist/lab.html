@@ -76,6 +76,7 @@ const cv = $('map'), g = cv.getContext('2d');
 const start = () => { world = createLab(seed, { falseInformationRate: Number($('false').value) }); selected = 0; toast(`World ${seed}`); };
 const toast = t => { $('toast').textContent = t; };
 const clock = t => `Day ${Math.floor(t / 1440) + 1} · ${String(Math.floor(t % 1440 / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
+const NAMES = { eat: 'Eat', findFood: 'Find food', rest: 'Rest', explore: 'Explore', socialize: 'Socialize', share: 'Share knowledge', investigate: 'Investigate information', avoidDanger: 'Avoid danger' };
 const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 
 const SCALE = 2; cv.width = 864 * SCALE; cv.height = 528 * SCALE; // drawn at twice the size so it stays sharp on a phone
@@ -90,14 +91,14 @@ function panel() {
   const c = world.creatures[selected], d = c.decision, bar = (label, v) => `<div>${label} <span class="muted">${Math.round(v)}</span></div><div class="bar"><i style="width:${v}%"></i></div>`;
   if (!c.alive) { $('panel').innerHTML = `<h2 style="margin-top:0">${c.name}</h2>Died: ${esc(c.death.cause)} on ${clock(c.death.tick)}.`; return; }
   const trusted = Object.entries(c.trust).sort((a, b) => b[1] - a[1]);
-  $('panel').innerHTML = `<h2 style="margin-top:0">${c.name} <span class="muted">tap a creature on the map to select</span></h2>
+  $('panel').innerHTML = `<h2 style="margin-top:0">${c.name}</h2><div class="muted" style="margin-bottom:8px">Tap a creature on the map to select it.</div>
     ${bar('Hunger (lower is better)', c.needs.hunger)}${bar('Energy', c.needs.energy)}${bar('Safety', c.needs.safety)}${bar('Social', c.needs.social)}
     <div class="muted">Personality: curiosity ${c.traits.curiosity} · risk tolerance ${c.traits.risk} · trustfulness ${c.traits.trustfulness} · persistence ${c.traits.persistence} · social preference ${c.traits.social}</div>
-    <h2>Chosen action: ${d ? esc(d.chosen) : '–'} ${d ? `<span class="muted">total ${d.total}</span>` : ''}</h2>
-    ${d ? `<div class="muted">${esc(d.reason)}</div>` + [...d.options].sort((a, b) => b.total - a.total).map(o => `<div class="opt ${o.type === d.chosen ? 'win' : ''}"><span>${esc(o.type)}<small>${esc(o.reason)}${o.bonus ? ` · persistence +${o.bonus}` : ''}</small></span><span>${o.total}</span></div>`).join('') : ''}
+    <h2>Chosen action</h2><div><b>${d ? NAMES[d.chosen] : '–'}</b> ${d ? `<span class="muted">· total score ${d.total}</span>` : ''}</div>
+    ${d ? `<div class="muted">${esc(d.reason)}</div>` + [...d.options].sort((a, b) => b.total - a.total).map(o => `<div class="opt ${o.type === d.chosen ? 'win' : ''}"><span>${NAMES[o.type]}<small>${esc(o.reason)}${o.bonus ? ` · persistence +${o.bonus}` : ''}</small></span><span>${o.total}</span></div>`).join('') : ''}
     <h2>Known places (${c.knowledge.length})</h2><ul>${c.knowledge.map(k => `<li>${k.type} at ${k.x},${k.y} · confidence ${Math.round(confidence(world, k))}% · source ${esc(k.source)}${k.chain.length > 2 ? ` (first found by ${world.creatures[k.chain[0]].name})` : ''} · ${world.tick - k.tick} min old${k.verified ? '' : ' · not yet checked'}</li>`).join('') || '<li class="muted">None yet</li>'}</ul>
     <h2>Trust</h2><div class="muted">${trusted.length ? trusted.slice(0, 4).map(([id, v]) => `${world.creatures[id].name} ${Math.round(v)}`).join(' · ') + (trusted.length > 4 ? ` … lowest: ${world.creatures[trusted.at(-1)[0]].name} ${Math.round(trusted.at(-1)[1])}` : '') : 'Has not been told anything yet'}</div>
-    <h2>Recent decisions</h2><div class="muted">${c.recent.map(r => `${r.action} (${r.score})`).join(' → ') || '–'}</div>`;
+    <h2>Recent decisions</h2><div class="muted">${c.recent.map(r => `${NAMES[r.action]} (${r.score})`).join(' → ') || '–'}</div>`;
 }
 
 function update() {
