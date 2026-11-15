@@ -23,7 +23,26 @@ function terrain(world, makeCanvas) {
     const shore = !land(x + 1, y) || !land(x - 1, y) || !land(x, y + 1) || !land(x, y - 1);
     const edge = shore && !(river(x + 1) || river(x - 1)); // sand on the sea shore, grass up to the river bank
     g.fillStyle = edge ? '#d8c890' : hash(x, y) > 0.5 ? '#7cab66' : '#84b36d'; g.fillRect(x * T, y * T, T, T);
-    if (!edge && hash(y, x) > 0.82) { g.fillStyle = '#6b9a58'; g.fillRect(x * T + 3 + Math.floor(hash(x + 9, y) * 5), y * T + 3 + Math.floor(hash(x, y + 9) * 5), 2, 2); }
+    // Deterministic terrain details: purely decorative, never fed into simulation.
+    const h = hash(x + 17, y + 31), px = x * T, py = y * T;
+    if (edge) {
+      g.fillStyle = '#f0dea9'; g.fillRect(px + 1, py + 2, 4, 1);
+      if (h > .74) { g.fillStyle = '#9e9870'; g.fillRect(px + 8, py + 8, 2, 1); }
+    } else {
+      g.fillStyle = h > .5 ? '#86b873' : '#75a962'; g.fillRect(px + 1, py + 1, 3, 2);
+      if (h > .88 && Math.abs(x - c.riverX) > 2) {
+        // Small canopy with a readable trunk and ground shadow.
+        g.fillStyle = '#496c4c'; g.fillRect(px + 5, py + 8, 6, 2);
+        g.fillStyle = '#76593e'; g.fillRect(px + 5, py + 5, 2, 5);
+        g.fillStyle = '#2e674c'; g.fillRect(px + 2, py + 2, 8, 5);
+        g.fillStyle = '#44895a'; g.fillRect(px + 3, py + 1, 6, 4);
+        g.fillStyle = '#78aa69'; g.fillRect(px + 4, py + 2, 3, 2);
+      } else if (h > .64) {
+        g.fillStyle = '#356d4c'; g.fillRect(px + 4, py + 7, 1, 3); g.fillRect(px + 7, py + 6, 1, 4);
+        g.fillStyle = '#b8d58c'; g.fillRect(px + 4, py + 5, 2, 2);
+        if (h > .76) { g.fillStyle = '#efc57e'; g.fillRect(px + 8, py + 5, 2, 2); }
+      }
+    }
   }
   for (let y = 0; y < c.height; y++) if (!land(c.riverX, y)) { // river: flowing stripes, only where the island is
     if (!land(c.riverX - 1, y) && !land(c.riverX + 1, y)) continue;
@@ -45,6 +64,15 @@ export function createRenderer(makeCanvas) {
     const T = TILE, c = world.config, k = `${world.seed},${c.width},${c.height},${world.crossingsOpen.join('.')}`;
     if (k !== key) { cache = terrain(world, makeCanvas); key = k; }
     g.drawImage(cache, 0, 0);
+    // A restrained water shimmer uses presentation time only; world state stays deterministic.
+    g.fillStyle = 'rgba(166,222,224,.22)';
+    for (let y = 2; y < c.height - 2; y += 4) {
+      const x = c.riverX;
+      if (!isLand(world, x, y)) {
+        const offset = Math.floor(now / 320 + y) % 5;
+        g.fillRect(x * T + 2 + offset, y * T + 3, 3, 1);
+      }
+    }
     for (const p of world.sources) { // food shows how full it is: that is what creatures misjudge
       const x = p.x * T + 6, y = p.y * T + 6, f = p.stock / p.capacity;
       g.fillStyle = 'rgba(0,0,0,.25)'; g.beginPath(); g.arc(x, y, 8, 0, 7); g.fill();
@@ -71,6 +99,12 @@ export function createRenderer(makeCanvas) {
       else if (shape === 'triangle') { g.moveTo(x, y - 6); g.lineTo(x + 5.5, y + 4.5); g.lineTo(x - 5.5, y + 4.5); g.closePath(); }
       else { g.moveTo(x, y - 6); g.lineTo(x + 6, y); g.lineTo(x, y + 6); g.lineTo(x - 6, y); g.closePath(); }
       g.fill(); g.stroke();
+      // Pixel-scale creature personality without changing identity, position or selection.
+      // Feet, face and highlight make the four existing silhouettes read as tiny characters.
+      g.fillStyle = '#162b2d'; g.fillRect(x - 4, y + 4, 2, 2); g.fillRect(x + 2, y + 4, 2, 2);
+      g.fillStyle = '#f9f3df'; g.fillRect(x - 3, y - 2, 2, 2); g.fillRect(x + 1, y - 2, 2, 2);
+      g.fillStyle = '#152e35'; g.fillRect(x - 2, y - 1, 1, 1); g.fillRect(x + 2, y - 1, 1, 1);
+      g.fillStyle = 'rgba(255,255,255,.45)'; g.fillRect(x - 3, y - 4, 2, 1);
       const glyph = GLYPH[cr.action?.type]; if (glyph) { g.fillStyle = 'rgba(20,34,40,.85)'; g.fillRect(x + 3, y - 13, 9, 9); g.fillStyle = '#fff'; g.fillText(glyph, x + 7.5, y - 5.5); }
       if (cr.id === selected) { g.strokeStyle = '#fff'; g.lineWidth = 2; g.beginPath(); g.arc(x, y, 9 + Math.sin(now / 250), 0, 7); g.stroke(); }
     }
