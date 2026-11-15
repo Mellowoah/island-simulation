@@ -20,7 +20,7 @@ test('While guided no one dies; every override records the creature\'s own inten
   const s = createEden(42, { regenA: 0.05, regenB: 0.05 }); // scarce garden
   for (let t = 0; t < 3 * DAY; t++) {
     edenStep(s);
-    if (s.eden.phase === 'guided') assert.equal(metrics(s).alive, 24, `death before release at tick ${s.tick}`);
+    if (s.eden.phase === 'guided') assert.equal(metrics(s).alive, s.creatures.length, `death before release at tick ${s.tick}`);
     for (const c of s.creatures) {
       const g = c.decision?.guided;
       if (g && c.decision.tick === s.tick) {
@@ -60,7 +60,7 @@ test('The first to eat releases everyone at once: no more guidance, death possib
   edenStep(s, 2 * DAY);
   assert.equal(s.eden.overrides, overrides, 'no guidance after release');
   assert.ok(s.creatures.some(c => c.eden.judged > 0), 'creatures judge their own outcomes');
-  assert.ok(s.creatures.filter(c => c.alive).every(c => c.decision?.own || c.decision?.tree), 'decisions after release are their own');
+  assert.ok(s.creatures.filter(c => c.alive && c.decision && c.decision.tick > s.eden.fallTick).every(c => c.decision.own || c.decision.tree), 'decisions after release are their own');
 });
 
 test('After release, creatures can produce what they need; food accounting still reconciles', () => {

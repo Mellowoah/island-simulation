@@ -22,6 +22,18 @@ Requested by Robert, 14–15 November 2026. Eden is a **separate world**: the ma
      - **Make clothing** ("garments of skin"): `craftWork` ticks. Removes exposure.
      - **Make a tool** ("implements of bronze and iron"): `craftWork` ticks. +1 food per completed gather and faster cultivation.
 
+## Family (0.2.1)
+- **Time scale:** 1 simulated day = 1 year.
+- **Fertility:** women can conceive from 15 to 40, men from 15. The chance is 20% per month (couples: 15–25%) while both are fed (hunger < 40, energy > 40) and within 4 tiles of each other.
+- **Pregnancy and spacing:** gestation is 9 months, followed by 1.8 years of postpartum infertility. The natural-fertility birth interval is about 3 years.
+- **Sex at birth:** 51.2% male.
+- **Young children:** children under 5 stay with their mother (or father, if she has died) and share every meal they gather.
+- **Inheritance:** curiosity is inherited by regression to the mean: child = mean + 0.4 × (midparent − mean) + noise.
+- **Before release:** children are born warned and guided, and no one dies.
+- **After release:** children are born released, and each birth costs the mother 15 energy (Genesis 3:16).
+- **Cap:** the population stops growing at 96 (phone performance). Conception is blocked, never anyone killed, and the cap events are counted.
+- **See also:** `docs/THEORY-CHECK.md` for the statement-by-statement check.
+
 ## The serpent and the choice at the tree (agency)
 - The serpent hides in the tree. When a creature comes within one tile, at most once per creature per simulated day, it speaks: *"You will not die; your eyes will be opened."* (Genesis 3:4–5)
 - The claim is stored as **a claim from the serpent, not as knowledge**. It never changes `known` or verified facts. Each hearing raises that creature's **credence** in the claim: `credence = 1 − (1 − credenceStep)^hearings`.
@@ -44,4 +56,4 @@ Requested by Robert, 14–15 November 2026. Eden is a **separate world**: the ma
 - Post-release hardship (cursed ground, exposure, death) is written in from Genesis 3. Whether creatures then survive depends on what they do and on the provisional rates; nothing awards a bonus for hardship or for obedience.
 
 ## Not modelled (deferred)
-Trust between creatures, teaching, testimony spreading, reproduction and generations, a Creator's later interventions after release, any judgement of who is "good". Eden can be exported; it cannot yet be re-imported or saved in the browser.
+Trust between creatures, teaching, testimony spreading, ageing and death from old age, a Creator's later interventions after release, any judgement of who is "good". Eden can be exported; it cannot yet be re-imported or saved in the browser.

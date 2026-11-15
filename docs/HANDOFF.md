@@ -1,9 +1,9 @@
 # Handoff — 0.1.2, 14 November 2026
 
-**Status:** 0.2.0. Adds the Eden world at Robert's direction (`docs/EDEN-DESIGN.md`); the 0.1.3 critic responses are included. Awaiting Grok's review. Not complete; not tested on an iPhone; not independently validated.
+**Status:** 0.2.1. Adds the Eden world (with reproduction, and a drift check in `docs/THEORY-CHECK.md`) at Robert's direction (`docs/EDEN-DESIGN.md`); the 0.1.3 critic responses are included. Awaiting Grok's review. Not complete; not tested on an iPhone; not independently validated.
 
 ## Run it
-- `npm test`: 34 tests, all passing (11 original, 7 review regressions, 6 integration, 5 critic-response, 5 Eden).
+- `npm test`: 38 tests, all passing (11 original, 7 review regressions, 6 integration, 5 critic-response, 5 Eden, 4 Eden family).
 - `npm run experiment`: about 3.5 min; writes `results/` (not committed; regenerate it).
 - Browser: serve `dist/` with any static server (e.g. `python3 -m http.server -d dist 8000`). Reviewer browser scripts are in `REVIEW/tools/` (they need a local Playwright; they are not project dependencies).
 

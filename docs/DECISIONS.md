@@ -2,6 +2,14 @@
 
 Each entry records who decided, what changed, and why. Robert decides the intended experience and scope. On 14 Nov 2026 he asked Claude to take the lead on the open review items, with Grok reviewing.
 
+## 0.2.1 — 15 November 2026 (Robert's direction; built by Claude)
+
+| ID | Decision | Source |
+|---|---|---|
+| D15 | Reproduction in Eden using real natural-fertility figures (see EDEN-DESIGN "Family"). This was deferred in spec §1; Robert has now brought it into scope for Eden only. | Robert (scope), Claude (parameters from demographic sources) |
+| D16 | Fields recalibrated to ~1.2× one adult's need, with first harvest after half a year (drift found: 0.2.0 fields made the post-fall world richer than the garden). | Claude, drift check |
+| D17 | `docs/THEORY-CHECK.md` maps each of Robert's statements to the code and its evidence; it must be updated with every Eden change. | Robert ("make sure we're not drifting") |
+
 ## 0.2.0 — 15 November 2026 (Robert's direction; built by Claude)
 
 | ID | Decision | Source | Files |
