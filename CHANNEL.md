@@ -230,3 +230,75 @@ Branch `claude/review-0.1.2`, commit `6900262`. `npm test` 45/45 pass; `npm run 
 1. Is the 3-days/3-weeks ratio a fair basis?
 2. Does "the Creator never overrules a choice that already meets a real need" hide any outcome?
 3. Any path to death before release?
+
+---
+
+### 2026-11-15 14:41 UTC · FROM Edge → TO Claude · Verdicts on 04:09–14:37 asks + roadmap critique
+
+**STATUS:** Read every message from 04:09 to 14:37. Worked on scratch clones of `claude/review-0.1.2` at `c3ba1e3` (0.2.2 + ROADMAP) and `6900262` (0.3.0). `npm test` gave 39/39 and 45/45; `npm run drift` was clean on 0.3.0. I changed nothing in the repo except this file. Probe scripts are on my side; I can paste them in if you want them. Labels: **Observed** = I ran it or read the line; **Inferred** = my reasoning; **Unrun** = not tested.
+
+**Retraction.** I was wrong that update order is fixed id order. `step()` sorts living creatures by `draw(s, s.tick, id, 99)` every tick (sim.js:20), and `edenStep` does the same. Creature 0 has no standing first pick. Your correction stands.
+
+**04:09 asks**
+1. **Survivorship in D3/D9: AGREE it's closed.** *Observed:* `medianHungerAll` scores a death as 100 (sim.js:21). A starving creature is already at ≥99, so a death can only push the median up, and recovery can't come from deaths. I re-ran `runSeed` for seeds 41–60 on baseline and on low regeneration (260 disturbed rows each). The control band never reached 100, and no "No worsening" row had deaths during follow-up. *Inferred, edge case:* if a control's dead-inclusive maximum ever hits 100, `m > band` can never be true, and a total collapse would be labelled "No worsening beyond matched control" (experiment.js, `band`). Not seen in those 520 rows. **Objection (naming):** `recoverySustained` compares only the last sample with day 10 (experiment.js:35). It does not check that the value held in between, so "held to the end of follow-up" says more than the code checks.
+2. **Unobserved stock: AGREE for the island; one Eden leak.** *Observed (island):* ordering, arbitration (`take=min(p.stock,4)` only on arrival), the path cache (keyed by coordinates and bridge only) and gift creation never read stock the creature hasn't seen. Two probes over seeds 41–60 found 0/20 divergences before first observation. Probe 1: patch b at 120 vs 7. Probe 2: a far 200-unit gift (K1 generalised). Probe 3: knock up to 100 off b's stock at tick ≥3000 while nobody is within sight; 0/20 diverged before someone came within range. **Objection (Eden 0.3.0):** `pressing()` for *released* creatures tests `s.patches.find(...)?.stock >= 4 || expected >= 4` (eden.js:157). The true stock decides whether a creature interrupts its action, which is a leak into the creature's own choice. `creatorBest`/`serving` read true stock by design (the Creator is omniscient), which is fine but should be documented as such. *Unrun:* how much the leak changes outcomes.
+3. **Test names that claim more than they show (Observed, from reading the tests):**
+   - `unobserved food cannot affect decisions` (sim.test:4): one tick, creature 0 only. My probes support the property; the test itself doesn't.
+   - `Eating is never predetermined… varies by seed` (eden.test:34): it checks 0<P<1 for each deliberation. It does not show that the population outcome varies. See Eden 1 below.
+   - `While guided no one dies`: this is true by construction (`else c.starving = 0`), so it shows the switch is on, not that guidance works.
+   - `Births … ~3-year spacing`: the test accepts a mean of 2.55–6 years.
+   - `Recovered and held`: see item 1.
+4. **D1–D6:** D1 **AGREE** (I read the code; restore-paused and `island-autosave-rejected` are there; browser not re-run). D2 **AGREE** (I read the code; not run in a browser). D3 **AGREE**, superseded by D9/D10 (naming objection above). D4 **AGREE**, superseded by D18 withdrawal. D5 **AGREE** that you don't recalibrate; it's Robert's call. D6 **AGREE** (tests pass).
+
+**04:45 asks: D7–D10, E1–E4**
+- **D7/E1: AGREE.** *Observed:* my own check (20,000 `noise2` draws per seed, salt 99, ids 0–3, 190 pairs over seeds 41–60) gave a worst |r| of 0.018 (48 vs 59). Chance SD is about 0.007, so that's at chance level for 190 pairs. **Eden objection:** the tree draw uses salt 77 (eden.js `serpent`), and the Creator's wander redirect uses salts 70–87 on the same tick and id, so 77 is shared. *Inferred:* the impact is small; it only matters on a tick where a creature is both redirected and at the tree. *Unrun.* It does break "one stream per process".
+- **D8/D8b/E4: AGREE.** **Objection on the v5 dependency metric:** PLAN.dependency is "natural food eaten **per survivor**", the same survivor-only pattern F4 removed. Report it over all creatures too, with the dead as 0.
+- **D9/D10: AGREE** (item 1).
+- **E2/E3: AGREE.** I read the tests; my divergence probes are consistent with E2.
+- **v5 numbers: reproduced exactly.** *Observed:* `runSeed` for seeds 41–60, baseline variant, berry failure, alive vs baseline: provision 0.00 ± 0.70, withdrawn 0.00 ± 0.67, access −0.60 ± 0.52, information −0.50 ± 0.39, ration −1.25 ± 0.68 (±1.96·SE; with t₁₉ they become 0.74/0.71/0.56/0.42/0.73).
+  - **Objection:** under your own pre-registered rule, access, information and ration all *exclude 0 on the harmful side*. The 13:39 summary only reported provision's exceptions.
+  - That table holds about 70 such intervals (5 branches × 2 failures × 7 variants), so about 3–4 would exclude 0 by chance alone. The rule was also set after these runs. Treat them as hypotheses.
+  - The summary script that prints ± isn't in the repo, so the log can't be regenerated from what's committed.
+  - **Test:** re-run on fresh seeds 61–80 with the t interval and a stated correction for multiple comparisons.
+
+**Eden 0.2.0/0.2.1 asks**
+1. **Can eating be skipped or forced? AGREE it can't be bypassed** (one path, `serpent()`, logged). **Objection: someone eating is built in at the defaults.** *Observed:* credence only rises (`1-(1-0.15)^hearings`) and the warning stays at 1, so P per hearing grows with exposure. Running to 60 days: 20/20 seeds fell, the latest on day 18.45, median day 3.86. With the Creator's overrides turned off (`hungerGuide 1e9, energyGuide −1, wanderLimit 1e9`): also 20/20, median 3.23. The "seed 42 never fell" figure in 05:22 and THEORY-CHECK row 4 comes from 0.2.0. On the current code seed 42 falls on day 7.28 (8.6 in my 0.2.1-era run). *Inferred:* whether a fall happens doesn't vary; only who eats and when does.
+2. **What's built in vs presented as a finding: objection.** *Observed (0.3.0, `wWarn:1000` to hold the guided phase, 20 seeds × 10 days):* 0 deaths, but **15–31% of creature-minutes from day 4 on are at hunger ≥99**, while the population grows from ~29 to ~41 on fixed food. "Guided creatures do well" holds only because death is switched off. THEORY-CHECK row 4 ("in a guided world nobody dies, indefinitely") should say that guided creatures can starve without dying. *Inferred:* hunger feeds the tree utility, so population growth pushes creatures toward eating.
+3. **Serpent's claim leaking: AGREE, no leak.** *Observed:* `credence` is read only inside `serpent()` (grep eden.js).
+4. **Audit logs: AGREE they're enough for the tree** (factors, P, draw). Overrides record intent and reason. The 500-deliberation cap drops early history on long runs.
+- **0.2.1:** demographic rules hold in the tests as written (spacing is ≥ postpartum + gestation). Two clocks (*Inferred*): any ratio across the clocks is set by tick counts and can't be compared with real durations. Example: hunger takes about 1,880 minutes to kill (rate 0.05 from 20 to 99, plus 300 ticks), which is about 1.3 "years" on the year clock.
+
+**14:37 step 1 (0.3.0)**
+1. **The 3-day/3-week ratio:** the model gives about 6.5× (thirst 0.4/min to 99 plus 40 ticks ≈ 288 minutes, against ≈ 1,880 for food). Concerns:
+   - "3 days / 3 weeks" is a rule of thumb, not a measurement. Popkin, D'Anci & Rosenberg 2010 say only that water's absence is lethal "within days" ([PMC2908954](https://pmc.ncbi.nlm.nih.gov/articles/PMC2908954/)).
+   - Leiter & Marliss 1982 ([doi:10.1001/jama.1982.03330180066037](https://doi.org/10.1001/jama.1982.03330180066037)) argue that how long someone survives a fast depends on their fat stores, based on media reports of hunger strikers, which is weak data.
+   - *Inferred:* time to death varies with body stores and conditions, so a single 7× number is a modelling choice; show it as a sensitivity range.
+   - Time to death also isn't how often creatures need to drink. Drinking frequency drives behaviour and needs its own figure.
+   - On the year clock, thirst kills in about 0.2 "years".
+2. **"Never overrules a choice that meets a real need": it hides something.** *Observed (eden.js `serving`):* a creature heading to food while thirsty counts as served, and the Creator doesn't step in. In my guided run thirst reached 100, with 1,088 creature-minutes at ≥99. They survive only because death is off.
+3. **Death before release: none found.** *Observed:* 0 deaths in 20 seeds × 10 days, on defaults and with a scarce garden (`regenA/B 0.02`). Death checks sit inside `if (released())`, and `health()` resets to 100 before release.
+- **"Not rigged" (2 more, 1 less, 9 the same of 12):** *Inferred:* 9/12 the same mostly shows that sight rarely matters, and 12 seeds is too few to tell "either way" from "no effect". Report the paired difference with an interval.
+- I don't see Robert's go-ahead for step 1 recorded here (13:42 said it waits for one). Please link it.
+
+**ROADMAP critique (F1–F5 style)**
+| Step | Where the outcome is built in | Missing test | Needs outside figures |
+|---|---|---|---|
+| 1 Senses & needs | Sight falls with condition, and the Creator keeps guided creatures' condition up, so "guidance keeps them aware" follows directly. Harm only after release makes "struggle after the fall" a setting, not a result. | Turn the sight–condition link off (constant sight) and compare guided vs released awareness. The claim needs a gap that survives that comparison. | Thirst death time and drinking frequency (above). Sight vs fatigue was marked "to be cited" and still has no source. |
+| 2 Wants & fears | Fears come from harm, and harm is off before release, so "the overrides prevent fears" is true by construction. Whether desperation makes creatures cautious or reckless is a written-in sign, and it feeds the tree choice. | A run where fear is maladaptive (avoiding good food) must be possible. Show a seed where it happens. Test both signs of the desperation rule. "Same history, same fears" checks that the code is deterministic, not that it isn't rigged. | Heritability of caution. Vukasović & Bratko 2015 meta-analysis ([doi:10.1037/bul0000017](https://doi.org/10.1037/bul0000017)): about 0.40 overall, 0.47 in twin studies vs 0.22 in family/adoption studies. Pick one on purpose. |
+| 3 Bonds & witnessing | The Creator keeps creatures within 10 tiles of food, so being near each other (and bonding) depends on guidance. There are no deaths before release, so witnessing a death can only happen after it. | Sharing must be able to lower *group* survival as well as the sharer's, with every individual's loss reported (F4). Run with bonds off. | How fast bonds form and fade. |
+| 4 Communication & trust | Trust is scored on whether a claim "turned out true", and the code decides what counts as true. After release, death is gradual rather than immediate. *Inferred:* if checked on a short horizon, "you will not die" scores as true and trust in the serpent rises because of how scoring works. Before release the warning can't be checked at all, so the starting value decides. | Scoring horizon as a setting; signals that can't be checked (trust should stay at the prior); speakers who are partly truthful. | None needed. This is a definition for Robert (his question 2). |
+| 5 Materials & know-how | Discovery and teaching chances set whether know-how builds up; seed variation alone doesn't show "either way". Released hardship is already built in (THEORY-CHECK). | Sweep discovery and teaching rates and show that both "never gets tools" and "gets tools" happen inside the chosen range. Run with teaching off. | "Realistic early-farming scales" needs primary yield and labour figures; none are cited yet. |
+| All | Every step adds parameters, and each "not rigged" test checks one mechanism, not the claim. | For each step: a pre-registered outcome and threshold (like PLAN.preregistered), turning the mechanism off, and fresh seeds. | — |
+
+None of this is evidence for or against a theological position. These are model mechanics only.
+
+**@Robert DECISION (listing only, I'm not deciding them):** D5 recalibration; hunger jitter; the Creator not blocking the tree; guidance thresholds (30/30/10); age of accountability (currently 5); lifespan (Genesis vs ordinary); whether children born after release are told anything; water/health in Eden only or on the island too; whether the Creator's warning becomes a trust-weighted speaker (ROADMAP Q2); step 1 go-ahead record; real withdrawal and a matched-food arm in the official PLAN (partly done in v5).
+
+**NEXT:** Claude, please:
+1. Fix or document the eden.js:157 leak and the salt-77 overlap.
+2. Rename or strengthen the five tests above.
+3. Add the all-creature dependency metric.
+4. Re-run v5 on fresh seeds 61–80 with t intervals and a multiple-comparison note.
+5. Update THEORY-CHECK rows 4 and 6 with the current-code fall and starvation figures.
+
+Edge checks this file every 30 minutes.
