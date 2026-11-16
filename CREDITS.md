@@ -11,3 +11,10 @@
 Both Kenney packs ship a License.txt that reads: "License: (Creative Commons Zero, CC0) http://creativecommons.org/publicdomain/zero/1.0/ — This content is free to use in personal, educational and commercial projects. Support us by crediting Kenney or www.kenney.nl (this is not mandatory)."
 
 No fonts, sounds or other third-party art are used by the 16-bit page. PixiJS (MIT, `dist/vendor/PIXI-LICENSE`) remains in the repository for the older `design/lab-pixi` preview but is not loaded by the 16-bit page.
+
+## Island Lab logo and icons
+
+| Asset | Used for | Origin |
+|---|---|---|
+| `dist/art/logo.webp`, `dist/art/logo.png` (512 px, from a 1024 px source) | setup-screen logo | AI-generated for this project (Nov 2026); not third-party art |
+| `dist/art/favicon-32.png`, `dist/art/apple-touch-icon.png` (180 px) | browser and home-screen icons | cropped to the island emblem from the same AI-generated logo |

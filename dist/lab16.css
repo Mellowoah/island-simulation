@@ -53,3 +53,9 @@ button.big{width:100%;font-size:20px;letter-spacing:.2em;background:linear-gradi
 [hidden]{display:none!important}
 @media(max-width:520px){body{font-size:14px}.box{padding:10px}.row>button{flex:1 1 40%;font-size:13px;padding:8px 6px}.field .lab{flex-wrap:wrap}}
 @media(prefers-reduced-motion:reduce){button{transition:none}}
+/* Logo on the setup screen; the text title stays for the other screens and for screen readers. */
+.title .logo{display:none}
+body[data-screen="setup"] .title .logo{display:block;text-align:center}
+.title .logo img{display:block;margin:0 auto;width:min(100%,420px);height:auto;image-rendering:pixelated;border:3px solid var(--edge);border-radius:6px;box-shadow:0 0 0 3px #000,6px 6px 0 #0008}
+body[data-screen="setup"] .title h1{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+body[data-screen="setup"] .title .sub{text-align:center}

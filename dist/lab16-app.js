@@ -20,7 +20,7 @@ let selected = 0, paused = false, speed = 16, zoom = false, acc = 0, last = perf
 let report = null, reportImages = [];
 const cv = $('map'); const g = cv.getContext('2d');
 const toast = t => { $('toast').textContent = t; };
-const show = id => { for (const s of ['setup', 'game', 'report']) $(s).hidden = s !== id; window.scrollTo(0, 0); };
+const show = id => { for (const s of ['setup', 'game', 'report']) $(s).hidden = s !== id; document.body.dataset.screen = id; window.scrollTo(0, 0); };
 
 // ---------- Setup screen ----------
 function renderSetup() {
