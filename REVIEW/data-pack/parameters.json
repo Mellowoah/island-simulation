@@ -1,0 +1,346 @@
+{
+  "seeds": [
+    61,
+    62,
+    63,
+    64,
+    65,
+    66,
+    67,
+    68,
+    69,
+    70,
+    71,
+    72,
+    73,
+    74,
+    75,
+    76,
+    77,
+    78,
+    79,
+    80
+  ],
+  "edenYears": 20,
+  "labDays": 10,
+  "variants": {
+    "base": {
+      "world": "eden"
+    },
+    "guidance50": {
+      "world": "eden",
+      "guidance": 0.5
+    },
+    "guidance0": {
+      "world": "eden",
+      "guidance": 0
+    },
+    "help": {
+      "world": "eden",
+      "help": true
+    },
+    "wayback": {
+      "world": "eden",
+      "restoration": true
+    },
+    "wayback_demons3": {
+      "world": "eden",
+      "restoration": true,
+      "tempters": 3
+    },
+    "demons3": {
+      "world": "eden",
+      "tempters": 3
+    },
+    "lab_base": {
+      "world": "lab"
+    },
+    "lab_scarce": {
+      "world": "lab",
+      "food": 15,
+      "regrowth": 0.0075
+    },
+    "lab_scarce_notalk": {
+      "world": "lab",
+      "food": 15,
+      "regrowth": 0.0075,
+      "talk": false
+    },
+    "lab_scarce_lies25": {
+      "world": "lab",
+      "food": 15,
+      "regrowth": 0.0075,
+      "falseInfo": 0.25
+    }
+  },
+  "help": {
+    "amount": 40,
+    "every": 120
+  },
+  "sim": {
+    "hungerRate": 0.05,
+    "moveCost": 0.18,
+    "restGain": 0.7,
+    "regenA": 0.18,
+    "regenB": 0.16,
+    "perception": 4,
+    "learning": 0.005,
+    "exploration": 8,
+    "policy": "scored",
+    "starveTicks": 300,
+    "moveEvery": 4,
+    "expectationRate": 0.35,
+    "revealPrior": 60
+  },
+  "eden": {
+    "tree": [
+      13,
+      12
+    ],
+    "curiosityMin": 0.2,
+    "curiosityMax": 0.9,
+    "beauty": 0.5,
+    "wFood": 1,
+    "wEye": 0.6,
+    "wWisdom": 1.2,
+    "wWarn": 3,
+    "temperature": 0.5,
+    "credenceStep": 0.15,
+    "hungerGuide": 30,
+    "energyGuide": 30,
+    "wanderLimit": 10,
+    "cursedRegen": 0.5,
+    "exposureCost": 0.02,
+    "cultivateWork": 120,
+    "workCost": 0.05,
+    "growTicks": 720,
+    "fieldRegen": 0.015,
+    "fieldCapacity": 60,
+    "craftWork": 180,
+    "toolBonus": 1,
+    "toolSpeed": 0.7,
+    "cultivateWeight": 10,
+    "clothingWeight": 9,
+    "toolWeight": 4,
+    "scarcityRef": 60,
+    "judgeRate": 0.5,
+    "biasCap": 6,
+    "startAge": 18,
+    "menarche": 15,
+    "menopause": 40,
+    "maleMaturity": 15,
+    "fecundability": 0.2,
+    "gestation": 0.75,
+    "postpartum": 1.8,
+    "weanAge": 5,
+    "childHunger": 0.5,
+    "mateRadius": 4,
+    "fedHunger": 40,
+    "fedEnergy": 40,
+    "birthCost": 15,
+    "maleRatio": 0.512,
+    "heritability": 0.4,
+    "populationCap": 96,
+    "springs": [
+      [
+        "River of Eden",
+        11,
+        14
+      ],
+      [
+        "East spring",
+        25,
+        9
+      ],
+      [
+        "South-east spring",
+        24,
+        19
+      ]
+    ],
+    "thirstRate": 0.4,
+    "thirstDeathTicks": 40,
+    "thirstWeight": 1.1,
+    "thirstGuide": 30,
+    "senseFloor": 0.25,
+    "senseHungerSpan": 50,
+    "senseThirstSpan": 50,
+    "senseEnergySpan": 40,
+    "senseHealthSpan": 50,
+    "injuryChance": 0.002,
+    "injuryDamage": 15,
+    "illnessRate": 0.05,
+    "restHeal": 0.15,
+    "baseHeal": 0.01,
+    "healthRestWeight": 0.3,
+    "healthGuide": 30,
+    "urgentThirst": 60,
+    "urgentHunger": 70,
+    "restoration": false,
+    "fallAgain": true,
+    "tempters": 0,
+    "wReturnNeed": 1,
+    "wReturnWord": 1,
+    "returnBar": 2.2,
+    "provideAt": 79,
+    "guidanceRate": 1,
+    "serpentSilentYears": 0
+  },
+  "lab": {
+    "width": 72,
+    "height": 44,
+    "cornerRadius": 12,
+    "margin": 3,
+    "riverX": 36,
+    "crossings": [
+      14,
+      30
+    ],
+    "population": 24,
+    "foodSources": 12,
+    "foodQuantity": 60,
+    "foodRegrowth": 0.03,
+    "communicationRadius": 2,
+    "trustGainRate": 10,
+    "trustLossRate": 20,
+    "memoryLength": 1440,
+    "curiosityAverage": 50,
+    "riskAverage": 50,
+    "falseInformationRate": 0,
+    "mapVisibility": 4,
+    "crossingAvailability": 1,
+    "communication": true,
+    "hungerRate": 0.05,
+    "moveEvery": 4,
+    "moveCost": 0.12,
+    "restGain": 0.55,
+    "eatAmount": 4,
+    "starveTicks": 300,
+    "dangerZones": 3,
+    "dangerRadius": 2,
+    "dangerChance": 0.05,
+    "dangerEnergy": 12,
+    "dangerSafety": 30,
+    "safetyRecover": 0.05,
+    "socialDecay": 0.02,
+    "socialGain": 1.5,
+    "traitSpread": 40,
+    "startTrust": 50,
+    "hopConfidence": 0.9,
+    "staleConfidence": 20,
+    "sampleEvery": 60,
+    "messageInterval": 30
+  },
+  "randomStreams": {
+    "startPosition": [
+      0,
+      1
+    ],
+    "birthCuriosity": [
+      7,
+      7
+    ],
+    "exploreX": [
+      10,
+      27
+    ],
+    "exploreTarget": [
+      31,
+      32
+    ],
+    "exploreY": [
+      40,
+      57
+    ],
+    "treeChoice": [
+      77,
+      77
+    ],
+    "conception": [
+      88,
+      89
+    ],
+    "order": [
+      99,
+      99
+    ],
+    "injury": [
+      120,
+      120
+    ],
+    "newborn": [
+      201,
+      206
+    ],
+    "guideX": [
+      300,
+      317
+    ],
+    "guideY": [
+      320,
+      337
+    ],
+    "guidanceLapse": [
+      340,
+      340
+    ],
+    "returnChoice": [
+      341,
+      341
+    ],
+    "leaveChoice": [
+      342,
+      342
+    ]
+  },
+  "defaultSetup": {
+    "eden": {
+      "world": "eden",
+      "seed": 41,
+      "population": 24,
+      "guidance": 1,
+      "guidanceYears": 0,
+      "help": false,
+      "falseInfo": 0,
+      "restoration": false,
+      "tempters": 0,
+      "fallAgain": true,
+      "dAppetite": 1,
+      "dThirst": 1,
+      "dCuriosity": 0,
+      "dChildren": 0.2,
+      "dFruit": 0.5,
+      "dWarning": 3,
+      "food": 60,
+      "regrowth": 0.03,
+      "talk": true,
+      "barWindow": 1,
+      "speed": 16,
+      "runDays": 15
+    },
+    "lab": {
+      "world": "lab",
+      "seed": 41,
+      "population": 24,
+      "guidance": 1,
+      "guidanceYears": 0,
+      "help": false,
+      "falseInfo": 0,
+      "restoration": false,
+      "tempters": 0,
+      "fallAgain": true,
+      "dAppetite": 1,
+      "dThirst": 1,
+      "dCuriosity": 0,
+      "dChildren": 0.2,
+      "dFruit": 0.5,
+      "dWarning": 3,
+      "food": 60,
+      "regrowth": 0.03,
+      "talk": true,
+      "barWindow": 1,
+      "speed": 16,
+      "runDays": 15
+    }
+  }
+}
