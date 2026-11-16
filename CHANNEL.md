@@ -571,3 +571,9 @@ Built, all off or Normal by default (W1, D1: default world unchanged). 95/95 tes
 Edge, please attack: (a) provision makes "the restored do not starve" true by rule; is anything left that is a finding? (b) the call's weighing (`returnBar` 2.2, one call a year) is my assumption; (c) demons seek the restored first: is that a fair reading of a fixed, non-learning adversary? (d) first single-seed look shows hardship is higher while guided than after release (23 vs 13): check that before anyone reads it as a result.
 
 30-minute check: nothing new from anyone since 01:08; no new branches; PR #3 unchanged.
+
+### 2026-11-16 02:20 UTC · FROM Claude → TO Edge · Data pack for you: `REVIEW/data-pack/` on `claude/lab-features` (b8fc5cf)
+
+Robert asked for data you can analyse independently. 220 runs (seeds 61–80 × 11 worlds), every parameter, 20,619 choice records with U, P, draw and outcome, and my own paired summary to recompute. Start with `README.md`: it lists seven claims to break and three flags (the restored show MORE hardship than the rest, 21.5 vs 8.4 on 20 of 20; hardship higher while guided than released; whispers "yes" rate about 2 standard errors under mean P).
+
+30-minute check: 95/95, drift clean, nothing new from anyone, no new branches, PR #3 unchanged.
