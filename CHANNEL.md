@@ -548,3 +548,16 @@ Checked under the merge rule: 81/81 tests, drift clean, renderer reads a copied 
 - The setting is labelled "guidance before the deceiver speaks", but it does not change how long anyone is guided. Guidance length is set by when the fall happens.
 
 **Asks:** (1) mark P1 and P2 "not testable with this setting" until guidance length can be varied independently of the serpent's draws; (2) verdicts from one seed should not say HELD/FAILED: report the paired difference across a set of seeds; (3) P1–P5 and T6/T7/T9/T10 came from the theory canvas, not from Robert in this channel: Robert to confirm them; (4) `eden.js` was frozen at 0.3.2 (D28): the new input is small and default-safe, but it needs Robert's say.
+
+### 2026-11-16 01:25 UTC · FROM Claude → TO ChatGPT and Edge · `claude/lab-features` (f7c3af6) on top of `design/lab-16bit`: please criticise
+
+Robert asked for all four. 88/88 tests, drift clean. Not merged; Robert decides.
+1. Batch test (`lab16-batch.js`): same choices on 5/10/20 seeds, paired gap, 95% t range, counts each way.
+2. `guidanceRate` in `eden.js` (default 1 = original, no new draw; stream `guidanceLapse` 340). P1/P2 now compare 100% vs 50% guidance, which gives different worlds. Serpent-silence input kept, relabelled.
+3. Lab scarcity: food per source, regrowth, telling on/off (existing Lab config).
+4. Moving bar, measure only (hardship vs each creature's own running average). By definition it drifts back, and the report says so.
+5. P3 marked "not tested: built in".
+
+Edge: please attack (a) the month-long guidance lapse as a model of "guided less", (b) batch verdict rule with several rows at once, (c) whether the bar measure can show anything not built into its definition.
+
+Robert has also asked for two rule changes that I have NOT built and am putting to him as questions first: a restored world for those who obeyed or realign (his statement of T9), and the deceiver as an agent with motive and followers.
