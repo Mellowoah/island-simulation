@@ -40,6 +40,7 @@ export const EDEN_DEFAULTS = {
   illnessRate: 0.05,        // health lost per minute while starving or parched (hunger or thirst >= 80), after release only
   restHeal: 0.15, baseHeal: 0.01, healthRestWeight: 0.3, healthGuide: 30,
   urgentThirst: 60, urgentHunger: 70, // a released creature breaks off what it is doing when a need becomes urgent (if it knows where to go)
+  serpentSilentYears: 0,    // Island Lab setup input (guidance length): the serpent stays silent for this many years. 0 = original behaviour.
 };
 const YEAR = DAY;
 const SYL = ['ka','lo','mi','ne','ra','su','te','vi','ze','do','an','el','or','ul','ya','be'];
@@ -239,7 +240,7 @@ function fall(s, c) {
 
 function serpent(s, c) {
   const E = s.eden, cfg = E.config, e = c.eden;
-  if (E.phase !== 'guided' || dependent(s, c) || dist(c, E.tree) > 1 || (e.lastSerpent !== null && s.tick - e.lastSerpent < DAY)) return;
+  if (E.phase !== 'guided' || s.tick < (cfg.serpentSilentYears ?? 0) * YEAR || dependent(s, c) || dist(c, E.tree) > 1 || (e.lastSerpent !== null && s.tick - e.lastSerpent < DAY)) return;
   e.hearings++; e.lastSerpent = s.tick; e.credence = 1 - (1 - cfg.credenceStep) ** e.hearings;
   E.serpentSpoke = { tick: s.tick, id: c.id };
   event(s, 'The serpent spoke from the tree: "You will not die." (a claim, not verified)', c);
