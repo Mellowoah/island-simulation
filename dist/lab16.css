@@ -2,7 +2,7 @@
 :root{color-scheme:dark;--ink:#f4f0dc;--bg:#0d1424;--box:#14204a;--box2:#0f1838;--edge:#e8e8f0;--gold:#ffd84a;--mute:#aab4d4;--green:#7fd88f}
 *{box-sizing:border-box}
 body{overflow-x:hidden;margin:0;background:#0d1424 radial-gradient(ellipse at 50% -20%,#24366e 0%,#0d1424 60%) fixed;color:var(--ink);font:15px/1.45 ui-monospace,"SF Mono",Menlo,Consolas,monospace;-webkit-text-size-adjust:100%}
-main{max-width:1200px;margin:0 auto;padding:10px max(10px,env(safe-area-inset-left)) 30px}
+main{max-width:1200px;margin:0 auto;padding:max(10px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) 30px max(10px,env(safe-area-inset-left))}
 .title h1{margin:6px 0 0;font-size:clamp(26px,7vw,40px);letter-spacing:.18em;color:var(--gold);text-shadow:3px 3px 0 #7a3a10,6px 6px 0 #000}
 .title .sub{margin:4px 0 10px;color:var(--mute);font-size:13px}
 .box{position:relative;background:linear-gradient(#1b2a5e,#101a40);border:3px solid var(--edge);border-radius:6px;box-shadow:0 0 0 3px #000,inset 0 0 0 2px #2c3f86,6px 6px 0 #0008;padding:12px 12px 14px;margin:14px 3px}

@@ -17,4 +17,4 @@ No fonts, sounds or other third-party art are used by the 16-bit page. PixiJS (M
 | Asset | Used for | Origin |
 |---|---|---|
 | `dist/art/logo.webp`, `dist/art/logo.png` (512 px, from a 1024 px source) | setup-screen logo | AI-generated for this project (Nov 2026); not third-party art |
-| `dist/art/favicon-32.png`, `dist/art/apple-touch-icon.png` (180 px) | browser and home-screen icons | cropped to the island emblem from the same AI-generated logo |
+| `dist/art/favicon-32.png`, `dist/art/apple-touch-icon.png` (180 px), `dist/art/icon-192.png`, `dist/art/icon-512.png` | browser, iPhone Home Screen and web-app manifest icons (opaque navy background, no text) | cropped to the island emblem from the same AI-generated logo |
