@@ -220,6 +220,7 @@ export function createPixelRenderer({ makeCanvas, town = null, dungeon = null, r
         if (c.child) { g.drawImage(dungeon, (HEROES[c.id % HEROES.length] % 12) * T, Math.floor(HEROES[c.id % HEROES.length] / 12) * T, T, T, x + 2, y + 4, 12, 12); }
         else dung16(g, HEROES[c.id % HEROES.length], x, y, p.face < 0);
       } else { g.fillStyle = `hsl(${(c.id * 47) % 360} 60% 60%)`; g.fillRect(x + 4, y + 3, 8, 11); g.fillStyle = PAL.outline; g.fillRect(x + 5, y + 5, 2, 2); g.fillRect(x + 9, y + 5, 2, 2); }
+      if (c.covered) { g.fillStyle = '#fff7c2'; g.fillRect(x + 5, y - 2, 6, 1); g.fillRect(x + 4, y - 1, 1, 1); g.fillRect(x + 11, y - 1, 1, 1); } // restored: a small halo
       if (c.led && !reducedMotion) { g.fillStyle = Math.floor(now / 200) % 2 ? '#ffe680' : '#fff7c2'; g.fillRect(x + 7, y - 4, 2, 2); g.fillRect(x + 3, y - 1, 1, 1); g.fillRect(x + 12, y - 2, 1, 1); }
       if (c.id === selected) {
         g.fillStyle = '#ffe14d';
@@ -228,6 +229,7 @@ export function createPixelRenderer({ makeCanvas, town = null, dungeon = null, r
         if (icon) { g.fillStyle = '#fff'; g.fillRect(x + 4, y - 11, 9, 9); g.drawImage(icon, x + 5, y - 10); }
       }
     }
+    for (const t of view.tempters ?? []) { const px = t.x * T, py = t.y * T; g.fillStyle = 'rgba(30,10,40,0.75)'; g.fillRect(px + 4, py + 4, 8, 9); g.fillRect(px + 3, py + 7, 10, 4); g.fillStyle = '#ff4a4a'; g.fillRect(px + 5, py + 6, 2, 1); g.fillRect(px + 9, py + 6, 2, 1); }
     g.setTransform(1, 0, 0, 1, 0, 0);
     return { camX, camY, scale: s };
   }

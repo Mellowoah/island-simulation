@@ -209,7 +209,7 @@ test('C1 charts: tidy axis tops, one value per sample, drawing is safe', () => {
   for (const kind of ['eden', 'lab']) {
     const rows = kind === 'eden' ? main.series : seriesOf(runToEnd({ world: 'lab', seed: 41, runDays: 2 }));
     const specs = chartSpecs(kind, rows, { fallTick: main.world.eden.fallTick });
-    assert.equal(specs.length, 7);
+    assert.equal(specs.length, 8);
     for (const c of specs) { for (const s of c.series) assert.equal(s.values.length, c.xs.length); if (!c.empty) drawLineChart(fakeCtx(), 280, 150, c.xs, c.series, c.opts); }
   }
 });
@@ -294,4 +294,84 @@ test('F7 the moving bar is a measure only: it never changes a world, and it foll
   assert.equal(barSample(run).over, 100, 'a sudden rise is above the bar');
   for (let i = 0; i < 200; i++) barSample(run);
   const end = barSample(run); assert.ok(end.bar > 20 - BAR_MARGIN && end.over === 0, 'the bar has moved up to meet it');
+});
+
+// ---- One of many worlds: the way back (T9) and the deceiver's demons (T11). Off by default. ----
+test('W1 with the way back and demons off, Eden is exactly the original world', () => {
+  assert.equal(EDEN_DEFAULTS.restoration, false); assert.equal(EDEN_DEFAULTS.tempters, 0);
+  const a = createEden(41), b = createEden(41, {}, { restoration: false, tempters: 0, fallAgain: false }); edenStep(a, 8 * DAY); edenStep(b, 8 * DAY);
+  assert.equal(a.eden.phase, 'released'); assert.equal(a.eden.restored, undefined); assert.equal(a.eden.tempters, undefined);
+  const ca = strip(a), cb = strip(b); delete ca.eden.config.fallAgain; delete cb.eden.config.fallAgain;
+  assert.deepEqual(ca, cb);
+  assert.ok(a.creatures.every(c => c.eden.covered === undefined));
+});
+
+test('W2 the way back: nobody is restored before the fall, every answer is the creature\'s own draw, and it repeats exactly', () => {
+  const s = createEden(41, {}, { restoration: true });
+  while (s.eden.phase === 'guided') { edenStep(s, 60); assert.ok(s.creatures.every(c => !c.eden.covered)); }
+  edenStep(s, 12 * DAY);
+  const R = s.eden.restored, m = edenMetrics(s).restored;
+  assert.ok(R.calls > 50 && R.returned > 0 && R.returned < R.calls, `${R.returned} of ${R.calls}`);
+  for (const a of R.answers) { assert.ok(a.P > 0 && a.P < 1); assert.equal(a.yes, a.draw < a.P); }
+  assert.equal(m.living, s.creatures.filter(c => c.alive && c.eden.covered).length);
+  const again = createEden(41, {}, { restoration: true }); edenStep(again, s.tick);
+  assert.deepEqual(strip(again), strip(s));
+});
+
+test('W3 provision: a restored creature is fed before want can harm it, and none dies of hunger or thirst', () => {
+  const s = createEden(42, {}, { restoration: true }); edenStep(s, 25 * DAY);
+  assert.ok(s.eden.restored.bread > 0);
+  const want = s.creatures.filter(c => !c.alive && c.death.covered && /deprivation|Thirst/.test(c.death.cause));
+  assert.equal(want.length, 0);
+  for (const c of s.creatures) if (c.alive && c.eden.covered) { assert.ok(c.hunger < 99 && c.eden.thirst < 99); assert.equal(c.starving, 0); }
+  assert.ok(s.creatures.some(c => !c.alive && !c.death.covered), 'the rest of the world is still fallen');
+});
+
+test('W4 demons can only whisper: they move and speak, and never touch a creature\'s body, place or choice', () => {
+  const a = createEden(41, {}, { tempters: 3 }), b = createEden(41);
+  edenStep(a, 9 * DAY); edenStep(b, 9 * DAY);
+  assert.equal(a.eden.tempters.length, 3); assert.ok(a.eden.restored.whispers > 20);
+  // With no way back, whispers change only what a creature has heard and believes. The rest of the world is untouched.
+  const clean = w => { const c = strip(w); delete c.eden.restored; delete c.eden.tempters; for (const k of ['tempters', 'restoration', 'fallAgain']) delete c.eden.config[k];
+    for (const x of c.creatures) { x.eden.hearings = 0; x.eden.credence = 0; x.eden.lastSerpent = null; x.memories = []; } c.events = []; c.digest = 0; return c; };
+  assert.deepEqual(clean(a), clean(b));
+});
+
+test('W5 drawn away again is a setting: on, it is the creature\'s own draw; off, a whisper has no hold', () => {
+  const on = createEden(41, {}, { restoration: true, tempters: 6 }), off = createEden(41, {}, { restoration: true, tempters: 6, fallAgain: false });
+  edenStep(on, 30 * DAY); edenStep(off, 30 * DAY);
+  assert.equal(off.eden.restored.left, 0); assert.ok(!off.eden.restored.answers.some(a => a.kind === 'whisper'));
+  const wh = on.eden.restored.answers.filter(a => a.kind === 'whisper');
+  assert.ok(wh.length > 0); for (const a of wh) { assert.ok(a.P > 0 && a.P < 1); assert.equal(a.yes, a.draw < a.P); }
+});
+
+test('W6 the report and batch rows carry the way back and the demons, and T9 is Robert\'s line, not a proposal', () => {
+  assert.ok(!PROPOSED.includes('T9')); assert.doesNotMatch(THEORY.T9, /proposed/); assert.ok(THEORY.T11);
+  const set = normalizeSetup({ world: 'eden', seed: 41, runDays: 12, restoration: true, tempters: 3 });
+  const run = runToEnd(set), m = summarizeEden(run), tw = twinSetups(set);
+  assert.equal(m.restored.returned, run.world.eden.restored.returned);
+  assert.equal(run.series.at(-1).restored, m.restored.living / m.population * 100);
+  const rep = buildEdenReport(m, summarizeEden(runToEnd(tw.guidance)), summarizeEden(runToEnd(tw.help)), {});
+  const md = reportMarkdown(rep); assert.match(md, /A way back was open/); assert.match(md, /They forced no one/); assert.doesNotMatch(md, /undefined|NaN/);
+  const rows = [41, 42, 43].map(seed => { const f = x => summarizeEden(runToEnd({ ...x, seed, runDays: 9 })); return { seed, main: f(set), g: f(tw.guidance), h: f(tw.help), r: f({ ...set, restoration: false }), d: f({ ...set, tempters: 0 }) }; });
+  const b = batchEden(rows); assert.deepEqual(b.slice(0, 5).map(r => r.id), ['Way back·lives', 'Way back·deaths', 'Way back·turned', 'Demons·turned', 'Demons·lives']);
+  assert.doesNotMatch(batchMarkdown({ seeds: [41, 42, 43], rows: b }), /undefined|NaN/);
+  const lab = normalizeSetup({ world: 'lab', restoration: true, tempters: 3 }); assert.equal(lab.restoration, false); assert.equal(lab.tempters, 0);
+});
+
+test('D1 natural drives: "Normal" is the original world, and each setting only rescales a number the sim already has', () => {
+  const r = createRun({ world: 'eden', seed: 45, runDays: 3 }); stepRun(r, 1500);
+  const plain = createEden(45, {}, { serpentSilentYears: 0, guidanceRate: 1, restoration: false, tempters: 0, fallAgain: true }); edenStep(plain, 1500);
+  assert.deepEqual(strip(r.world), strip(plain));
+  const hi = createRun({ world: 'eden', seed: 45, runDays: 3, dAppetite: 1.25, dThirst: 0.75, dCuriosity: 0.15, dChildren: 0.3, dFruit: 0.75, dWarning: 2 });
+  const c = hi.world.eden.config;
+  assert.equal(hi.world.config.hungerRate, 0.05 * 1.25); assert.equal(c.thirstRate, EDEN_DEFAULTS.thirstRate * 0.75);
+  assert.ok(Math.abs(c.curiosityMin - 0.35) < 1e-9 && c.curiosityMax === 1, 'curiosity stays within 0 to 1');
+  assert.equal(c.fecundability, 0.3); assert.equal(c.beauty, 0.75); assert.equal(c.wWarn, 2);
+  assert.ok(Object.keys(c).every(k => k in EDEN_DEFAULTS), 'no new sim setting was invented');
+  assert.equal(normalizeSetup({ world: 'eden', dAppetite: 9 }).dAppetite, 1, 'unknown values fall back to Normal');
+  // Stronger pull and a looser hold on the warning must raise the sim's own chance of eating at the tree.
+  const lo = runToEnd({ world: 'eden', seed: 45, runDays: 4, dFruit: 0.25, dWarning: 4 }), up = runToEnd({ world: 'eden', seed: 45, runDays: 4, dFruit: 0.75, dWarning: 2 });
+  const P = x => x.world.eden.deliberations.reduce((n, d) => n + d.P, 0) / x.world.eden.deliberations.length;
+  assert.ok(P(up) > P(lo));
 });

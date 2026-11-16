@@ -4,7 +4,9 @@
 import { DAY, land, command } from './sim.js';
 import { createEden, edenStep } from './eden.js';
 import { createLab, labStep, labMetrics, serializeLab, deserializeLab } from './lab.js';
-import { normalizeSetup, HELP } from './lab16-setup.js';
+import { normalizeSetup, HELP, driveConfig } from './lab16-setup.js';
+import { EDEN_DEFAULTS } from './eden.js';
+import { DEFAULTS as SIM_DEFAULTS } from './sim.js';
 
 export const SAMPLE_EVERY = 60;
 export const THEORY_SAVE_KEY = 'island-lab-theory-v1';
@@ -57,7 +59,8 @@ function edenSample(run) {
   return { t: s.tick, phase: E.phase, pop: alive.length, births: E.births, deaths: s.creatures.length - alive.length,
     belief: alive.length ? alive.reduce((n, c) => n + c.eden.credence, 0) / alive.length * 100 : 0,
     food: s.patches.reduce((n, p) => n + p.stock, 0), hearings: hearingsTotal(s), ate: E.firstEater === null ? 0 : 1,
-    cohort, habit: habitSpread(s), curiosity: curiositySpread(s), ...barSample(run) };
+    cohort, habit: habitSpread(s), curiosity: curiositySpread(s), ...barSample(run),
+    restored: E.phase === 'released' && E.config.restoration && alive.length ? alive.filter(c => c.eden.covered).length / alive.length * 100 : null };
 }
 function labSample(m) { return { t: m.tick, pop: m.alive, deaths: m.deaths, trust: m.trustMean, food: m.food, sent: m.messages.sent, falseSent: m.messages.falseSent, accepted: m.messages.accepted, spread: m.trustSpread }; }
 
@@ -70,7 +73,8 @@ export function createRun(input = {}) {
     run.barSeries.push({ t: world.tick, ...barSample(run) });
     return run;
   }
-  const world = createEden(setup.seed, {}, { serpentSilentYears: setup.guidanceYears, guidanceRate: setup.guidance });
+  const drives = driveConfig(setup, EDEN_DEFAULTS, SIM_DEFAULTS);
+  const world = createEden(setup.seed, drives.sim, { ...drives.eden, serpentSilentYears: setup.guidanceYears, guidanceRate: setup.guidance, restoration: setup.restoration, tempters: setup.tempters, fallAgain: setup.fallAgain });
   const run = { kind: 'eden', setup, world, endTick, done: false, helpUntil: setup.help ? Math.floor(endTick / 2) : 0, halfTick: Math.floor(endTick / 2),
     help: setup.help ? helpSpot(world) : null, cohort: null, half: null, series: [] };
   run.series.push(edenSample(run));

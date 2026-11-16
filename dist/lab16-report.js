@@ -5,6 +5,7 @@ import { edenMetrics } from './eden.js';
 import { labMetrics } from './lab.js';
 import { PREDICTIONS, THEORY, lineLabel } from './lab16-setup.js';
 import { batchMarkdown, batchHTML } from './lab16-batch.js';
+import { hardshipEden } from './lab16-run.js';
 import { hearingsTotal, habitSpread, curiositySpread, giftEaten, seriesOf } from './lab16-run.js';
 
 export const MARGIN = 0.05; // a difference must be at least 5% of the smaller value to count; smaller gaps count as "no difference"
@@ -39,7 +40,8 @@ export function summarizeEden(run) {
   const alive = s.creatures.filter(c => c.alive);
   const skill = mean(alive.map(c => ((c.skills.a ?? 0) + (c.skills.b ?? 0)) / 2));
   return {
-    kind: 'eden', seed: s.seed, guidanceYears: run.setup.guidanceYears, guidance: run.setup.guidance, help: run.setup.help, years: s.tick / DAY, tick: s.tick,
+    kind: 'eden', restoration: !!run.setup.restoration, tempters: run.setup.tempters ?? 0, fallAgain: run.setup.fallAgain !== false, restored: m.restored ?? null,
+    hardRestored: mean(alive.filter(c => c.eden.covered).map(hardshipEden)), hardOthers: mean(alive.filter(c => !c.eden.covered).map(hardshipEden)), seed: s.seed, guidanceYears: run.setup.guidanceYears, guidance: run.setup.guidance, help: run.setup.help, years: s.tick / DAY, tick: s.tick,
     start: 24, population: m.population, births: m.births, deaths: m.deaths, deathCauses: m.deathCauses,
     fell, fallYear: fell ? E.fallTick / DAY : null, firstEater: fell ? s.creatures[E.firstEater].name : null,
     hearings: hearingsTotal(s), deliberationsKept: delib.length,
@@ -139,6 +141,11 @@ function storyEden(m) {
   else p.push('No one ate from the tree during this run, so everyone stayed guided and no one died. (Never eating is allowed: T3.)');
   p.push(`At the end ${m.population} were alive. There were ${m.births} births and ${m.deaths} deaths${m.deaths ? ` (${Object.entries(m.deathCauses).map(([k, v]) => `${v} from ${k.toLowerCase()}`).join(', ')})` : ''}.`);
   if (m.fell) p.push(`After release they tilled ${m.fields} field${m.fields === 1 ? '' : 's'}; ${m.clothed} of the living had made clothing and ${m.tools} had made a tool.`);
+  if (m.restored && m.restoration) {
+    const R = m.restored;
+    p.push(`A way back was open. The Creator called ${R.calls} times; ${R.returned} creature${R.returned === 1 ? '' : 's'} chose to turn back and ${R.calls - R.returned} calls were refused. At the end ${R.living} of the ${m.population} living were restored. The Creator led them on ${pct(R.ledShare * 100)} of their choices and gave bread or water ${R.bread} times. ${R.deathsRestored} restored creature${R.deathsRestored === 1 ? '' : 's'} died.${m.hardRestored !== null && m.hardOthers !== null ? ` At the end, hardship averaged ${fmt(m.hardRestored)} among the restored and ${fmt(m.hardOthers)} among the rest.` : ''}`);
+  }
+  if (m.restored && m.tempters) p.push(`The deceiver sent ${m.tempters} demon${m.tempters === 1 ? '' : 's'}. They whispered ${m.restored.whispers} times; ${m.fallAgain ? `${m.restored.left} restored creature${m.restored.left === 1 ? ' was' : 's were'} drawn away again` : 'the restored could not be drawn away in this world'}. They forced no one: each creature answered for itself.`);
   if (m.hardEnd !== null && m.hardGuided !== null) p.push(`The moving bar: average hardship (unmet needs, 0 to 100) was ${fmt(m.hardGuided)} while guided${m.fell ? ` and ${fmt(m.hardReleased)} after release` : ''}. Each creature's bar is its own recent average. On average ${fmt(m.overGuided, '%')} of creatures were above their own bar while guided${m.fell ? ` and ${fmt(m.overReleased, '%')} after release` : ''}; at the end the average bar stood at ${fmt(m.barEnd)}.`);
   if (m.help) p.push(`You left ${r1(m.gifted)} food near the start during the first half; ${r1(m.giftEaten)} of it was eaten.`);
   return p;
@@ -148,18 +155,18 @@ function meaning(preds, m) {
   const by = Object.fromEntries(preds.map(p => [p.id, p]));
   const out = [];
   const say = (id, held, failed, open) => { const v = by[id]?.verdict; out.push(v === 'held' ? held : v === 'failed' ? failed : open); };
-  say('P1', 'P1 held: longer guidance went with a lower chance of eating when the deceiver spoke. That fits T2 and T4, and leans toward the theory\'s "less likely" for P1, which is still marked proposed.',
-    'P1 failed: longer guidance did not lower the chance of eating when the deceiver spoke. In this model, the length of guidance alone did not protect them (T2, T4).',
+  say('P1', 'P1 held: more guidance went with a lower chance of eating when the deceiver spoke. That fits T2 and T4, and leans toward the theory\'s "less likely" for P1, which is still marked proposed.',
+    'P1 failed: more guidance did not lower the chance of eating when the deceiver spoke. In this model, the amount of guidance alone did not protect them (T2, T4).',
     'P1 could not be judged in this run.');
-  say('P2', 'P2 held: the longer-guided world survived the first years after release better. On the open question in T7 (proposed), this run points toward guidance preparing them.',
-    'P2 failed: the longer-guided world did not survive the first years after release better. On T7 (proposed), this run points toward guidance being good in the moment but not preparing them.',
+  say('P2', 'P2 held: the more-guided world survived the first years after release better. On the open question in T7 (proposed), this run points toward guidance preparing them.',
+    'P2 failed: the more-guided world did not survive the first years after release better. On T7 (proposed), this run points toward guidance being good in the moment but not preparing them.',
     'P2 could not be judged in this run.');
   out.push(by.P3?.verdict === 'not judged' ? 'P3 could not be judged because there was no release.' : 'P3 was not tested: habits can only form after release and always start at 0, so "more different after release" is built into the rules. It shows T5 is modelled, not that it is true.');
   out.push('P4 was not tested: the sim has no measure for it yet.');
   say('P5', 'P5 held: help went with more food gathered later from the island itself. Help was not assumed good or bad (T8); this is what happened here.',
     'P5 failed: help did not build later ability to get food in this run, matching what the island tests found before. Help was not assumed good or bad (T8).',
     'P5 could not be judged in this run.');
-  out.push('T9 (proposed) is not in the model: there is no covering or promised rescue in the sim, so this report can only describe what the creatures did. It must not be read as "loss alone".');
+  out.push(m.restoration ? 'T9 was switched on in this world: a way back, on the biblical reading, with each creature answering the call for itself. Being fed by rule means the restored cannot starve, so "fewer of them starve" is built in. What is open, and worth the batch test, is how many turn back, what happens to the rest, and what the demons change (T11).' : 'T9 was switched off in this world: there was no way back, so this report shows the fall without the Creator\'s response. Turn on "A way back after the fall" to include it.');
   out.push('The moving bar is a measure, not a rule: creatures do not act on it. Because each bar follows its owner\'s own hardship, the share above their bar drifts back toward the same level whatever the conditions. That is how the measure is defined, so it is not evidence by itself; the test is whether a choice (help, guidance) changes it in the batch test.');
   out.push('One matched pair of worlds is weak evidence. Use the batch test below before trusting a pass or a fail.');
   return out;
@@ -203,7 +210,7 @@ export function reportMarkdown(r) {
   L.push('## What this means for the theory', '', ...r.meaning.map(x => `- ${x}`), '');
   if (r.batch) L.push(batchMarkdown(r.batch));
   L.push('## How it was judged', '', r.method, '');
-  L.push('## Theory lines referred to', '', ...['T2', 'T3', 'T4', 'T5', 'T7', 'T8', 'T9'].map(id => `- **${lineLabel(id)}** ${THEORY[id].replace(/^\[proposed\] /, '')}`), '');
+  L.push('## Theory lines referred to', '', ...['T2', 'T3', 'T4', 'T5', 'T7', 'T8', 'T9', 'T11'].map(id => `- **${lineLabel(id)}** ${THEORY[id].replace(/^\[proposed\] /, '')}`), '');
   return L.join('\n');
 }
 
@@ -220,7 +227,7 @@ ${p.why ? `<p>${esc(p.why)}</p>` : ''}${p.builtIn ? '<p><i>Built into the rules,
 <h2>Predictions</h2>${preds}
 <h2>What this means for the theory</h2><ul>${r.meaning.map(x => `<li>${esc(x)}</li>`).join('')}</ul>
 ${r.batch ? batchHTML(r.batch) : ''}${imgs}<h2>How it was judged</h2><p>${esc(r.method)}</p>
-<h2>Theory lines referred to</h2><ul>${['T2', 'T3', 'T4', 'T5', 'T7', 'T8', 'T9'].map(id => `<li><b>${lineLabel(id)}</b> ${esc(THEORY[id].replace(/^\[proposed\] /, ''))}</li>`).join('')}</ul>
+<h2>Theory lines referred to</h2><ul>${['T2', 'T3', 'T4', 'T5', 'T7', 'T8', 'T9', 'T11'].map(id => `<li><b>${lineLabel(id)}</b> ${esc(THEORY[id].replace(/^\[proposed\] /, ''))}</li>`).join('')}</ul>
 `;
 }
 

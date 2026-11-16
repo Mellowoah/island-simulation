@@ -48,6 +48,7 @@ export function chartSpecs(kind, rows, meta = {}) {
     { id: 'survival', title: 'Survival after release', caption: 'Not shown: the Lab island has no release. Use the Eden test.', xs, series: [], opts: {}, empty: true },
     { id: 'differ', title: 'How much they differ', caption: 'How spread out trust is between creatures (higher = they differ more).', xs, series: [{ label: 'trust spread', color: '#d9a6ff', values: col('spread') }], opts: {} },
     { id: 'bar', title: 'The moving bar', caption: 'Average hardship (orange, 0 to 100), the creatures\' own bar (white: what each is used to), and the share above their own bar (red, %). Measure only; creatures do not act on it.', xs, series: [{ label: 'hardship', color: '#ffb36b', values: col('hard') }, { label: 'their bar', color: '#f2efe2', values: col('bar') }, { label: '% above bar', color: '#ff7a7a', values: col('over') }], opts: { yMax: 100 } },
+    { id: 'restored', title: 'Turned back', caption: 'Not shown: the Lab island has no fall. Use the Eden test.', xs, series: [], opts: {}, empty: true },
   ];
   return [
     { id: 'pop', title: 'Population', caption: 'Creatures alive each year. Before the fall no one dies; after it, deaths begin.', xs, series: [{ label: 'alive', color: '#7fd88f', values: col('pop') }], opts: { marks: [...fall, ...helpStop] } },
@@ -57,5 +58,6 @@ export function chartSpecs(kind, rows, meta = {}) {
     { id: 'survival', title: 'Survival after release', caption: 'Of the creatures alive at the fall, the share still alive (%). Starts at 100 at the fall.', xs, series: [{ label: 'still alive', color: '#ffe680', values: col('cohort') }], opts: { yMax: 100, marks: fall } },
     { id: 'differ', title: 'How much they differ', caption: 'How different their own habits are (purple) and how spread out their curiosity is (green), 0 to 100. Habits only start forming after release.', xs, series: [{ label: 'habits', color: '#d9a6ff', values: col('habit') }, { label: 'curiosity', color: '#9fe6a0', values: col('curiosity') }], opts: { marks: fall } },
     { id: 'bar', title: 'The moving bar', caption: 'Average hardship (orange, 0 to 100), the creatures\' own bar (white: what each is used to), and the share above their own bar (red, %). Measure only; creatures do not act on it.', xs, series: [{ label: 'hardship', color: '#ffb36b', values: col('hard') }, { label: 'their bar', color: '#f2efe2', values: col('bar') }, { label: '% above bar', color: '#ff7a7a', values: col('over') }], opts: { yMax: 100, marks: [...fall, ...helpStop] } },
+    { id: 'restored', title: 'Turned back', caption: 'Of the living, the share who have turned back and are led and fed by the Creator (%). Empty unless "A way back after the fall" is on.', xs, series: [{ label: 'restored', color: '#fff7c2', values: col('restored') }], opts: { yMax: 100, marks: fall }, empty: !rows.some(r => r.restored != null) },
   ];
 }

@@ -55,3 +55,14 @@ Purpose: stop drift. Each line is something Robert stated, how the model does it
 - **New Eden input `guidanceRate` (default 1 = original rule).** Below 1, the Creator steps in for a creature only in that share of months (one draw per creature per month, stream `guidanceLapse` 340). In a month without guidance the creature uses its own judgement, exactly as after release, but the warning still stands and nobody can die before the fall. Tests F1 (default unchanged, no new draw) and F2 (less guidance, eating still the creature's own draw).
 - Why: the earlier "guidance length" input only silenced the serpent, so both matched worlds had the same fall. P1 and P2 are now judged by how often the Creator steps in.
 - Not changed: the tree choice, the serpent, release, production, reproduction.
+
+## One of many worlds: the way back and the demons (16 Nov 2026, awaiting Robert's say)
+Robert, 15 Nov: "all those who choose to comply and realign or that obeyed will live in a world where the creator guides and feeds and brings peace"; "the deceiver should possess similar traits to satan in the Bible and ... have demons that seek his direction"; "Model the biblical interpretation; this is one of many worlds." All three inputs are **off by default**; with them off Eden is unchanged (test W1).
+- **`restoration`** (T9). Everyone is still released by the first eating (T4 stands). Once a year the Creator calls each released adult. It answers by its own draw: need + the word − curiosity × belief in the deceiver's claim − `returnBar`, same logistic as at the tree. Those who turn back live in the same fallen world: the Creator leads them again, and gives bread or water before want can harm them (`provideAt`). They still work, age into the same world, and can be hurt.
+- **`tempters`** (T11). Separate beings, not creatures. They start at the tree at the fall, walk to a creature and whisper the same lie. A whisper only raises that creature's belief in the claim (test W4: nothing else in the world changes). They go first for the restored.
+- **`fallAgain`**. Whether a whisper can draw a restored creature away (its own draw, same weighing as at the tree). Traditions differ, so it is a setting.
+- Built in, not findings: the restored cannot starve; the unrestored world has no restored.
+- Assumptions for Robert: one call a year; `returnBar` 2.2 (about 5–10% say yes per call at defaults); provision at 79; demons seek the restored first; the deceiver does not learn.
+
+## Natural drives (settings only)
+Appetite, thirst, curiosity, desire for children, desire of the eyes, and how firmly the warning is held. Each rescales a number the sim already had; "Normal" is the original (test D1).

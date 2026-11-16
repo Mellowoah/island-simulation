@@ -11,13 +11,14 @@ export const THEORY = {
   T6: '[proposed] Before release, freedom is whole and sheltered. After release, freedom is wider in range but wounded, bent toward self.',
   T7: '[proposed] Guidance is good for them in the moment. Whether it prepares them for release is the open question.',
   T8: 'How someone is doing now is separate from what they can do later; group gains don\'t erase individual losses; neither help nor hardship is assumed good or bad; what happened is separate from what anyone believes or approves.',
-  T9: '[proposed] After the fall, God responds: He covers them and promises a rescue. The model must not show loss alone.',
+  T9: 'After the fall, all who choose to turn back and realign live where the Creator guides, feeds and brings peace. (Robert, 15 Nov 2026. Modelled on the biblical reading, as one of many possible worlds.)',
   T10: '[proposed] The fall is a real loss, not a needed step, though God brings good out of it.',
+  T11: 'The deceiver has the traits Scripture gives Satan: he lies, he cannot force anyone, and demons seek his direction. (Robert, 15 Nov 2026.)',
 };
-export const PROPOSED = ['T6', 'T7', 'T9', 'T10'];
+export const PROPOSED = ['T6', 'T7', 'T10'];
 export const PREDICTIONS = {
-  P1: 'Creatures guided longer are less likely to eat when the deceiver speaks.',
-  P2: 'Populations guided longer before the fall survive the first years after release better.',
+  P1: 'Creatures guided more are less likely to eat when the deceiver speaks.',
+  P2: 'Populations guided more before the fall survive the first years after release better.',
   P3: 'After release, individuals grow more different from each other than while guided.',
   P4: 'Released creatures get better at predicting their own needs than guided ones.',
   P5: 'Help builds later ability to get food.',
@@ -45,6 +46,25 @@ export const SETUP_FIELDS = [
     note: 'Tests P5 (help builds later ability to get food). When on, you leave 40 food near the start every month for the first half of the run, then stop. T8: help is not assumed good or bad.' },
   { key: 'falseInfo', label: 'False information', type: 'select', options: [[0, 'None'], [0.05, '5%'], [0.1, '10%'], [0.25, '25%']], def: 0, worlds: ['lab'],
     note: 'Share of passed-on messages that are false: a lying voice among the creatures, closest to T4 (doubt cast on what they were told). Not one of P1–P5.' },
+  { key: 'restoration', label: 'A way back after the fall', type: 'toggle', def: false, worlds: ['eden'],
+    note: 'Tests T9. Once a year the Creator calls each released creature. It weighs the call itself (its need, the word, its belief in the deceiver) and may turn back. Those who do are led and fed again, in the same fallen world.' },
+  { key: 'tempters', label: 'Demons sent by the deceiver', type: 'select', options: [[0, 'None'], [1, '1'], [3, '3'], [6, '6']], def: 0, worlds: ['eden'],
+    note: 'Tests T11. After the fall they seek creatures out and whisper the same lie. They cannot touch or force anyone; each creature answers for itself. They go first for those who turned back.' },
+  { key: 'fallAgain', label: 'The restored can be drawn away again', type: 'toggle', def: true, worlds: ['eden'],
+    note: 'Tests T9 and T11 together. Christian traditions differ on this, so it is a choice: on, a whisper can lead a restored creature away; off, it has no hold.' },
+  // Natural drives. Each one only rescales a number the Eden sim already has; "Normal" is the original value.
+  { key: 'dAppetite', label: 'Drive: appetite', type: 'select', options: [[0.75, 'Low'], [1, 'Normal'], [1.25, 'High']], def: 1, worlds: ['eden'],
+    note: 'How fast hunger builds. T5: each has its own needs; a stronger appetite also adds to the pull of the fruit as food (T4).' },
+  { key: 'dThirst', label: 'Drive: thirst', type: 'select', options: [[0.75, 'Low'], [1, 'Normal'], [1.25, 'High']], def: 1, worlds: ['eden'],
+    note: 'How fast thirst builds. T5: after release they must meet every need from what they know.' },
+  { key: 'dCuriosity', label: 'Drive: curiosity', type: 'select', options: [[-0.15, 'Low'], [0, 'Normal'], [0.15, 'High']], def: 0, worlds: ['eden'],
+    note: 'Shifts every creature\'s inborn curiosity. T2: curiosity is what carries them outside what is best; T4: it is what the deceiver\'s claim works on.' },
+  { key: 'dChildren', label: 'Drive: to have children', type: 'select', options: [[0.1, 'Low'], [0.2, 'Normal'], [0.3, 'High']], def: 0.2, worlds: ['eden'],
+    note: 'Chance of conceiving in a month when fed and near a partner. T5: more mouths after release means more to produce.' },
+  { key: 'dFruit', label: 'Drive: desire of the eyes', type: 'select', options: [[0.25, 'Low'], [0.5, 'Normal'], [0.75, 'High']], def: 0.5, worlds: ['eden'],
+    note: 'How pleasing the fruit looks to them. T4: one of the three pulls at the tree (good for food, pleasing to the eye, desirable for wisdom).' },
+  { key: 'dWarning', label: 'How firmly they hold the warning', type: 'select', options: [[2, 'Loosely'], [3, 'Normal'], [4, 'Firmly']], def: 3, worlds: ['eden'],
+    note: 'The weight of the remembered warning against the three pulls. T2 and T4: it is what stands against the deceiver\'s doubt.' },
   { key: 'food', label: 'Food in each source', type: 'select', options: [[60, 'Plenty'], [30, 'Tight'], [15, 'Scarce']], def: 60, worlds: ['lab'],
     note: 'How much each food source can hold. With plenty, knowing where food is hardly matters; scarcity is where telling and trust can cost or save lives (T8: hardship is not assumed good or bad).' },
   { key: 'regrowth', label: 'Food regrowth', type: 'select', options: [[0.03, 'Normal'], [0.015, 'Half'], [0.0075, 'Quarter']], def: 0.03, worlds: ['lab'],
@@ -78,9 +98,16 @@ export function normalizeSetup(input = {}) {
     if (f.fixed && f.fixed[world] !== undefined) v = f.fixed[world];
     out[f.key] = v;
   }
-  if (world === 'lab') { out.guidanceYears = 0; out.guidance = 1; out.help = false; }
+  if (world === 'lab') { out.guidanceYears = 0; out.guidance = 1; out.help = false; out.restoration = false; out.tempters = 0; out.fallAgain = true; out.dAppetite = 1; out.dThirst = 1; out.dCuriosity = 0; out.dChildren = 0.2; out.dFruit = 0.5; out.dWarning = 3; }
   if (world === 'eden') { out.falseInfo = 0; out.food = 60; out.regrowth = 0.03; out.talk = true; }
   return out;
+}
+
+// Eden inputs for the natural-drive settings. Only existing sim numbers are rescaled; at "Normal" this returns the originals.
+export function driveConfig(setup, base, simBase) {
+  const cl = v => Math.min(1, Math.max(0, v));
+  return { sim: setup.dAppetite === 1 ? {} : { hungerRate: simBase.hungerRate * setup.dAppetite },
+    eden: { thirstRate: base.thirstRate * setup.dThirst, curiosityMin: cl(base.curiosityMin + setup.dCuriosity), curiosityMax: cl(base.curiosityMax + setup.dCuriosity), fecundability: setup.dChildren, beauty: setup.dFruit, wWarn: setup.dWarning } };
 }
 
 export const fieldsFor = world => SETUP_FIELDS.filter(f => f.worlds.includes(world) || (f.fixed && f.fixed[world] !== undefined));

@@ -43,7 +43,16 @@ export function batchEden(rows) {
   const pc = x => `guided ${Math.round(x * 100)}% of the time`;
   const gA = pc(more(rows[0]).guidance), gB = pc(less(rows[0]).guidance);
   const surv = r => { const k = Math.min(more(r).survivalYears, less(r).survivalYears); return k >= 1 ? [more(r).cohortByYear[k], less(r).cohortByYear[k]] : [null, null]; };
-  return [
+  const way = rows[0].r ? [
+    row('Way back·lives', 'Creatures alive at the end, with a way back vs without (measured only).', 'way back', 'no way back', ' alive', null, rows.map(r => [r.main.population, r.r.population])),
+    row('Way back·deaths', 'Deaths over the run, with a way back vs without (measured only).', 'way back', 'no way back', ' deaths', null, rows.map(r => [r.main.deaths, r.r.deaths]), 'The restored are fed by rule, so fewer deaths from want among them is built in. Deaths among the rest are not.'),
+    row('Way back·turned', 'Share of the living who are restored at the end (measured only; the other world has none by definition).', 'way back', 'no way back', '%', null, rows.map(r => [r.main.population ? r.main.restored.living / r.main.population * 100 : null, 0])),
+  ] : [];
+  const dem = rows[0].d ? [
+    row('Demons·turned', 'Share of the living who are restored at the end, with demons vs without (measured only).', 'with demons', 'no demons', '%', null, rows.map(r => [r.main.population ? (r.main.restored?.living ?? 0) / r.main.population * 100 : null, r.d.population ? (r.d.restored?.living ?? 0) / r.d.population * 100 : null])),
+    row('Demons·lives', 'Creatures alive at the end, with demons vs without (measured only).', 'with demons', 'no demons', ' alive', null, rows.map(r => [r.main.population, r.d.population])),
+  ] : [];
+  return [...way, ...dem,
     row('P1', 'Creatures guided more are less likely to eat when the deceiver speaks.', gA, gB, '%', false, rows.map(r => [more(r).meanChance, less(r).meanChance]), 'Average chance of eating each time the deceiver spoke.'),
     row('P2', 'Populations guided more before the fall survive the first years after release better.', gA, gB, '%', true, rows.map(surv), 'Share of those alive at the fall who were still alive up to 3 years later. Seeds where either world never fell are left out.'),
     row('P5', 'Help builds later ability to get food.', 'with help', 'without help', ' food', true, rows.map(r => [on(r).ownLater, off(r).ownLater]), 'Food gathered from the island itself in the second half of the run, per creature per year.'),

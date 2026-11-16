@@ -14,7 +14,8 @@ export function viewOfEden(s) {
     dangers: [], crossings: [],
     creatures: s.creatures.map(c => ({ id: c.id, x: c.x, y: c.y, alive: c.alive, deathTick: c.death?.tick ?? null, act: c.action?.type ?? null,
       child: E.config && c.eden.mother !== null && (s.tick - c.eden.born) / 1440 < E.config.weanAge,
-      led: !!(c.decision?.guided && s.tick - c.decision.tick < 90), clothed: !!c.eden.clothed })),
+      led: !!(c.decision?.guided && s.tick - c.decision.tick < 90), clothed: !!c.eden.clothed, covered: !!c.eden.covered })),
+    tempters: (E.tempters ?? []).map(t => ({ x: t.x, y: t.y })),
   };
 }
 
@@ -27,6 +28,6 @@ export function viewOfLab(s) {
     food: s.sources.map(p => ({ x: p.x, y: p.y, kind: p.type === 'garden' ? 'field' : 'bush', fill: p.capacity ? Math.min(1, p.stock / p.capacity) : 0, stock: p.stock })),
     dangers: s.dangers.map(d => ({ x: d.x, y: d.y, r: c0.dangerRadius })),
     crossings: s.crossingsOpen.map(y => ({ x: c0.riverX, y })),
-    creatures: s.creatures.map(c => ({ id: c.id, x: c.x, y: c.y, alive: c.alive, deathTick: c.death?.tick ?? null, act: c.action?.type ?? null, child: false, led: false, clothed: false })),
+    creatures: s.creatures.map(c => ({ id: c.id, x: c.x, y: c.y, alive: c.alive, deathTick: c.death?.tick ?? null, act: c.action?.type ?? null, child: false, led: false, clothed: false, covered: false })), tempters: [],
   };
 }

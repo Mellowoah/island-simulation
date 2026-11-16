@@ -40,6 +40,12 @@ export const EDEN_DEFAULTS = {
   illnessRate: 0.05,        // health lost per minute while starving or parched (hunger or thirst >= 80), after release only
   restHeal: 0.15, baseHeal: 0.01, healthRestWeight: 0.3, healthGuide: 30,
   urgentThirst: 60, urgentHunger: 70, // a released creature breaks off what it is doing when a need becomes urgent (if it knows where to go)
+  // One of many worlds: the biblical reading of what follows the fall (all off by default = original behaviour).
+  restoration: false,       // after the fall the Creator calls each creature once a year; those who turn back are guided, fed and kept from want
+  fallAgain: true,          // a restored creature can be drawn away again by a tempter (traditions differ; this is a setting)
+  tempters: 0,              // demons: separate beings directed by the deceiver. They can only whisper; they cannot touch or force anyone
+  wReturnNeed: 1, wReturnWord: 1, returnBar: 2.2, // the creature's own weighing of the call: its need, the word it heard, its belief in the deceiver's claim
+  provideAt: 79,            // the Creator gives bread or water to a restored creature before want can harm it (hunger or thirst at this level)
   guidanceRate: 1,          // Island Lab setup input: share of months in which the Creator steps in for a creature. 1 = original behaviour (always).
   serpentSilentYears: 0,    // Island Lab setup input (guidance length): the serpent stays silent for this many years. 0 = original behaviour.
 };
@@ -161,7 +167,7 @@ export const led = (s, c) => { const r = s.eden.config.guidanceRate ?? 1; return
 function pressing(s, c) {
   const a = c.action, cfg = s.eden.config, e = c.eden;
   if (!a) return false;
-  if (s.eden.phase === 'guided' && led(s, c)) { const n = needs(s, c); return (n.thirst || n.tired || n.hungry) && !serving(s, c, a, n); }
+  if ((s.eden.phase === 'guided' && led(s, c)) || e.covered) { const n = needs(s, c); return (n.thirst || n.tired || n.hungry) && !serving(s, c, a, n); }
   // Released: remembered water and remembered food only. Live stock is hidden until observe() writes it,
   // the same rule as decide() on the main island.
   if (e.thirst >= cfg.urgentThirst && a.type !== 'drink' && Object.keys(e.water).length) return true;
@@ -215,7 +221,11 @@ function edenDecide(s, c) {
     const x = 2 + Math.floor(draw(s, c.id, STREAMS.exploreTarget[0]) * 32), y = 2 + Math.floor(draw(s, c.id, STREAMS.exploreTarget[0] + 1) * 22);
     c.action = { type: 'explore', route: land(x, y, s.bridge) ? path(c.x, c.y, x, y, s.bridge) : [] };
   }
-  if (!released) {
+  if (released && e.covered) { // restored: the Creator leads again, as before the fall
+    E.restored.choices++;
+    const best = creatorBest(s, c);
+    if (best) { E.restored.led++; d.guided = { intended: d.selected, intendedPatch: d.patch, to: best.type, patch: best.patch, reason: best.reason }; c.action = best.action; }
+  } else if (!released) {
     E.decisions++;
     const best = led(s, c) ? creatorBest(s, c) : null;
     if (best) {
@@ -241,6 +251,54 @@ function fall(s, c) {
   E.phase = 'released'; E.fallTick = s.tick; E.firstEater = c.id;
   event(s, `${c.name} ate from the tree. The Creator releases everyone to their own devices.`);
   for (const o of s.creatures) if (o.alive) event(s, o === c ? 'I ate from the tree. My eyes are opened.' : `${c.name} ate. The Creator no longer leads us.`, o);
+}
+
+// ---- After the fall: the call to turn back, and the deceiver's tempters (both off by default) ----
+// Biblical reading used here: everyone is released by the first eating; the Creator then calls each one, and
+// each answers for itself; those who turn back live in the same fallen world but are led, fed and kept from want.
+// The deceiver cannot force anyone. His demons are separate beings that seek out creatures and whisper the same lie.
+const logistic = (U, t) => 1 / (1 + Math.exp(-U / t));
+function afterFall(s, order) {
+  const E = s.eden, cfg = E.config;
+  E.restored ??= { calls: 0, returned: 0, left: 0, bread: 0, whispers: 0, choices: 0, led: 0, answers: [] };
+  const note = a => { E.restored.answers.push(a); if (E.restored.answers.length > 500) E.restored.answers.shift(); };
+  if (cfg.restoration) for (const c of order) {
+    const e = c.eden;
+    if (!c.alive || e.covered || dependent(s, c) || (s.tick + c.id * 53) % YEAR !== 0) continue;
+    const need = Math.max(c.hunger, e.thirst, 100 - e.health) / 100, word = 0.5 + 0.5 * e.warning, doubt = e.curiosity * e.credence;
+    const U = cfg.wReturnNeed * need + cfg.wReturnWord * word - cfg.wWisdom * doubt - cfg.returnBar;
+    const P = logistic(U, cfg.temperature), r = draw(s, c.id, STREAMS.returnChoice[0]), yes = r < P;
+    E.restored.calls++; note({ tick: s.tick, id: c.id, kind: 'call', need, word, doubt, U, P, draw: r, yes });
+    if (yes) { e.covered = true; e.coveredAt = s.tick; e.warning = 1; E.restored.returned++; event(s, `The Creator called. I turned back (chance was ${(P * 100).toFixed(1)}%). He leads me again.`, c); }
+  }
+  if (!cfg.tempters) return;
+  E.tempters ??= Array.from({ length: cfg.tempters }, (_, i) => ({ id: i, x: E.tree.x, y: E.tree.y, target: null }));
+  const free = c => c.alive && !dependent(s, c) && (c.eden.lastSerpent === null || s.tick - c.eden.lastSerpent >= DAY);
+  for (const t of E.tempters) {
+    let c = t.target === null ? null : s.creatures[t.target];
+    if (!c || !free(c)) {
+      // The deceiver's direction: go first for those who turned back (if they can be drawn away), otherwise for anyone.
+      const taken = new Set(E.tempters.filter(o => o !== t && o.target !== null).map(o => o.target));
+      const pool = order.filter(o => free(o) && !taken.has(o.id));
+      const prize = cfg.fallAgain ? pool.filter(o => o.eden.covered) : [];
+      const from = prize.length ? prize : pool.filter(o => !o.eden.covered);
+      c = from.sort((a, b) => dist(a, t) - dist(b, t) || a.id - b.id)[0] ?? null;
+      t.target = c ? c.id : null;
+    }
+    if (!c) continue;
+    if (dist(c, t) > 1) { if (s.tick % s.config.moveEvery === 0) { t.x += Math.sign(c.x - t.x); t.y += Math.sign(c.y - t.y); } continue; }
+    const e = c.eden;
+    e.hearings++; e.lastSerpent = s.tick; e.credence = 1 - (1 - cfg.credenceStep) ** e.hearings; E.restored.whispers++; t.target = null;
+    if (!e.covered) { event(s, 'A whisper: "You will not die. You need no one." (a claim, not verified)', c); continue; }
+    if (!cfg.fallAgain) { event(s, 'A whisper came. It has no hold on me now.', c); continue; }
+    // The same weighing as at the tree: its want and its belief in the claim, against the word it holds.
+    const food = c.hunger / 100, wisdom = e.curiosity * e.credence;
+    const U = cfg.wFood * food + cfg.wWisdom * wisdom - cfg.wWarn * e.warning;
+    const P = logistic(U, cfg.temperature), r = draw(s, c.id, STREAMS.leaveChoice[0]), left = r < P;
+    note({ tick: s.tick, id: c.id, kind: 'whisper', food, wisdom, warning: e.warning, U, P, draw: r, yes: left });
+    if (left) { e.covered = false; E.restored.left++; event(s, `A whisper came and I went my own way again (chance was ${(P * 100).toFixed(1)}%).`, c); }
+    else event(s, `A whisper came. I held to the Creator (chance of leaving was ${(P * 100).toFixed(1)}%).`, c);
+  }
 }
 
 function serpent(s, c) {
@@ -276,6 +334,7 @@ export function edenStep(s, n = 1) {
     for (const c of order) edenObserve(s, c);
     for (const c of order) if (!dependent(s, c) && (!c.action || (c.energy < 5 && c.action.type !== 'rest') || pressing(s, c))) edenDecide(s, c);
     for (const c of order) serpent(s, c);
+    if (E.phase === 'released' && (cfg.restoration || cfg.tempters)) afterFall(s, order);
     for (const c of order) {
       if (dependent(s, c)) {
         const m = carer(s, c);
@@ -334,11 +393,15 @@ export function edenStep(s, n = 1) {
       }
       }
       health(s, c, released());
+      if (c.eden.covered) { // provision: fed and given water before want can harm
+        if (c.hunger >= cfg.provideAt) { c.hunger = cfg.hungerGuide; E.restored.bread++; }
+        if (c.eden.thirst >= cfg.provideAt) { c.eden.thirst = cfg.thirstGuide; E.restored.bread++; }
+      }
       if (released()) {
         c.starving = c.hunger >= 99 ? c.starving + 1 : 0;
         c.eden.parched = c.eden.thirst >= 99 ? c.eden.parched + 1 : 0;
         const cause = c.starving >= s.config.starveTicks ? 'Sustained food deprivation' : c.eden.parched >= cfg.thirstDeathTicks ? 'Thirst' : c.eden.health <= 0 ? 'Injury and illness' : null;
-        if (cause) { c.alive = false; c.death = { tick: s.tick, cause }; c.action = null; s.eden.deaths[cause] = (s.eden.deaths[cause] ?? 0) + 1; event(s, `${c.name} died: ${cause.toLowerCase()}.`); }
+        if (cause) { c.alive = false; c.death = { tick: s.tick, cause, ...(c.eden.covered ? { covered: true } : {}) }; c.action = null; s.eden.deaths[cause] = (s.eden.deaths[cause] ?? 0) + 1; event(s, `${c.name} died: ${cause.toLowerCase()}.`); }
       } else { c.starving = 0; c.eden.parched = 0; }
     }
     reproduce(s, order);
@@ -413,5 +476,8 @@ export function edenMetrics(s) {
     population: alive.length, births: E.births, deaths: s.creatures.filter(c => !c.alive).length, children: alive.filter(c => age(s, c) < E.config.menarche).length,
     birthIntervals: s.creatures.flatMap(c => c.eden.births.slice(1).map((t, i) => (t - c.eden.births[i]) / YEAR)), capReached: E.capReached,
     deathCauses: { ...E.deaths }, meanSight: alive.length ? alive.reduce((n, c) => n + c.eden.sight, 0) / alive.length : 0,
+    ...(E.restored ? { restored: { calls: E.restored.calls, returned: E.restored.returned, left: E.restored.left, bread: E.restored.bread, whispers: E.restored.whispers,
+      living: alive.filter(c => c.eden.covered).length, ledShare: E.restored.choices ? E.restored.led / E.restored.choices : 0,
+      deathsRestored: s.creatures.filter(c => !c.alive && c.death?.covered).length } } : {}),
     fields: s.patches.filter(p => p.field).length, clothed: alive.filter(c => c.eden.clothed).length, tools: alive.filter(c => c.eden.tool).length };
 }

@@ -35,3 +35,5 @@ Each Eden report runs two matched worlds with the same seed for the same number 
 4. **The moving bar** (measure only): hardship = average unmet need; each creature's bar = its own running average. Graph, report lines and batch rows. Creatures do not act on it, and by definition the share above the bar drifts back, so it is evidence only when a choice shifts it in the batch test.
 5. **P3** is now "not tested: built into the rules".
 First look (5 seeds, 6 years; too short for most falls, descriptive only): P5 went the other way in 5 of 5 (gap −1.6 food, range −2.5 to −0.7).
+6. **One of many worlds (Robert, 15 Nov):** "A way back after the fall" (T9), "Demons sent by the deceiver" (T11), "The restored can be drawn away again". Off by default. See THEORY-CHECK.md. Map: a halo on the restored, dark figures for demons. Graph "Turned back". Batch rows compare with and without.
+7. **Natural drives:** six Low/Normal/High settings over existing Eden numbers.

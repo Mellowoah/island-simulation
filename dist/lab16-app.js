@@ -111,7 +111,7 @@ function inspector() {
     $('inspector').innerHTML = `<h2>${esc(c.name)} <span class="note">age ${age.toFixed(0)} · ${e.sex === 'M' ? 'male' : 'female'} · tap a creature to follow it</span></h2>
       <div class="bars">${bar('Hunger', c.hunger, true)}${bar('Thirst', e.thirst, true)}${bar('Energy', c.energy)}${bar('Health', e.health)}</div>
       <p class="note">Doing: <b>${esc(c.action?.type ?? 'deciding')}</b>${d?.guided && s.tick - d.tick < 90 ? ` · <span style="color:#ffe680">the Creator led it: ${esc(d.guided.reason)}</span>` : d?.own ? ' · its own choice (released)' : ''}</p>
-      <p class="note">Curiosity ${(e.curiosity * 100).toFixed(0)} · times led by the Creator ${e.guided} · heard the deceiver ${e.hearings}× · belief in the claim ${(e.credence * 100).toFixed(0)}%${e.clothed ? ' · clothed' : ''}${e.tool ? ' · has a tool' : ''}</p>`;
+      <p class="note">Curiosity ${(e.curiosity * 100).toFixed(0)} · times led by the Creator ${e.guided} · heard the deceiver ${e.hearings}× · belief in the claim ${(e.credence * 100).toFixed(0)}%${e.covered ? ' · <span style="color:#fff7c2">restored: led and fed by the Creator</span>' : ''}${e.clothed ? ' · clothed' : ''}${e.tool ? ' · has a tool' : ''}</p>`;
   } else {
     const n = c.needs, trusted = Object.values(c.trust), avg = trusted.length ? trusted.reduce((a, b) => a + b, 0) / trusted.length : s.config.startTrust;
     $('inspector').innerHTML = `<h2>${esc(c.name)} <span class="note">tap a creature to follow it</span></h2>
@@ -224,7 +224,7 @@ async function pool(jobs, width) { const out = Array(jobs.length); let next = 0;
 $('batchRun').onclick = async () => {
   if (!report || !run) return;
   const n = Number($('batchN').value), seeds = batchSeeds(setup.seed, n), endTick = run.world.tick, kind = run.kind;
-  const variants = kind === 'eden' ? { main: setup, g: twinSetups(setup).guidance, h: twinSetups(setup).help }
+  const variants = kind === 'eden' ? { main: setup, g: twinSetups(setup).guidance, h: twinSetups(setup).help, ...(setup.restoration ? { r: { ...setup, restoration: false } } : {}), ...(setup.tempters ? { d: { ...setup, tempters: 0 } } : {}) }
     : { main: setup, talk: { ...setup, talk: !setup.talk }, ...(setup.falseInfo > 0 ? { lies: { ...setup, falseInfo: 0 } } : {}) };
   const keys = Object.keys(variants), total = seeds.length * keys.length, prog = Array(total).fill(0);
   const paint = () => { const p = prog.reduce((a, b) => a + b, 0) / total; $('batchProgress').innerHTML = `<p class="note">Running ${total} islands (${seeds.length} seeds × ${keys.length} worlds). You can leave this screen open; it takes a few minutes.</p><div class="progress"><i style="width:${Math.round(p * 100)}%"></i></div>`; };
@@ -233,7 +233,7 @@ $('batchRun').onclick = async () => {
     const jobs = seeds.flatMap((seed, si) => keys.map((k, ki) => () => runTwin(k, { ...variants[k], seed }, endTick, p => { prog[si * keys.length + ki] = p; paint(); }).then(r => { prog[si * keys.length + ki] = 1; paint(); return r; })));
     const res = await pool(jobs, Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 2) - 1)));
     const rows = seeds.map((seed, si) => Object.fromEntries([['seed', seed], ...keys.map((k, ki) => [k, res[si * keys.length + ki]])]));
-    if (kind === 'lab') for (const r of rows) r.lies ??= null;
+    if (kind === 'lab') for (const r of rows) r.lies ??= null; else for (const r of rows) { r.r ??= null; r.d ??= null; }
     report.batch = { seeds, rows: kind === 'eden' ? batchEden(rows) : batchLab(rows) };
     showReport(); $('saveReport').textContent = 'Save on this phone';
   } catch (e) { $('batchProgress').innerHTML = `<p>Batch test failed: ${esc(e.message)}</p>`; $('batchRun').disabled = false; }
