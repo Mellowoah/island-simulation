@@ -40,6 +40,7 @@ export const EDEN_DEFAULTS = {
   illnessRate: 0.05,        // health lost per minute while starving or parched (hunger or thirst >= 80), after release only
   restHeal: 0.15, baseHeal: 0.01, healthRestWeight: 0.3, healthGuide: 30,
   urgentThirst: 60, urgentHunger: 70, // a released creature breaks off what it is doing when a need becomes urgent (if it knows where to go)
+  guidanceRate: 1,          // Island Lab setup input: share of months in which the Creator steps in for a creature. 1 = original behaviour (always).
   serpentSilentYears: 0,    // Island Lab setup input (guidance length): the serpent stays silent for this many years. 0 = original behaviour.
 };
 const YEAR = DAY;
@@ -153,10 +154,14 @@ function serving(s, c, a, n) {
   return false;
 }
 
+// Whether the Creator steps in for this creature this month. Always true at the default rate of 1 (no draw is made).
+const MONTH = 120;
+export const led = (s, c) => { const r = s.eden.config.guidanceRate ?? 1; return r >= 1 || noise2(seedKey(s.seed), Math.floor(s.tick / MONTH), c.id, STREAMS.guidanceLapse[0]) < r; };
+
 function pressing(s, c) {
   const a = c.action, cfg = s.eden.config, e = c.eden;
   if (!a) return false;
-  if (s.eden.phase === 'guided') { const n = needs(s, c); return (n.thirst || n.tired || n.hungry) && !serving(s, c, a, n); }
+  if (s.eden.phase === 'guided' && led(s, c)) { const n = needs(s, c); return (n.thirst || n.tired || n.hungry) && !serving(s, c, a, n); }
   // Released: remembered water and remembered food only. Live stock is hidden until observe() writes it,
   // the same rule as decide() on the main island.
   if (e.thirst >= cfg.urgentThirst && a.type !== 'drink' && Object.keys(e.water).length) return true;
@@ -212,7 +217,7 @@ function edenDecide(s, c) {
   }
   if (!released) {
     E.decisions++;
-    const best = creatorBest(s, c);
+    const best = led(s, c) ? creatorBest(s, c) : null;
     if (best) {
       E.overrides++; e.guided++;
       d.guided = { intended: d.selected, intendedPatch: d.patch, to: best.type, patch: best.patch, reason: best.reason };

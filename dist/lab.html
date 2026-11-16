@@ -59,6 +59,12 @@
       <button id="dlMd">Download Markdown</button><button id="dlHtml">Download HTML</button><button id="saveReport">Save on this phone</button>
     </div>
     <div class="box rep" id="reportBody"></div>
+    <div class="box" id="batchBox" hidden>
+      <h2>Batch test</h2>
+      <p class="note">One island cannot settle anything. This runs your same choices on many seeds and reports the average gap, its likely range, and how many islands went each way.</p>
+      <div class="row"><select id="batchN" aria-label="How many seeds"><option value="5">5 seeds (quick)</option><option value="10" selected>10 seeds</option><option value="20">20 seeds (slow)</option></select><button id="batchRun">Run batch test</button></div>
+      <div id="batchProgress"></div>
+    </div>
     <div class="row"><button id="backToGame">◀ Back to the island</button><button id="newRun">New run</button></div>
   </section>
   <p class="credits">Pixel art: Kenney “Tiny Town” and “Tiny Dungeon” (CC0). See CREDITS.md.</p>

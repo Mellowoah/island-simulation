@@ -9,6 +9,9 @@ import { createRun, stepRun, runToEnd, serializeRun, restoreTheoryRun, restoreLa
 import { summarizeEden, summarizeLab, judge, predictionsEden, buildEdenReport, buildLabReport, reportMarkdown, reportHTML, twinSetups, MARGIN } from '../dist/lab16-report.js';
 import { viewOfEden, viewOfLab } from '../dist/lab16-view.js';
 import { createPixelRenderer } from '../dist/lab16-render.js';
+import { paired, batchVerdict, batchSeeds, batchEden, batchLab, batchMarkdown, batchHTML, t95 } from '../dist/lab16-batch.js';
+import { barSample, hardshipEden, BAR_MARGIN } from '../dist/lab16-run.js';
+import { led } from '../dist/eden.js';
 import { niceMax, drawLineChart, chartSpecs } from '../dist/lab16-charts.js';
 
 const fakeCtx = () => new Proxy({}, { get: (t, k) => k in t ? t[k] : (...a) => {}, set: (t, k, v) => { t[k] = v; return true; } });
@@ -159,12 +162,14 @@ test('N4 each prediction gets a verdict, compared the right way round', () => {
   assert.deepEqual(preds.map(p => p.id), ['P1', 'P2', 'P3', 'P4', 'P5']);
   for (const p of preds) assert.ok(['held', 'failed', 'not judged', 'not tested'].includes(p.verdict), p.id);
   assert.equal(preds[3].verdict, 'not tested');
-  const p1 = preds[0], longer = M.guidanceYears > G.guidanceYears ? M : G, shorter = longer === M ? G : M;
+  const p1 = preds[0], longer = M.guidance > G.guidance ? M : G, shorter = longer === M ? G : M;
+  assert.notEqual(M.guidance, G.guidance, 'the guidance twin differs in how often the Creator steps in');
+  assert.equal(preds[2].verdict, 'not tested', 'P3 is built into the rules'); assert.equal(preds[2].builtIn, true);
   assert.equal(p1.a, longer.meanChance); assert.equal(p1.b, shorter.meanChance);
   const p5 = preds[4], on = M.help ? M : H, off = M.help ? H : M;
   assert.equal(p5.a, on.ownLater); assert.equal(p5.b, off.ownLater);
   assert.equal(H.tick, M.tick); assert.equal(G.tick, M.tick, 'matched worlds run for the same time');
-  assert.equal(G.seed, M.seed); assert.equal(G.help, M.help); assert.equal(H.guidanceYears, M.guidanceYears);
+  assert.equal(G.seed, M.seed); assert.equal(G.help, M.help); assert.equal(H.guidance, M.guidance); assert.equal(G.guidanceYears, M.guidanceYears);
 });
 
 test('N5 the written report carries the same numbers and reads cleanly', () => {
@@ -204,7 +209,89 @@ test('C1 charts: tidy axis tops, one value per sample, drawing is safe', () => {
   for (const kind of ['eden', 'lab']) {
     const rows = kind === 'eden' ? main.series : seriesOf(runToEnd({ world: 'lab', seed: 41, runDays: 2 }));
     const specs = chartSpecs(kind, rows, { fallTick: main.world.eden.fallTick });
-    assert.equal(specs.length, 6);
+    assert.equal(specs.length, 7);
     for (const c of specs) { for (const s of c.series) assert.equal(s.values.length, c.xs.length); if (!c.empty) drawLineChart(fakeCtx(), 280, 150, c.xs, c.series, c.opts); }
   }
+});
+
+// ---- Features added on claude/lab-features ----
+test('F1 guidance rate: the default (always) is the original rule and makes no new draw', () => {
+  assert.equal(EDEN_DEFAULTS.guidanceRate, 1);
+  const a = createEden(46), b = createEden(46, {}, { guidanceRate: 1 }); edenStep(a, 900); edenStep(b, 900);
+  assert.deepEqual(strip(a), strip(b));
+  assert.ok(a.creatures.every(c => led(a, c)));
+});
+
+test('F2 guidance rate below 1: the Creator steps in less, the world really differs, and nobody is forced', () => {
+  const full = createEden(41), half = createEden(41, {}, { guidanceRate: 0.5 }), none = createEden(41, {}, { guidanceRate: 0 });
+  for (const s of [full, half, none]) edenStep(s, 2 * DAY);
+  const share = s => edenMetrics(s).guidedShare;
+  assert.ok(share(full) > share(half) && share(half) > 0, `${share(full)} > ${share(half)} > 0`);
+  assert.equal(none.eden.overrides, 0, 'never guided means no override at all');
+  assert.notDeepEqual(strip(full.creatures.map(c => [c.x, c.y, c.hunger])), strip(half.creatures.map(c => [c.x, c.y, c.hunger])));
+  // Same seed and rate gives the same history.
+  const again = createEden(41, {}, { guidanceRate: 0.5 }); edenStep(again, 2 * DAY);
+  assert.deepEqual(strip(again), strip(half));
+  for (const s of [half, none]) assert.ok(s.eden.deliberations.every(d => d.P > 0 && d.P < 1 && d.ate === (d.draw < d.P)), 'eating is still the creature\'s own draw');
+});
+
+test('F3 the matched guidance worlds are now different worlds (the old comparison was a world against itself)', () => {
+  const tw = twinSetups(normalizeSetup({ world: 'eden', seed: 41, runDays: 8 }));
+  assert.equal(tw.guidance.guidance, 0.5); assert.equal(twinSetups({ ...tw.guidance }).guidance.guidance, 1);
+  const a = summarizeEden(runToEnd({ world: 'eden', seed: 41, runDays: 8 })), b = summarizeEden(runToEnd(tw.guidance));
+  assert.ok(a.fell && b.fell); assert.notEqual(a.fallYear, b.fallYear);
+});
+
+test('F4 paired statistics: hand-checked numbers, missing seeds left out and counted', () => {
+  const st = paired([[3, 1], [5, 2], [4, 4], [null, 2], [7, 3]]);
+  assert.equal(st.n, 4); assert.equal(st.skipped, 1); assert.equal(st.mean, 2.25);
+  assert.ok(Math.abs(st.sd - 1.707825) < 1e-5);
+  assert.ok(Math.abs((st.hi - st.lo) / 2 - 3.182 * 1.707825 / 2) < 1e-4, 't for 3 degrees of freedom');
+  assert.deepEqual([st.up, st.down, st.same], [3, 0, 1]);
+  assert.equal(t95(19), 2.093);
+  assert.equal(batchVerdict({ n: 10, lo: 0.5, hi: 2 }, true), 'held'); assert.equal(batchVerdict({ n: 10, lo: 0.5, hi: 2 }, false), 'against');
+  assert.equal(batchVerdict({ n: 10, lo: -1, hi: 2 }, true), 'unclear'); assert.equal(batchVerdict({ n: 2, lo: 1, hi: 2 }, true), 'unclear', 'too few seeds');
+  assert.equal(paired([[null, 1]]).n, 0);
+  assert.deepEqual(batchSeeds(999998, 4), [999998, 999999, 1, 2]);
+});
+
+test('F5 batch report: Eden and Lab rows are built from run summaries and read cleanly', () => {
+  const base = normalizeSetup({ world: 'eden', seed: 41, runDays: 6 }), tw = twinSetups(base);
+  const rows = batchSeeds(41, 3).map(seed => ({ seed, main: summarizeEden(runToEnd({ ...base, seed })), g: summarizeEden(runToEnd({ ...tw.guidance, seed })), h: summarizeEden(runToEnd({ ...tw.help, seed })) }));
+  const b = { seeds: batchSeeds(41, 3), rows: batchEden(rows) };
+  assert.deepEqual(b.rows.map(r => r.id), ['P1', 'P2', 'P5', 'Fall', 'Bar·help', 'Bar·guidance']);
+  const p5 = b.rows[2]; assert.equal(p5.n, 3);
+  assert.ok(Math.abs(p5.mean - rows.reduce((n, r) => n + (r.h.ownLater - r.main.ownLater), 0) / 3) < 1e-9, 'help on minus help off, seed by seed');
+  for (const r of b.rows) assert.ok(['held', 'against', 'unclear', 'measured'].includes(r.verdict));
+  const md = batchMarkdown(b), html = batchHTML(b);
+  for (const t of [md, html]) { assert.doesNotMatch(t, /undefined|NaN|\[object/); assert.match(t, /3 islands/); }
+  const lb = normalizeSetup({ world: 'lab', seed: 7, runDays: 2, falseInfo: 0.25, food: 15 });
+  const lrows = batchSeeds(7, 3).map(seed => ({ seed, main: summarizeLab(runToEnd({ ...lb, seed })), talk: summarizeLab(runToEnd({ ...lb, seed, talk: false })), lies: summarizeLab(runToEnd({ ...lb, seed, falseInfo: 0 })) }));
+  const L = batchLab(lrows); assert.equal(L.length, 5); assert.doesNotMatch(batchMarkdown({ seeds: [7, 8, 9], rows: L }), /undefined|NaN/);
+});
+
+test('F6 scarcity and telling reach the Lab sim as config inputs only', () => {
+  const n = normalizeSetup({ world: 'lab', food: 15, regrowth: 0.0075, talk: false });
+  assert.equal(n.food, 15); assert.equal(n.regrowth, 0.0075); assert.equal(n.talk, false);
+  assert.equal(normalizeSetup({ world: 'lab', food: 17 }).food, 60, 'unknown values fall back to the default'); assert.equal(normalizeSetup({ world: 'lab' }).talk, true);
+  const r = createRun({ ...n, seed: 9, runDays: 2 }); stepRun(r, 400);
+  const plain = createLab(9, { population: 24, falseInformationRate: 0, foodQuantity: 15, foodRegrowth: 0.0075, communication: false }); labStep(plain, 400);
+  assert.deepEqual(strip(r.world), strip(plain));
+  assert.equal(labMetrics(r.world).messages.sent, 0, 'telling off: no messages');
+});
+
+test('F7 the moving bar is a measure only: it never changes a world, and it follows hardship', () => {
+  for (const w of [0.5, 3]) {
+    const r = createRun({ world: 'eden', seed: 43, runDays: 3, barWindow: w }); stepRun(r, 2000);
+    const plain = createEden(43, {}, { serpentSilentYears: 0, guidanceRate: 1 }); edenStep(plain, 2000);
+    assert.deepEqual(strip(r.world), strip(plain), `bar window ${w} leaves the world untouched`);
+    for (const row of r.series) { assert.ok(row.hard >= 0 && row.hard <= 100); assert.ok(row.over >= 0 && row.over <= 100); }
+  }
+  // A creature held at a higher hardship ends up with a higher bar, and is no longer "above its bar".
+  const run = { kind: 'eden', setup: { barWindow: 0.5 }, bar: {}, world: { creatures: [{ id: 0, alive: true, hunger: 0, energy: 100, eden: { thirst: 0, health: 100 } }] } };
+  assert.equal(barSample(run).over, 0);
+  Object.assign(run.world.creatures[0], { hunger: 80 }); assert.equal(hardshipEden(run.world.creatures[0]), 20);
+  assert.equal(barSample(run).over, 100, 'a sudden rise is above the bar');
+  for (let i = 0; i < 200; i++) barSample(run);
+  const end = barSample(run); assert.ok(end.bar > 20 - BAR_MARGIN && end.over === 0, 'the bar has moved up to meet it');
 });

@@ -50,3 +50,8 @@ Purpose: stop drift. Each line is something Robert stated, how the model does it
 3. Children aged 5 and over can meet the serpent and eat. Is there an age of accountability?
 4. Children born after release are not warned (the tree no longer matters). Should they be told anything?
 5. Ageing and lifespan (see above).
+
+## Change on `claude/lab-features` (16 Nov 2026, awaiting Robert's say)
+- **New Eden input `guidanceRate` (default 1 = original rule).** Below 1, the Creator steps in for a creature only in that share of months (one draw per creature per month, stream `guidanceLapse` 340). In a month without guidance the creature uses its own judgement, exactly as after release, but the warning still stands and nobody can die before the fall. Tests F1 (default unchanged, no new draw) and F2 (less guidance, eating still the creature's own draw).
+- Why: the earlier "guidance length" input only silenced the serpent, so both matched worlds had the same fall. P1 and P2 are now judged by how often the Creator steps in.
+- Not changed: the tree choice, the serpent, release, production, reproduction.

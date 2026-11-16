@@ -6,6 +6,7 @@ import { createRun, stepRun, seriesOf, serializeRun, restoreLabRun, restoreTheor
 import { viewOfEden, viewOfLab } from './lab16-view.js';
 import { createPixelRenderer, loadImage } from './lab16-render.js';
 import { chartSpecs, drawLineChart } from './lab16-charts.js';
+import { batchSeeds, batchEden, batchLab } from './lab16-batch.js';
 import { summarizeEden, summarizeLab, buildEdenReport, buildLabReport, reportMarkdown, reportHTML, reportBodyHTML, twinSetups } from './lab16-report.js';
 
 const $ = id => document.getElementById(id);
@@ -89,7 +90,8 @@ function hud() {
   if (run.kind === 'eden') {
     const E = s.eden, rel = E.phase === 'released', spoke = s.creatures.reduce((n, c) => n + c.eden.hearings, 0);
     const silent = s.tick < setup.guidanceYears * DAY;
-    $('hud').innerHTML = `<span>${clockOf(s.tick)}<span class="mute">/${setup.runDays}</span></span><span class="heart">♥ ${alive}</span><span class="phase ${rel ? 'rel' : ''}">${rel ? 'RELEASED' : 'GUIDED'}</span><span>🐍 ${silent ? 'silent' : 'spoke ' + spoke}</span>${setup.help ? `<span>${s.tick < run.helpUntil ? 'HELP ON' : 'HELP ENDED'}</span>` : ''}<span class="mute">seed ${s.seed}</span>`;
+    const gtxt = setup.guidance < 1 ? ` ${Math.round(setup.guidance * 100)}%` : '';
+    $('hud').innerHTML = `<span>${clockOf(s.tick)}<span class="mute">/${setup.runDays}</span></span><span class="heart">♥ ${alive}</span><span class="phase ${rel ? 'rel' : ''}">${rel ? 'RELEASED' : 'GUIDED' + gtxt}</span><span>🐍 ${silent ? 'silent' : 'spoke ' + spoke}</span>${setup.help ? `<span>${s.tick < run.helpUntil ? 'HELP ON' : 'HELP ENDED'}</span>` : ''}<span class="mute">seed ${s.seed}</span>`;
   } else {
     const m = s.samples.at(-1);
     $('hud').innerHTML = `<span>${clockOf(s.tick)}<span class="mute">/${setup.runDays}d</span></span><span class="heart">♥ ${alive}</span><span>trust ${m ? m.trustMean.toFixed(0) : s.config.startTrust}</span><span>lies ${Math.round(s.config.falseInformationRate * 100)}%</span><span class="mute">seed ${s.seed}</span>`;
@@ -188,7 +190,7 @@ function runTwin(job, twinSetup, endTick, onProgress) {
 async function runTwinHere(twinSetup, endTick, onProgress) { // fallback: same code, on the page, in slices
   const r = createRun(twinSetup); r.endTick = Math.min(r.endTick, endTick);
   while (!r.done) { stepRun(r, 720); onProgress(r.world.tick / r.endTick); await new Promise(res => setTimeout(res, 0)); }
-  return summarizeEden(r);
+  return r.kind === 'lab' ? summarizeLab(r) : summarizeEden(r);
 }
 function chartImages() {
   return chartSpecs(run.kind, seriesOf(run), chartMeta()).filter(c => !c.empty).map(c => ({ title: c.title, caption: c.caption, src: $('ch_' + c.id)?.toDataURL('image/png') })).filter(i => i.src);
@@ -202,7 +204,7 @@ async function finish() {
   reportImages = chartImages();
   if (run.kind === 'lab') { report = buildLabReport(summarizeLab(run), { created, setup }); return showReport(); }
   const tw = twinSetups(setup), prog = { guidance: 0, help: 0 };
-  const paint = () => { $('reportProgress').innerHTML = `<h2>Writing the report</h2><p class="note">To judge each prediction fairly, the lab runs two matched islands with the same seed for the same ${(run.world.tick / DAY).toFixed(1)} years: one with ${tw.guidance.guidanceYears} years of guidance instead of ${setup.guidanceYears}, and one with help ${tw.help.help ? 'on' : 'off'}.</p><div class="progress"><i style="width:${Math.round((prog.guidance + prog.help) * 50)}%"></i></div>`; };
+  const paint = () => { $('reportProgress').innerHTML = `<h2>Writing the report</h2><p class="note">To judge each prediction fairly, the lab runs two matched islands with the same seed for the same ${(run.world.tick / DAY).toFixed(1)} years: one where the Creator steps in ${Math.round(tw.guidance.guidance * 100)}% of the time instead of ${Math.round(setup.guidance * 100)}%, and one with help ${tw.help.help ? 'on' : 'off'}.</p><div class="progress"><i style="width:${Math.round((prog.guidance + prog.help) * 50)}%"></i></div>`; };
   paint();
   try {
     const main = summarizeEden(run);
@@ -215,7 +217,27 @@ function showReport() {
   $('reportProgress').innerHTML = `<h2>Run complete</h2><p class="note">Read it here, download it, or save it on this device.</p>`;
   $('reportBody').innerHTML = reportBodyHTML(report, reportImages);
   $('reportActions').hidden = false;
+  $('batchBox').hidden = false; $('batchRun').disabled = false; $('batchProgress').innerHTML = report.batch ? '<p class="note">Batch test added to the report above.</p>' : '';
 }
+// ---------- Batch test: the same choices on many seeds ----------
+async function pool(jobs, width) { const out = Array(jobs.length); let next = 0; await Promise.all(Array.from({ length: width }, async () => { while (next < jobs.length) { const i = next++; out[i] = await jobs[i](); } })); return out; }
+$('batchRun').onclick = async () => {
+  if (!report || !run) return;
+  const n = Number($('batchN').value), seeds = batchSeeds(setup.seed, n), endTick = run.world.tick, kind = run.kind;
+  const variants = kind === 'eden' ? { main: setup, g: twinSetups(setup).guidance, h: twinSetups(setup).help }
+    : { main: setup, talk: { ...setup, talk: !setup.talk }, ...(setup.falseInfo > 0 ? { lies: { ...setup, falseInfo: 0 } } : {}) };
+  const keys = Object.keys(variants), total = seeds.length * keys.length, prog = Array(total).fill(0);
+  const paint = () => { const p = prog.reduce((a, b) => a + b, 0) / total; $('batchProgress').innerHTML = `<p class="note">Running ${total} islands (${seeds.length} seeds × ${keys.length} worlds). You can leave this screen open; it takes a few minutes.</p><div class="progress"><i style="width:${Math.round(p * 100)}%"></i></div>`; };
+  $('batchRun').disabled = true; paint();
+  try {
+    const jobs = seeds.flatMap((seed, si) => keys.map((k, ki) => () => runTwin(k, { ...variants[k], seed }, endTick, p => { prog[si * keys.length + ki] = p; paint(); }).then(r => { prog[si * keys.length + ki] = 1; paint(); return r; })));
+    const res = await pool(jobs, Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 2) - 1)));
+    const rows = seeds.map((seed, si) => Object.fromEntries([['seed', seed], ...keys.map((k, ki) => [k, res[si * keys.length + ki]])]));
+    if (kind === 'lab') for (const r of rows) r.lies ??= null;
+    report.batch = { seeds, rows: kind === 'eden' ? batchEden(rows) : batchLab(rows) };
+    showReport(); $('saveReport').textContent = 'Save on this phone';
+  } catch (e) { $('batchProgress').innerHTML = `<p>Batch test failed: ${esc(e.message)}</p>`; $('batchRun').disabled = false; }
+};
 function download(name, text, type) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; document.body.append(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); }
 const fileBase = () => `island-lab-${report.kind}-seed${report.main.seed}-${new Date().toISOString().slice(0, 10)}`;
 $('dlMd').onclick = () => download(fileBase() + '.md', reportMarkdown(report), 'text/markdown');

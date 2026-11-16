@@ -27,3 +27,11 @@ Each Eden report runs two matched worlds with the same seed for the same number 
 ## Saves
 - The Lab island keeps `island-lab-save-v1` and its format (old saves load; new saves stay readable by the old page).
 - Eden runs save under `island-lab-theory-v1`. Saved reports: `island-lab-reports-v1` (up to 20).
+
+## Added on `claude/lab-features` (Claude, 16 Nov 2026; not merged, awaiting Robert's say)
+1. **Batch test** (`lab16-batch.js`): after a run, the same choices on 5, 10 or 20 seeds. Reports the average paired gap, a 95% range (paired t), and how many islands went each way. HELD only if the whole range is on the predicted side.
+2. **Real guidance setting**: "How often the Creator steps in" (`guidanceRate` in `eden.js`, default Always). P1 and P2 are judged with it. The serpent-silence input stays, relabelled, and no longer claims to test P1/P2.
+3. **Scarcity on the Lab island**: food per source, regrowth, and whether creatures can tell each other things. All are existing Lab config values.
+4. **The moving bar** (measure only): hardship = average unmet need; each creature's bar = its own running average. Graph, report lines and batch rows. Creatures do not act on it, and by definition the share above the bar drifts back, so it is evidence only when a choice shifts it in the batch test.
+5. **P3** is now "not tested: built into the rules".
+First look (5 seeds, 6 years; too short for most falls, descriptive only): P5 went the other way in 5 of 5 (gap −1.6 food, range −2.5 to −0.7).

@@ -4,6 +4,7 @@ import { DAY } from './sim.js';
 import { edenMetrics } from './eden.js';
 import { labMetrics } from './lab.js';
 import { PREDICTIONS, THEORY, lineLabel } from './lab16-setup.js';
+import { batchMarkdown, batchHTML } from './lab16-batch.js';
 import { hearingsTotal, habitSpread, curiositySpread, giftEaten, seriesOf } from './lab16-run.js';
 
 export const MARGIN = 0.05; // a difference must be at least 5% of the smaller value to count; smaller gaps count as "no difference"
@@ -32,10 +33,13 @@ export function summarizeEden(run) {
     const years = (s.tick - run.half.tick) / DAY, avgPop = mean(pops);
     ownLater = avgPop ? own / avgPop / years : null;
   }
+  // Moving bar (measure only): hardship, each creature's own bar, and the share above their bar.
+  const avg = (rows, k) => mean(rows.map(r => r[k]).filter(v => v !== null && v !== undefined));
+  const pre = fell ? series.filter(r => r.t <= E.fallTick) : series, post = fell ? series.filter(r => r.t > E.fallTick) : [];
   const alive = s.creatures.filter(c => c.alive);
   const skill = mean(alive.map(c => ((c.skills.a ?? 0) + (c.skills.b ?? 0)) / 2));
   return {
-    kind: 'eden', seed: s.seed, guidanceYears: run.setup.guidanceYears, help: run.setup.help, years: s.tick / DAY, tick: s.tick,
+    kind: 'eden', seed: s.seed, guidanceYears: run.setup.guidanceYears, guidance: run.setup.guidance, help: run.setup.help, years: s.tick / DAY, tick: s.tick,
     start: 24, population: m.population, births: m.births, deaths: m.deaths, deathCauses: m.deathCauses,
     fell, fallYear: fell ? E.fallTick / DAY : null, firstEater: fell ? s.creatures[E.firstEater].name : null,
     hearings: hearingsTotal(s), deliberationsKept: delib.length,
@@ -48,13 +52,17 @@ export function summarizeEden(run) {
     habitBefore: before ? before.habit : null, habitAfter: last.habit, habitNow: habitSpread(s),
     curiosityBefore: before ? before.curiosity : null, curiosityAfter: curiositySpread(s),
     gifted: s.ledger.gifted, giftEaten: giftEaten(s), ownLater, skill: skill === null ? null : skill * 100,
+    hardGuided: avg(pre, 'hard'), hardReleased: avg(post, 'hard'), overGuided: avg(pre, 'over'), overReleased: avg(post, 'over'),
+    hardEnd: last.hard ?? null, barEnd: last.bar ?? null, overEnd: last.over ?? null,
     fields: m.fields, clothed: m.clothed, tools: m.tools, food: s.patches.reduce((n, p) => n + p.stock, 0),
   };
 }
 
 export function summarizeLab(run) {
-  const s = run.world, m = labMetrics(s), first = seriesOf(run)[0];
-  return { kind: 'lab', seed: s.seed, years: s.tick / DAY, days: s.tick / DAY, tick: s.tick, start: s.creatures.length, population: m.alive, deaths: m.deaths,
+  const s = run.world, m = labMetrics(s), rows = seriesOf(run), first = rows[0], lastBar = [...rows].reverse().find(r => r.hard !== null && r.hard !== undefined);
+  const firstBar = rows.find(r => r.hard !== null && r.hard !== undefined);
+  return { kind: 'lab', talk: run.setup.talk, foodSetting: run.setup.food, regrowth: run.setup.regrowth,
+    hardStart: firstBar?.hard ?? null, hardEnd: lastBar?.hard ?? null, barEnd: lastBar?.bar ?? null, overEnd: lastBar?.over ?? null, seed: s.seed, years: s.tick / DAY, days: s.tick / DAY, tick: s.tick, start: s.creatures.length, population: m.alive, deaths: m.deaths,
     trustStart: first ? first.trust : s.config.startTrust, trustEnd: m.trustMean, trustSpread: m.trustSpread, food: m.food,
     sent: m.messages.sent, accepted: m.messages.accepted, falseSent: m.messages.falseSent, verifiedFalse: m.messages.verifiedFalse, verifiedTrue: m.messages.verifiedTrue,
     knowledge: m.knowledgeSpread * 100, falseInfo: s.config.falseInformationRate * 100 };
@@ -71,7 +79,7 @@ export function judge(a, b, higherIsBetter) {
 
 export function twinSetups(setup) {
   return {
-    guidance: { ...setup, guidanceYears: setup.guidanceYears > 0 ? 0 : 3 },
+    guidance: { ...setup, guidance: setup.guidance >= 1 ? 0.5 : 1 },
     help: { ...setup, help: !setup.help },
   };
 }
@@ -79,8 +87,8 @@ export function twinSetups(setup) {
 export function predictionsEden(main, gTwin, hTwin) {
   const out = [];
   // P1 and P2: the run with more years of guidance vs the run with fewer (same seed, same help).
-  const [longer, shorter] = main.guidanceYears >= gTwin.guidanceYears ? [main, gTwin] : [gTwin, main];
-  const tag = x => `${x.guidanceYears} year${x.guidanceYears === 1 ? '' : 's'} of guidance`;
+  const [longer, shorter] = main.guidance >= gTwin.guidance ? [main, gTwin] : [gTwin, main];
+  const tag = x => `guided ${Math.round(x.guidance * 100)}% of the time`;
   {
     const j = judge(longer.meanChance, shorter.meanChance, false);
     out.push({ id: 'P1', text: PREDICTIONS.P1, ...j,
@@ -98,7 +106,7 @@ export function predictionsEden(main, gTwin, hTwin) {
       why: j.verdict === 'not judged' ? (!longer.fell || !shorter.fell ? 'One of the two worlds never fell during the run, so there is no "after release" to compare.' : 'Less than one full year passed after the fall in one of the worlds. Run longer.') : null, lines: ['T7', 'T5'] });
   }
   {
-    const j = main.fell ? judge(main.habitAfter, main.habitBefore, true) : { verdict: 'not judged', diff: null };
+    const j = main.fell ? { ...judge(main.habitAfter, main.habitBefore, true), verdict: 'not tested' } : { verdict: 'not judged', diff: null };
     out.push({ id: 'P3', text: PREDICTIONS.P3, ...j,
       measure: 'How different the creatures\' own habits are from each other (0 = all alike, 100 = as different as possible), just before the fall vs at the end.',
       a: main.habitAfter, b: main.habitBefore, aLabel: 'after release (end)', bLabel: 'while guided (just before the fall)', unit: ' pts',
@@ -131,6 +139,7 @@ function storyEden(m) {
   else p.push('No one ate from the tree during this run, so everyone stayed guided and no one died. (Never eating is allowed: T3.)');
   p.push(`At the end ${m.population} were alive. There were ${m.births} births and ${m.deaths} deaths${m.deaths ? ` (${Object.entries(m.deathCauses).map(([k, v]) => `${v} from ${k.toLowerCase()}`).join(', ')})` : ''}.`);
   if (m.fell) p.push(`After release they tilled ${m.fields} field${m.fields === 1 ? '' : 's'}; ${m.clothed} of the living had made clothing and ${m.tools} had made a tool.`);
+  if (m.hardEnd !== null && m.hardGuided !== null) p.push(`The moving bar: average hardship (unmet needs, 0 to 100) was ${fmt(m.hardGuided)} while guided${m.fell ? ` and ${fmt(m.hardReleased)} after release` : ''}. Each creature's bar is its own recent average. On average ${fmt(m.overGuided, '%')} of creatures were above their own bar while guided${m.fell ? ` and ${fmt(m.overReleased, '%')} after release` : ''}; at the end the average bar stood at ${fmt(m.barEnd)}.`);
   if (m.help) p.push(`You left ${r1(m.gifted)} food near the start during the first half; ${r1(m.giftEaten)} of it was eaten.`);
   return p;
 }
@@ -145,15 +154,14 @@ function meaning(preds, m) {
   say('P2', 'P2 held: the longer-guided world survived the first years after release better. On the open question in T7 (proposed), this run points toward guidance preparing them.',
     'P2 failed: the longer-guided world did not survive the first years after release better. On T7 (proposed), this run points toward guidance being good in the moment but not preparing them.',
     'P2 could not be judged in this run.');
-  say('P3', 'P3 held: after release the creatures grew more different from each other. This is partly built into the rules (they only start forming their own habits after release), so it shows T5 is modelled, not that it is proven.',
-    'P3 failed: the creatures did not grow more different after release (T5).',
-    'P3 could not be judged because there was no release.');
+  out.push(by.P3?.verdict === 'not judged' ? 'P3 could not be judged because there was no release.' : 'P3 was not tested: habits can only form after release and always start at 0, so "more different after release" is built into the rules. It shows T5 is modelled, not that it is true.');
   out.push('P4 was not tested: the sim has no measure for it yet.');
   say('P5', 'P5 held: help went with more food gathered later from the island itself. Help was not assumed good or bad (T8); this is what happened here.',
     'P5 failed: help did not build later ability to get food in this run, matching what the island tests found before. Help was not assumed good or bad (T8).',
     'P5 could not be judged in this run.');
   out.push('T9 (proposed) is not in the model: there is no covering or promised rescue in the sim, so this report can only describe what the creatures did. It must not be read as "loss alone".');
-  out.push('One matched pair of worlds is weak evidence. Run the same choices on a few other seeds before trusting a pass or a fail.');
+  out.push('The moving bar is a measure, not a rule: creatures do not act on it. Because each bar follows its owner\'s own hardship, the share above their bar drifts back toward the same level whatever the conditions. That is how the measure is defined, so it is not evidence by itself; the test is whether a choice (help, guidance) changes it in the batch test.');
+  out.push('One matched pair of worlds is weak evidence. Use the batch test below before trusting a pass or a fail.');
   return out;
 }
 
@@ -169,6 +177,8 @@ export function buildLabReport(m, meta = {}) {
     `This Lab island (seed ${m.seed}) ran for ${r1(m.days)} days with ${m.start} creatures and ${r1(m.falseInfo)}% false information.`,
     `At the end ${m.population} were alive and ${m.deaths} had died.`,
     `They passed on ${m.sent} pieces of news; ${m.accepted} were believed and ${m.falseSent} were false. Creatures who went to check found ${m.verifiedFalse} told places empty and ${m.verifiedTrue} real.`,
+    `Food was set to ${m.foodSetting} per source with regrowth ${m.regrowth}; telling each other was ${m.talk ? 'on' : 'off'}.`,
+    ...(m.hardEnd !== null ? [`The moving bar: average hardship went from ${fmt(m.hardStart)} to ${fmt(m.hardEnd)} (0 to 100); at the end ${fmt(m.overEnd, '%')} of creatures were above their own bar, which stood at ${fmt(m.barEnd)} on average.`] : []),
     `Average trust between creatures went from ${fmt(m.trustStart)} to ${fmt(m.trustEnd)} (out of 100). On average each living creature knew ${fmt(m.knowledge, '%')} of the real food sources.`,
   ];
   const preds = Object.entries(PREDICTIONS).map(([id, text]) => ({ id, text, verdict: 'not tested', diff: null, measure: 'None in this world.', why: 'The Lab island has no warning, guidance, deceiver at a tree or release. Use the Eden test to check this prediction.' }));
@@ -185,12 +195,14 @@ export function reportMarkdown(r) {
   L.push('## What happened', '', ...r.story.map(x => `- ${x}`), '', '## Predictions', '');
   for (const p of r.predictions) {
     L.push(`### ${p.id}: ${verdictWord(p.verdict)}`, '', `**Prediction:** ${p.text}`, '', `**Measured:** ${p.measure}`, '');
-    if (p.a !== undefined && p.verdict !== 'not tested') L.push(`- ${p.aLabel}: ${fmt(p.a, p.unit)}`, `- ${p.bLabel}: ${fmt(p.b, p.unit)}`, `- Difference: ${p.diff === null ? 'n/a' : (p.diff > 0 ? '+' : '') + r1(p.diff) + dUnit(p.unit)} (${p.direction ?? 'n/a'})`, '');
+    if (p.a !== undefined && (p.verdict !== 'not tested' || p.builtIn)) L.push(`- ${p.aLabel}: ${fmt(p.a, p.unit)}`, `- ${p.bLabel}: ${fmt(p.b, p.unit)}`, `- Difference: ${p.diff === null ? 'n/a' : (p.diff > 0 ? '+' : '') + r1(p.diff) + dUnit(p.unit)} (${p.direction ?? 'n/a'})`, '');
     if (p.why) L.push(p.why, '');
-    if (p.builtIn) L.push('_Partly built into the rules: habits only start forming after release._', '');
+    if (p.builtIn) L.push('_Built into the rules, so not a test: habits only start forming after release, and always start at 0._', '');
     if (p.lines) L.push(`Theory lines: ${p.lines.map(lineLabel).join(', ')}`, '');
   }
-  L.push('## What this means for the theory', '', ...r.meaning.map(x => `- ${x}`), '', '## How it was judged', '', r.method, '');
+  L.push('## What this means for the theory', '', ...r.meaning.map(x => `- ${x}`), '');
+  if (r.batch) L.push(batchMarkdown(r.batch));
+  L.push('## How it was judged', '', r.method, '');
   L.push('## Theory lines referred to', '', ...['T2', 'T3', 'T4', 'T5', 'T7', 'T8', 'T9'].map(id => `- **${lineLabel(id)}** ${THEORY[id].replace(/^\[proposed\] /, '')}`), '');
   return L.join('\n');
 }
@@ -199,15 +211,15 @@ export function reportBodyHTML(r, images = []) {
   const color = v => v === 'held' ? '#7fd88f' : v === 'failed' ? '#ff9a8a' : '#e9d38f';
   const preds = r.predictions.map(p => `<section class="pred"><h3>${p.id} <span class="v" style="color:${color(p.verdict)}">${verdictWord(p.verdict)}</span></h3>
 <p><b>Prediction:</b> ${esc(p.text)}</p><p><b>Measured:</b> ${esc(p.measure)}</p>
-${p.a !== undefined && p.verdict !== 'not tested' ? `<table><tr><td>${esc(p.aLabel)}</td><td>${fmt(p.a, p.unit)}</td></tr><tr><td>${esc(p.bLabel)}</td><td>${fmt(p.b, p.unit)}</td></tr><tr><td>Difference</td><td>${p.diff === null ? 'n/a' : (p.diff > 0 ? '+' : '') + r1(p.diff) + esc(dUnit(p.unit))} (${esc(p.direction ?? 'n/a')})</td></tr></table>` : ''}
-${p.why ? `<p>${esc(p.why)}</p>` : ''}${p.builtIn ? '<p><i>Partly built into the rules: habits only start forming after release.</i></p>' : ''}${p.lines ? `<p class="m">Theory lines: ${p.lines.map(lineLabel).join(', ')}</p>` : ''}</section>`).join('\n');
+${p.a !== undefined && (p.verdict !== 'not tested' || p.builtIn) ? `<table><tr><td>${esc(p.aLabel)}</td><td>${fmt(p.a, p.unit)}</td></tr><tr><td>${esc(p.bLabel)}</td><td>${fmt(p.b, p.unit)}</td></tr><tr><td>Difference</td><td>${p.diff === null ? 'n/a' : (p.diff > 0 ? '+' : '') + r1(p.diff) + esc(dUnit(p.unit))} (${esc(p.direction ?? 'n/a')})</td></tr></table>` : ''}
+${p.why ? `<p>${esc(p.why)}</p>` : ''}${p.builtIn ? '<p><i>Built into the rules, so not a test: habits only start forming after release, and always start at 0.</i></p>' : ''}${p.lines ? `<p class="m">Theory lines: ${p.lines.map(lineLabel).join(', ')}</p>` : ''}</section>`).join('\n');
   const imgs = images.length ? `<h2>Graphs</h2>${images.map(i => `<figure><img src="${i.src}" alt="${esc(i.title)}" style="max-width:100%;image-rendering:pixelated"><figcaption><b>${esc(i.title)}.</b> ${esc(i.caption)}</figcaption></figure>`).join('')}` : '';
   const glance = `<div class="glance">${r.predictions.map(p => `<span style="color:${color(p.verdict)}">${p.id} ${verdictWord(p.verdict)}</span>`).join('')}</div>`;
   return `<h1>${esc(r.title)}</h1>${r.created ? `<p class="m">Made ${esc(r.created)}</p>` : ''}${glance}
 <h2>What happened</h2><ul>${r.story.map(x => `<li>${esc(x)}</li>`).join('')}</ul>
 <h2>Predictions</h2>${preds}
 <h2>What this means for the theory</h2><ul>${r.meaning.map(x => `<li>${esc(x)}</li>`).join('')}</ul>
-${imgs}<h2>How it was judged</h2><p>${esc(r.method)}</p>
+${r.batch ? batchHTML(r.batch) : ''}${imgs}<h2>How it was judged</h2><p>${esc(r.method)}</p>
 <h2>Theory lines referred to</h2><ul>${['T2', 'T3', 'T4', 'T5', 'T7', 'T8', 'T9'].map(id => `<li><b>${lineLabel(id)}</b> ${esc(THEORY[id].replace(/^\[proposed\] /, ''))}</li>`).join('')}</ul>
 `;
 }

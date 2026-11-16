@@ -31,13 +31,33 @@ export const curiositySpread = s => sd(s.creatures.filter(c => c.alive).map(c =>
 export const hearingsTotal = s => s.creatures.reduce((n, c) => n + c.eden.hearings, 0);
 export const giftEaten = s => s.ledger.gifted - s.patches.filter(p => p.gift).reduce((n, p) => n + p.stock, 0) - (s.ledger.withdrawn ?? 0);
 
+// The moving bar (measure only). A creature's hardship is the average of its unmet needs, 0 to 100.
+// Its bar is its own running average of that hardship over about `barWindow` days. Nothing here feeds back into the sim.
+export const BAR_MARGIN = 5;
+export const hardshipEden = c => (c.hunger + c.eden.thirst + (100 - c.energy) + (100 - c.eden.health)) / 4;
+export const hardshipLab = c => (c.needs.hunger + (100 - c.needs.energy) + (100 - c.needs.safety) + (100 - c.needs.social)) / 4;
+export function barSample(run) {
+  const s = run.world, f = run.kind === 'lab' ? hardshipLab : hardshipEden, alive = s.creatures.filter(c => c.alive);
+  const a = Math.min(1, SAMPLE_EVERY / (run.setup.barWindow * DAY));
+  run.bar ??= {};
+  let hard = 0, bar = 0, over = 0;
+  for (const c of alive) {
+    const h = f(c), b0 = run.bar[c.id] ?? h;
+    if (h > b0 + BAR_MARGIN) over++;
+    hard += h; bar += b0;
+    run.bar[c.id] = b0 + (h - b0) * a; // the bar moves toward what the creature is living through
+  }
+  const n = alive.length;
+  return n ? { hard: hard / n, bar: bar / n, over: over / n * 100 } : { hard: null, bar: null, over: null };
+}
+
 function edenSample(run) {
   const s = run.world, E = s.eden, alive = s.creatures.filter(c => c.alive);
   const cohort = run.cohort ? run.cohort.filter(id => s.creatures[id].alive).length / run.cohort.length * 100 : null;
   return { t: s.tick, phase: E.phase, pop: alive.length, births: E.births, deaths: s.creatures.length - alive.length,
     belief: alive.length ? alive.reduce((n, c) => n + c.eden.credence, 0) / alive.length * 100 : 0,
     food: s.patches.reduce((n, p) => n + p.stock, 0), hearings: hearingsTotal(s), ate: E.firstEater === null ? 0 : 1,
-    cohort, habit: habitSpread(s), curiosity: curiositySpread(s) };
+    cohort, habit: habitSpread(s), curiosity: curiositySpread(s), ...barSample(run) };
 }
 function labSample(m) { return { t: m.tick, pop: m.alive, deaths: m.deaths, trust: m.trustMean, food: m.food, sent: m.messages.sent, falseSent: m.messages.falseSent, accepted: m.messages.accepted, spread: m.trustSpread }; }
 
@@ -45,10 +65,12 @@ export function createRun(input = {}) {
   const setup = normalizeSetup(input);
   const endTick = setup.runDays * DAY;
   if (setup.world === 'lab') {
-    const world = createLab(setup.seed, { population: setup.population, falseInformationRate: setup.falseInfo });
-    return { kind: 'lab', setup, world, endTick, done: false };
+    const world = createLab(setup.seed, { population: setup.population, falseInformationRate: setup.falseInfo, foodQuantity: setup.food, foodRegrowth: setup.regrowth, communication: setup.talk });
+    const run = { kind: 'lab', setup, world, endTick, done: false, bar: {}, barSeries: [] };
+    run.barSeries.push({ t: world.tick, ...barSample(run) });
+    return run;
   }
-  const world = createEden(setup.seed, {}, { serpentSilentYears: setup.guidanceYears });
+  const world = createEden(setup.seed, {}, { serpentSilentYears: setup.guidanceYears, guidanceRate: setup.guidance });
   const run = { kind: 'eden', setup, world, endTick, done: false, helpUntil: setup.help ? Math.floor(endTick / 2) : 0, halfTick: Math.floor(endTick / 2),
     help: setup.help ? helpSpot(world) : null, cohort: null, half: null, series: [] };
   run.series.push(edenSample(run));
@@ -56,13 +78,17 @@ export function createRun(input = {}) {
 }
 
 // Lab graphs come from the Lab's own samples (every 60 minutes), so a restored save keeps its history.
-export const seriesOf = run => run.kind === 'lab' ? run.world.samples.map(labSample) : run.series;
+export const seriesOf = run => {
+  if (run.kind !== 'lab') return run.series;
+  const bars = new Map((run.barSeries ?? []).map(b => [b.t, b]));
+  return run.world.samples.map(m => ({ ...labSample(m), ...(bars.get(m.tick) ?? { hard: null, bar: null, over: null }) }));
+};
 
 export function stepRun(run, n = 1) {
   const s = run.world;
   for (let i = 0; i < n; i++) {
     if (s.tick >= run.endTick) { run.done = true; break; }
-    if (run.kind === 'lab') { labStep(s, 1); continue; }
+    if (run.kind === 'lab') { labStep(s, 1); if (s.tick % SAMPLE_EVERY === 0) (run.barSeries ??= []).push({ t: s.tick, ...barSample(run) }); continue; }
     if (run.help && s.tick < run.helpUntil && s.tick % HELP.every === 0) command(s, { type: 'food', x: run.help.x, y: run.help.y, amount: HELP.amount });
     edenStep(s, 1);
     if (!run.cohort && s.eden.fallTick !== null) run.cohort = s.creatures.filter(c => c.alive).map(c => c.id);
@@ -90,9 +116,9 @@ export function restoreLabRun(text) {
   const { world, ui } = deserializeLab(text); // throws on bad or old-format saves, exactly as before
   let runDays = 15; try { const r = JSON.parse(text).ui?.runDays; if (Number.isInteger(r) && r >= 2 && r <= 30) runDays = r; } catch {}
   runDays = Math.max(runDays, Math.floor(world.tick / DAY) + 1);
-  const setup = normalizeSetup({ world: 'lab', seed: world.seed, population: world.creatures.length, falseInfo: world.config.falseInformationRate, speed: ui.speed, runDays: Math.min(30, runDays) });
+  const setup = normalizeSetup({ world: 'lab', seed: world.seed, population: world.creatures.length, falseInfo: world.config.falseInformationRate, food: world.config.foodQuantity, regrowth: world.config.foodRegrowth, talk: world.config.communication, speed: ui.speed, runDays: Math.min(30, runDays) });
   setup.population = world.creatures.length; setup.runDays = runDays; // keep the saved world's own values even outside the menu's range
-  return { run: { kind: 'lab', setup, world, endTick: runDays * DAY, done: world.tick >= runDays * DAY }, ui };
+  return { run: { kind: 'lab', setup, world, endTick: runDays * DAY, done: world.tick >= runDays * DAY, bar: {}, barSeries: [] }, ui };
 }
 export function restoreTheoryRun(text) {
   if (typeof text !== 'string' || text.length > 8000000) throw Error('Invalid save');

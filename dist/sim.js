@@ -26,6 +26,7 @@ export const STREAMS={
   newborn:[201,206],     // eden birth: draws i=1..6 land on [0]+i-1 (name, curiosity, sex)
   guideX:[300,317],      // Creator redirect, 18 candidate x (was 50–67)
   guideY:[320,337],      // Creator redirect, 18 candidate y (was 70–87)
+  guidanceLapse:[340,340], // eden: per creature per month, whether the Creator steps in. Only drawn when guidanceRate < 1.
 };
 const draw=(s,t,id,salt)=>s.rng===2?noise2(seedKey(s.seed),t,id,salt):noise(s.seed,t,id,salt);
 const cache=new Map();
