@@ -1,9 +1,12 @@
 // Eden world: a separate scenario built on the island core. See docs/EDEN-DESIGN.md.
 // Phases: guided (Creator's warning at birth, Creator leads choices that fall outside what is best,
 // no death) -> released (first creature to eat from the tree; everyone released at once).
-import { W, DAY, clamp, land, path, createWorld, decide, event, noise2, seedKey, STREAMS, mapOf, onLand, mapW, mapH } from './sim.js';
+import { DEFAULTS as SIM_DEFAULTS, W, DAY, clamp, land, path, routeFor, fieldDist, createWorld, decide, event, noise2, seedKey, STREAMS, mapOf, onLand, mapW, mapH } from './sim.js';
 import { makePatches, makeWaters, landStep, gatherTicks, returnRate, CAMP } from './savanna.js';
 import { develop, DEV_EVERY, lifeStage, wakeDrain, healFactor, illnessFactor, ageHazard, pregnancyExtra } from './being.js';
+import { clockOf, body, defaultClock, REAL_MINUTES, decayFor, growPatch, eatKcal, starved } from './clock.js';
+import { setBody, liveTick, loseWater, drink as drinkUp, dehydrated, carriedBy, walkersWith, stepCost, pace, injuryFactor, sightFactor, restTicks, drinkTicks, bedtime, wantUnits, shareFood, practise, forget, fadeHabits } from './body.js';
+import { gatherTicksReal } from './savanna.js';
 
 export const EDEN_VERSION = 2;
 export const EDEN_DEFAULTS = {
@@ -43,6 +46,8 @@ export const EDEN_DEFAULTS = {
   restHeal: 0.15, baseHeal: 0.01, healthRestWeight: 0.3, healthGuide: 30,
   urgentThirst: 60, urgentHunger: 70, // a released creature breaks off what it is doing when a need becomes urgent (if it knows where to go)
   // One of many worlds: the biblical reading of what follows the fall (all off by default = original behaviour).
+  clock: null,              // 'real' (one tick = one hour, every rate from clock.js and energy.js) or 'legacy' (the old compressed clock). null = the default (real)
+  clockMinutes: 60,         // minutes per tick on the real clock (changed only by the time-step test)
   god: true,                // false: the world without God, on the savanna. No Creator, no tree, no deceiver, no spirits; people start on their own (Robert, 17 Nov)
   ground: 'natural',        // without God: 'natural' land, or 'cursed' (food grows at cursedRegen), a setting (Robert, 17 Nov)
   serpent: true,            // Island Lab setup input: the deceiver is present. Off: nobody is ever tempted (T3: never eating is acceptable). On = original.
@@ -56,12 +61,20 @@ export const EDEN_DEFAULTS = {
   guidanceRate: 1,          // Island Lab setup input: share of months in which the Creator steps in for a creature. 1 = original behaviour (always).
   serpentSilentYears: 0,    // Island Lab setup input (guidance length): the serpent stays silent for this many years. 0 = original behaviour.
 };
-const YEAR = DAY;
+// One year of ticks for this world: 1440 on the legacy clock (DAY), 8760 on the real clock.
+const YR = s => clockOf(s).year;
+const real = s => !!s.clock;
 const SYL = ['ka','lo','mi','ne','ra','su','te','vi','ze','do','an','el','or','ul','ya','be'];
-const age = (s, c) => (s.tick - c.eden.born) / YEAR;
+const age = (s, c) => (s.tick - c.eden.born) / YR(s);
 // A young child stays with its mother (or, if she has died, its father) and shares their food.
 const carer = (s, c) => { if (c.eden.mother === null || age(s, c) >= s.eden.config.weanAge) return null; const m = s.creatures[c.eden.mother], f = s.creatures[c.eden.father]; return m?.alive ? m : f?.alive ? f : null; };
 const dependent = (s, c) => carer(s, c) !== null;
+// The young this creature feeds and carries.
+const nursing = (s, c) => c.eden.children.map(i => s.creatures[i]).filter(k => k.alive && carer(s, k) === c);
+const isCarer = s => (k, c) => carer(s, k) === c;
+// Real clock: a carer feels its young's hunger and thirst as its own (it has to take them to food and water).
+const feltThirst = (s, c) => s.clock ? nursing(s, c).reduce((m, k) => Math.max(m, k.eden.thirst), c.eden.thirst) : c.eden.thirst;
+const feltHunger = (s, c) => s.clock ? nursing(s, c).reduce((m, k) => Math.max(m, k.hunger), c.hunger) : c.hunger;
 const WARNING = 'The Creator: eat freely from the garden, but not from the tree of the knowledge of good and evil. Eating from it brings death.';
 const CLAIM = 'The serpent: you will not die. Your eyes will be opened, and you will know good and evil.';
 // Salts come from STREAMS in sim.js. Do not pass a raw number: ranges must not overlap.
@@ -71,6 +84,8 @@ const dist = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 export function createEden(seed = 41, overrides = {}, edenOverrides = {}) {
   const s = createWorld(seed, overrides);
   const cfg = { ...EDEN_DEFAULTS, ...edenOverrides };
+  cfg.clock = cfg.clock ?? defaultClock();
+  if (cfg.clock === 'real') s.clock = { min: cfg.clockMinutes ?? REAL_MINUTES };
   const [tx, ty] = cfg.tree;
   if (!land(tx, ty, false)) throw Error('The tree must stand on land');
   s.mode = 'eden';
@@ -83,13 +98,40 @@ export function createEden(seed = 41, overrides = {}, edenOverrides = {}) {
     c.eden = { curiosity: cfg.curiosityMin + noise2(k, 0, c.id, STREAMS.birthCuriosity[0]) * (cfg.curiosityMax - cfg.curiosityMin),
       instruction: { source: 'Creator', text: WARNING, tick: 0 }, warning: 1, hearings: 0, credence: 0, lastSerpent: null,
       clothed: false, tool: false, bias: { rest: 0, explore: 0, gather: 0, cultivate: 0, craft: 0, drink: 0 }, judged: 0, guided: 0,
-      sex: c.id % 2 ? 'M' : 'F', born: -cfg.startAge * YEAR, mother: null, father: null, pregnant: null, births: [], children: [],
+      sex: c.id % 2 ? 'M' : 'F', born: -cfg.startAge * YR(s), mother: null, father: null, pregnant: null, births: [], children: [],
       thirst: 0, parched: 0, health: 100, water: {}, sight: s.config.perception, work: { clothing: 0, tool: 0, cultivate: 0 } };
     event(s, 'Warned by the Creator: do not eat from the tree.', c);
   }
   event(s, 'Eden begins. Each creature is warned not to eat from the tree. The Creator guides them.');
+  if (s.clock) toReal(s, cfg);
   if (cfg.god === false) withoutGod(s, cfg);
   return s;
+}
+
+// The real clock (clock.js): every per-tick number below is worked out from the rate register, so one tick is an
+// hour of life. Garden food keeps what it meant before: how many adults each grove feeds in a year, and its old
+// capacity as the level where growth equals decay. Bodies follow the law of energy (energy.js).
+function toReal(s, cfg) {
+  const C = clockOf(s), B = body(s), perAdultYear = B.unitsPerAdultYear, LEGACY_ADULT_YEAR = 18; // legacy: 18 units fed an adult a year
+  for (const p of s.patches) {
+    const adultsFed = p.regen * 1440 / LEGACY_ADULT_YEAR, capYears = p.capacity / LEGACY_ADULT_YEAR;
+    p.regen = adultsFed * perAdultYear / C.year; p.capacity = capYears * perAdultYear; p.stock = p.capacity; p.decay = decayFor(p.regen, p.capacity);
+  }
+  s.ledger.initial = s.patches.reduce((n, p) => n + p.stock, 0);
+  cfg.fieldRegen = cfg.fieldRegen * 1440 / LEGACY_ADULT_YEAR * perAdultYear / C.year;
+  cfg.fieldCapacity = cfg.fieldCapacity / LEGACY_ADULT_YEAR * perAdultYear;
+  cfg.scarcityRef = cfg.scarcityRef / LEGACY_ADULT_YEAR * perAdultYear;
+  cfg.growTicks = Math.round(0.5 * C.year);
+  cfg.cultivateWork = B.cultivateTicks; cfg.craftWork = B.craftTicks;
+  cfg.illnessRate = B.illnessTick; cfg.restHeal = B.restHealTick; cfg.baseHeal = B.baseHealTick;
+  cfg.injuryChance = B.injuryPerTile; cfg.injuryDamage = B.injuryDamage;
+  // Exposure and work tire in the same proportion to rest as before.
+  cfg.exposureCost = 0.02 / 0.7 * B.restGainTick; cfg.workCost = 0.05 / 0.7 * B.restGainTick;
+  s.config.restGain = B.restGainTick; s.config.moveCost = B.walkFatigueTile;
+  // Drive settings: appetite and thirst change how soon a body FEELS the need (the size of its hunger meter and
+  // the water loss it notices), never how much energy or water it actually uses.
+  cfg.appetite = s.config.hungerRate / SIM_DEFAULTS.hungerRate; cfg.thirstFeel = cfg.thirstRate / EDEN_DEFAULTS.thirstRate;
+  for (const c of s.creatures) setBody(s, c);
 }
 
 // The world without God: the savanna (savanna.js), no Creator, no word, no tree, no deceiver, no spirits.
@@ -98,14 +140,14 @@ function withoutGod(s, cfg) {
   const E = s.eden, k = seedKey(s.seed);
   Object.assign(cfg, { serpent: false, restoration: false, tempters: 0, guidanceRate: 0 });
   s.map = { id: 'savanna' };
-  s.patches = makePatches(); s.ledger.initial = s.patches.reduce((n, p) => n + p.stock, 0);
+  s.patches = makePatches(s); s.ledger.initial = s.patches.reduce((n, p) => n + p.stock, 0);
   E.springs = makeWaters(); E.tree = null; E.phase = 'released'; E.godless = true;
   s.events = [];
   for (const c of s.creatures) {
     let x = CAMP.x - CAMP.r + Math.floor(noise2(k, 0, c.id, STREAMS.startPosition[0]) * (2 * CAMP.r + 1));
     let y = CAMP.y - CAMP.r + Math.floor(noise2(k, 0, c.id, STREAMS.startPosition[0] + 1) * (2 * CAMP.r + 1));
     while (!onLand(mapOf(s), x, y)) x++;
-    c.x = x; c.y = y; c.memories = []; c.skills = {};
+    c.x = x; c.y = y; c.memories = []; c.skills = {}; if (c.learned) { c.learned = {}; c.lastPractice = {}; }
     c.eden.instruction = null; c.eden.warning = 0;
   }
   event(s, 'The island begins by the lake. No Creator speaks. 24 people, on their own.');
@@ -119,16 +161,18 @@ function creatorBest(s, c) {
     if (serving(s, c, own, n)) return null; // its own choice already meets a real need: it stands
     if (n.thirst) {
       const b = nearestWater(s, c, false);
-      if (b) return { type: 'drink', patch: null, action: { type: 'drink', spring: b.w.id, route: b.r, left: 3 }, reason: `Thirsty: the Creator leads it to ${b.w.name}.` };
+      if (b) return { type: 'drink', patch: null, action: { type: 'drink', spring: b.w.id, route: b.r, left: real(s) ? drinkTicks(s) : 3 }, reason: `Thirsty: the Creator leads it to ${b.w.name}.` };
     }
-    if (n.tired) return { type: 'rest', patch: null, action: { type: 'rest', left: 28 }, reason: 'Tired: the Creator leads it to rest.' };
+    if (n.tired) return { type: 'rest', patch: null, action: { type: 'rest', left: real(s) ? restTicks(s) : 28 }, reason: 'Tired: the Creator leads it to rest.' };
     let best = null;
     for (const p of s.patches) {
       if (p.stock < 4) continue;
-      const r = path(c.x, c.y, p.x, p.y, s.bridge, mapOf(s));
+      if (s.clock) { const d = fieldDist(c.x, c.y, p.x, p.y, s.bridge, mapOf(s)); if (d >= 0 && (!best || d < best.d)) best = { p, d }; continue; }
+      const r = routeFor(s, c.x, c.y, p.x, p.y);
       if (!r.length && (c.x !== p.x || c.y !== p.y)) continue;
       if (!best || r.length < best.r.length) best = { p, r };
     }
+    if (best && s.clock) best.r = routeFor(s, c.x, c.y, best.p.x, best.p.y);
     if (best) return { type: 'gather', patch: best.p.id, action: { type: 'gather', patch: best.p.id, route: best.r, left: Math.max(4, Math.round(14 - 8 * (c.skills[best.p.id] ?? 0))) },
       reason: `Hungry: the Creator leads it to ${best.p.name}, where there is food.` };
     return null;
@@ -148,7 +192,7 @@ function creatorBest(s, c) {
         if (v > score) { score = v; goal = [x, y]; }
       }
       if (!goal) return null;
-      return { type: 'explore', patch: null, action: { type: 'explore', route: path(c.x, c.y, goal[0], goal[1], s.bridge, mapOf(s)) },
+      return { type: 'explore', patch: null, action: { type: 'explore', route: routeFor(s, c.x, c.y, goal[0], goal[1]) },
         reason: `Curiosity was taking it ${near} tiles from any food: the Creator leads its exploring to ground within reach of ${p.name}.` };
     }
   }
@@ -159,7 +203,7 @@ function creatorBest(s, c) {
 export function senseRadius(s, c) {
   const e = c.eden, cfg = s.eden.config;
   const f = Math.min(1, (100 - c.hunger) / cfg.senseHungerSpan, (100 - e.thirst) / cfg.senseThirstSpan, c.energy / cfg.senseEnergySpan, e.health / cfg.senseHealthSpan);
-  return Math.max(1, Math.round(s.config.perception * Math.max(cfg.senseFloor, f)));
+  return Math.max(1, Math.round(s.config.perception * Math.max(cfg.senseFloor, f) * (s.clock ? sightFactor(s) : 1)));
 }
 
 function edenObserve(s, c) {
@@ -177,7 +221,7 @@ function edenObserve(s, c) {
 // crosses its guidance line; once released, a creature breaks off only when the need is urgent and it knows
 // where to meet it.
 // Needs above the Creator's guidance lines, and whether an action meets one of them.
-function needs(s, c) { const cfg = s.eden.config; return { thirst: c.eden.thirst >= cfg.thirstGuide, tired: c.energy < cfg.energyGuide || c.eden.health < cfg.healthGuide, hungry: c.hunger >= cfg.hungerGuide }; }
+function needs(s, c) { const cfg = s.eden.config, h = feltHunger(s, c); return { thirst: feltThirst(s, c) >= cfg.thirstGuide, tired: c.energy < cfg.energyGuide || c.eden.health < cfg.healthGuide, hungry: h >= cfg.hungerGuide }; }
 // Creator only, and only while guided. Live stock is allowed here because the Creator is omniscient.
 // A creature's own interrupt (pressing, once released) must not call this.
 function serving(s, c, a, n) {
@@ -188,8 +232,7 @@ function serving(s, c, a, n) {
 }
 
 // Whether the Creator steps in for this creature this month. Always true at the default rate of 1 (no draw is made).
-const MONTH = 120;
-export const led = (s, c) => { const r = s.eden.config.guidanceRate ?? 1; return r >= 1 || noise2(seedKey(s.seed), Math.floor(s.tick / MONTH), c.id, STREAMS.guidanceLapse[0]) < r; };
+export const led = (s, c) => { const r = s.eden.config.guidanceRate ?? 1; return r >= 1 || noise2(seedKey(s.seed), Math.floor(s.tick / clockOf(s).month), c.id, STREAMS.guidanceLapse[0]) < r; };
 
 function pressing(s, c) {
   const a = c.action, cfg = s.eden.config, e = c.eden;
@@ -197,8 +240,9 @@ function pressing(s, c) {
   if ((s.eden.phase === 'guided' && led(s, c)) || e.covered) { const n = needs(s, c); return (n.thirst || n.tired || n.hungry) && !serving(s, c, a, n); }
   // Released: remembered water and remembered food only. Live stock is hidden until observe() writes it,
   // the same rule as decide() on the main island.
-  if (e.thirst >= cfg.urgentThirst && a.type !== 'drink' && Object.keys(e.water).length) return true;
-  if (c.hunger >= cfg.urgentHunger && a.type !== 'gather' && a.type !== 'drink' && Object.keys(c.known).some(k => c.known[k].expected >= 4)) return true;
+  if (feltThirst(s, c) >= cfg.urgentThirst && a.type !== 'drink' && Object.keys(e.water).length) return true;
+  const hunger = feltHunger(s, c); // a carer feels its young's hunger
+  if (hunger >= cfg.urgentHunger && a.type !== 'gather' && a.type !== 'drink' && Object.keys(c.known).some(k => c.known[k].expected >= 4)) return true;
   return false;
 }
 
@@ -206,11 +250,13 @@ function nearestWater(s, c, knownOnly) {
   let best = null;
   for (const w of s.eden.springs) {
     if (knownOnly && !c.eden.water[w.id]) continue;
-    if (w.active === false && c.eden.dry?.[w.id] !== undefined && s.tick - c.eden.dry[w.id] < YEAR / 4) continue; // it saw this one dry this season
-    const r = path(c.x, c.y, w.x, w.y, s.bridge, mapOf(s));
+    if (w.active === false && c.eden.dry?.[w.id] !== undefined && s.tick - c.eden.dry[w.id] < YR(s) / 4) continue; // it saw this one dry this season
+    if (s.clock) { const d = fieldDist(c.x, c.y, w.x, w.y, s.bridge, mapOf(s)); if (d < 0) continue; if (!best || d < best.d) best = { w, d }; continue; }
+    const r = routeFor(s, c.x, c.y, w.x, w.y);
     if (!r.length && (c.x !== w.x || c.y !== w.y)) continue;
     if (!best || r.length < best.r.length) best = { w, r };
   }
+  if (best && s.clock) best.r = routeFor(s, c.x, c.y, best.w.x, best.w.y);
   return best;
 }
 
@@ -224,10 +270,14 @@ function edenDecide(s, c) {
   const E = s.eden, cfg = E.config, d = c.decision, released = E.phase === 'released', e = c.eden;
   // Its own choice, from its own needs (and, once released, its own learned judgements).
   const opts = d.options.map(o => ({ ...o, score: o.score + (released ? (e.bias[o.type] ?? 0) : 0) }));
+  // Real clock: a carer forages for the young it feeds as well as for itself; its children's hunger counts as its own.
+  const young = real(s) ? nursing(s, c) : [], kidHunger = young.reduce((m, k) => Math.max(m, k.hunger), 0);
+  if (kidHunger > c.hunger) for (const o of opts) if (o.type === 'gather') { const k = c.known[o.patch]; o.score += (kidHunger - c.hunger) * Math.min(1, Math.max(.08, (k?.expected ?? 0) / 8)); o.reason += ` · my young are hungry (${Math.round(kidHunger)})`; }
   const rest = opts.find(o => o.type === 'rest');
   if (rest && e.health < 100) { rest.score += (100 - e.health) * cfg.healthRestWeight; rest.reason += ` Health ${Math.round(e.health)}.`; }
+  if (rest && real(s) && bedtime(s)) { rest.score += 45; rest.reason += ' Night: time to sleep.'; }
   const water = nearestWater(s, c, true);
-  if (water) opts.push({ type: 'drink', spring: water.w.id, score: (e.thirst - 8) * cfg.thirstWeight - water.r.length * 0.35 + (released ? e.bias.drink : 0), reason: `Thirst ${Math.round(e.thirst)} · ${water.w.name} ${water.r.length} tiles away` });
+  if (water) opts.push({ type: 'drink', spring: water.w.id, score: (feltThirst(s, c) - 8) * cfg.thirstWeight - water.r.length * 0.35 + (released ? e.bias.drink : 0), reason: `Thirst ${Math.round(feltThirst(s, c))} · ${water.w.name} ${water.r.length} tiles away` });
   if (released && !E.godless) {
     const here = !s.patches.some(p => p.x === c.x && p.y === c.y) && !(E.tree && c.x === E.tree.x && c.y === E.tree.y);
     const ownsField = s.patches.some(p => p.field && p.owner === c.id);
@@ -240,14 +290,14 @@ function edenDecide(s, c) {
   d.sight = e.sight; d.thirst = e.thirst; d.health = e.health;
   if (choice.type === 'cultivate') c.action = { type: 'cultivate', route: [], left: Math.max(1, Math.round(cfg.cultivateWork * (e.tool ? cfg.toolSpeed : 1)) - e.work.cultivate) };
   else if (choice.type === 'craft') c.action = { type: 'craft', item: choice.item, route: [], left: Math.max(1, cfg.craftWork - e.work[choice.item]) };
-  else if (choice.type === 'drink') c.action = { type: 'drink', spring: water.w.id, route: water.r, left: 3 };
-  else if (choice.type === 'rest') c.action = { type: 'rest', left: 28 };
+  else if (choice.type === 'drink') c.action = { type: 'drink', spring: water.w.id, route: water.r, left: real(s) ? drinkTicks(s) : 3 };
+  else if (choice.type === 'rest') c.action = { type: 'rest', left: real(s) ? restTicks(s) : 28 };
   else if (choice.type === 'gather' && !(c.action?.type === 'gather' && c.action.patch === choice.patch)) {
     const p = s.patches.find(p => p.id === choice.patch);
-    c.action = { type: 'gather', patch: p.id, route: path(c.x, c.y, p.x, p.y, s.bridge, mapOf(s)), left: Math.max(4, Math.round(14 - 8 * (c.skills[p.id] ?? 0))) };
+    c.action = { type: 'gather', patch: p.id, route: routeFor(s, c.x, c.y, p.x, p.y), left: Math.max(4, Math.round(14 - 8 * (c.skills[p.id] ?? 0))) };
   } else if (choice.type === 'explore' && c.action?.type !== 'explore') {
     const m = mapOf(s), x = 2 + Math.floor(draw(s, c.id, STREAMS.exploreTarget[0]) * (mapW(m) - 4)), y = 2 + Math.floor(draw(s, c.id, STREAMS.exploreTarget[0] + 1) * (mapH(m) - 4));
-    c.action = { type: 'explore', route: onLand(mapOf(s), x, y, s.bridge) ? path(c.x, c.y, x, y, s.bridge, mapOf(s)) : [] };
+    c.action = { type: 'explore', route: onLand(mapOf(s), x, y, s.bridge) ? routeFor(s, c.x, c.y, x, y) : [] };
   }
   if (released && e.covered) { // restored: the Creator leads again, as before the fall
     E.restored.choices++;
@@ -264,7 +314,11 @@ function edenDecide(s, c) {
   } else d.own = true;
   if (c.action?.type === 'gather' && !c.action.timed) {
     const p = s.patches.find(q => q.id === c.action.patch);
-    if (p?.food) { c.action.left = gatherTicks(4, returnRate(p.food, age(s, c), c.skills[p.id] ?? 0)); c.action.timed = true; }
+    if (real(s) && p) { // how much it needs to bring back, and how long that takes at this food's return rate
+      const units = wantUnits(s, c, nursing(s, c)), skill = c.skills[p.id] ?? 0;
+      const rate = p.food ? returnRate(p.food, age(s, c), skill) : body(s).gardenKcalHour * (0.6 + 0.4 * Math.min(1, skill));
+      c.action.units = units; c.action.left = gatherTicksReal(s, units, rate); c.action.ticks = c.action.left; c.action.timed = true;
+    } else if (p?.food) { c.action.left = gatherTicks(4, returnRate(p.food, age(s, c), c.skills[p.id] ?? 0)); c.action.timed = true; }
   }
   c.action.start = { hunger: c.hunger, energy: c.energy, thirst: e.thirst, health: e.health };
 }
@@ -296,7 +350,7 @@ function afterFall(s, order) {
   const note = a => { E.restored.answers.push(a); if (E.restored.answers.length > 500) E.restored.answers.shift(); };
   if (cfg.restoration) for (const c of order) {
     const e = c.eden;
-    if (!c.alive || e.covered || dependent(s, c) || (s.tick + c.id * 53) % YEAR !== 0) continue;
+    if (!c.alive || e.covered || dependent(s, c) || (s.tick + c.id * 53) % YR(s) !== 0) continue;
     const need = Math.max(c.hunger, e.thirst, 100 - e.health) / 100, word = 0.5 + 0.5 * e.warning, doubt = e.curiosity * e.credence;
     const U = cfg.wReturnNeed * need + cfg.wReturnWord * word - cfg.wWisdom * doubt - cfg.returnBar;
     const P = logistic(U, cfg.temperature), r = draw(s, c.id, STREAMS.returnChoice[0]), yes = r < P;
@@ -305,7 +359,7 @@ function afterFall(s, order) {
   }
   if (!cfg.tempters) return;
   E.tempters ??= Array.from({ length: cfg.tempters }, (_, i) => ({ id: i, x: E.tree.x, y: E.tree.y, target: null }));
-  const free = c => c.alive && !dependent(s, c) && (c.eden.lastSerpent === null || s.tick - c.eden.lastSerpent >= DAY);
+  const free = c => c.alive && !dependent(s, c) && (c.eden.lastSerpent === null || s.tick - c.eden.lastSerpent >= YR(s));
   for (const t of E.tempters) {
     let c = t.target === null ? null : s.creatures[t.target];
     if (!c || !free(c)) {
@@ -318,7 +372,11 @@ function afterFall(s, order) {
       t.target = c ? c.id : null;
     }
     if (!c) continue;
-    if (dist(c, t) > 1) { if (s.tick % s.config.moveEvery === 0) { t.x += Math.sign(c.x - t.x); t.y += Math.sign(c.y - t.y); } continue; }
+    if (dist(c, t) > 1) {
+      const steps = real(s) ? Math.max(1, Math.round(10 * clockOf(s).hours)) : s.tick % s.config.moveEvery === 0 ? 1 : 0; // a spirit keeps a walker's pace
+      for (let i = 0; i < steps && dist(c, t) > 1; i++) { t.x += Math.sign(c.x - t.x); t.y += Math.sign(c.y - t.y); }
+      continue;
+    }
     const e = c.eden;
     e.hearings++; e.lastSerpent = s.tick; e.credence = 1 - (1 - cfg.credenceStep) ** e.hearings; E.restored.whispers++; t.target = null;
     if (!e.covered) { event(s, 'A whisper: "You will not die. You need no one." (a claim, not verified)', c); continue; }
@@ -335,7 +393,7 @@ function afterFall(s, order) {
 
 function serpent(s, c) {
   const E = s.eden, cfg = E.config, e = c.eden;
-  if (cfg.serpent === false || E.phase !== 'guided' || s.tick < (cfg.serpentSilentYears ?? 0) * YEAR || dependent(s, c) || dist(c, E.tree) > 1 || (e.lastSerpent !== null && s.tick - e.lastSerpent < DAY)) return;
+  if (cfg.serpent === false || E.phase !== 'guided' || s.tick < (cfg.serpentSilentYears ?? 0) * YR(s) || dependent(s, c) || dist(c, E.tree) > 1 || (e.lastSerpent !== null && s.tick - e.lastSerpent < YR(s))) return;
   e.hearings++; e.lastSerpent = s.tick; e.credence = 1 - (1 - cfg.credenceStep) ** e.hearings;
   E.serpentSpoke = { tick: s.tick, id: c.id };
   event(s, 'The serpent spoke from the tree: "You will not die." (a claim, not verified)', c);
@@ -360,29 +418,41 @@ export function edenStep(s, n = 1) {
     for (const p of s.patches) {
       if (p.food || (p.field && s.tick < p.readyTick)) continue;
       const rate = p.regen * (released() && !p.gift && !p.field ? cfg.cursedRegen : 1);
+      if (real(s)) { const { add, lost } = growPatch(p, rate); s.ledger.regenerated += add; s.ledger.decayed = (s.ledger.decayed ?? 0) + lost; continue; }
       const add = Math.max(0, Math.min(rate, p.capacity - p.stock));
       p.stock += add; s.ledger.regenerated += add;
     }
+    if (real(s) && s.tick % Math.round(clockOf(s).day) === 0) for (const c of s.creatures) if (c.alive) { setBody(s, c); forget(s, c); fadeHabits(s, c); }
     const order = s.creatures.filter(c => c.alive).sort((a, b) => draw(s, a.id, STREAMS.order[0]) - draw(s, b.id, STREAMS.order[0]));
     for (const c of order) edenObserve(s, c);
     for (const c of order) if (!dependent(s, c) && (!c.action || (c.energy < 5 && c.action.type !== 'rest') || pressing(s, c))) edenDecide(s, c);
     for (const c of order) serpent(s, c);
     if (E.phase === 'released' && (cfg.restoration || cfg.tempters)) afterFall(s, order);
-    if (cfg.traitDevelopment && s.tick % DEV_EVERY === 0) develop(s);
+    if (cfg.traitDevelopment) {
+      if (!real(s)) { if (s.tick % DEV_EVERY === 0) develop(s); }
+      else if (s.tick % Math.round(clockOf(s).day) === 0) develop(s, (clockOf(s).day / YR(s)) / (DEV_EVERY / 1440)); // same change per year as before
+    }
     for (const c of order) {
       if (dependent(s, c)) {
         const m = carer(s, c);
         c.x = m.x; c.y = m.y; c.action = null; c.times.rest++;
+        if (real(s)) liveTick(s, c, c.eden.mother === m.id ? m : null, true); // a baby lives on its mother's milk while it nurses
+        else {
         c.hunger = clamp(c.hunger + s.config.hungerRate * cfg.childHunger);
         c.eden.thirst = clamp(c.eden.thirst + cfg.thirstRate * cfg.childHunger);
+        }
       } else {
       if (!c.action) edenDecide(s, c); // a child just weaned, or an orphan
       const a = c.action, L = cfg.lifeCourse ? lifeStage(age(s, c)) : null, need = L ? L.food + pregnancyExtra(s, c) : 1;
+      if (real(s)) liveTick(s, c, null, a.type === 'rest'); // the law of energy, water with it, and sleep pressure (body.js)
+      else {
       c.hunger = clamp(c.hunger + s.config.hungerRate * need);
       c.eden.thirst = clamp(c.eden.thirst + cfg.thirstRate * need);
+      }
       if (released() && !c.eden.clothed) c.energy = clamp(c.energy - cfg.exposureCost);
-      if (L && a.type !== 'rest') c.energy = clamp(c.energy - wakeDrain(L, s.config.restGain)); // sleep pressure by life stage
-      if (a.type === 'rest') {
+      if (!real(s) && L && a.type !== 'rest') c.energy = clamp(c.energy - wakeDrain(L, s.config.restGain)); // sleep pressure by life stage
+      if (real(s)) actReal(s, c, released());
+      else if (a.type === 'rest') {
         c.times.rest++; c.energy = clamp(c.energy + s.config.restGain);
         if (--a.left <= 0) { judge(s, c, 'rest'); c.action = null; }
       } else if (a.route.length) {
@@ -421,9 +491,9 @@ export function edenStep(s, n = 1) {
         if (--a.left <= 0) {
           c.eden.work[a.type === 'craft' ? a.item : 'cultivate'] = 0;
           if (a.type === 'cultivate' && !s.patches.some(p => p.x === c.x && p.y === c.y) && !s.patches.some(p => p.field && p.owner === c.id)) {
-            const p = { id: 'f' + s.patches.length, name: `${c.name}'s field`, x: c.x, y: c.y, stock: 0, capacity: cfg.fieldCapacity, regen: cfg.fieldRegen, gift: false, field: true, readyTick: s.tick + cfg.growTicks, owner: c.id };
+            const p = { id: 'f' + s.patches.length, name: `${c.name}'s field`, x: c.x, y: c.y, stock: 0, capacity: cfg.fieldCapacity, regen: cfg.fieldRegen, gift: false, field: true, readyTick: s.tick + cfg.growTicks, owner: c.id, ...(real(s) ? { decay: decayFor(cfg.fieldRegen, cfg.fieldCapacity) } : {}) };
             s.patches.push(p); c.known[p.id] = { expected: 0, last: s.tick };
-            event(s, `${c.name} tilled a field. It will bear food in about ${(cfg.growTicks / DAY * 12).toFixed(0)} months.`);
+            event(s, `${c.name} tilled a field. It will bear food in about ${(cfg.growTicks / YR(s) * 12).toFixed(0)} months.`);
           } else if (a.type === 'craft') { c.eden[a.item === 'tool' ? 'tool' : 'clothed'] = true; event(s, `Made ${a.item === 'tool' ? 'a tool' : 'clothing'}.`, c); }
           judge(s, c, a.type); c.action = null;
         }
@@ -431,15 +501,16 @@ export function edenStep(s, n = 1) {
       }
       health(s, c, released());
       if (c.eden.covered) { // provision: fed and given water before want can harm
-        if (c.hunger >= cfg.provideAt) { c.hunger = cfg.hungerGuide; E.restored.bread++; }
-        if (c.eden.thirst >= cfg.provideAt) { c.eden.thirst = cfg.thirstGuide; E.restored.bread++; }
+        if (c.hunger >= cfg.provideAt) { if (real(s)) eatKcal(s, c, (c.hunger - cfg.hungerGuide) / c.body.hpk); else c.hunger = cfg.hungerGuide; E.restored.bread++; }
+        if (c.eden.thirst >= cfg.provideAt) { if (real(s)) { c.eden.deficit *= cfg.thirstGuide / c.eden.thirst; } c.eden.thirst = cfg.thirstGuide; E.restored.bread++; }
       }
       if (released()) {
         c.starving = c.hunger >= 99 ? c.starving + 1 : 0;
         c.eden.parched = c.eden.thirst >= 99 ? c.eden.parched + 1 : 0;
         // Dying of age (lifeCourse): checked once a month per creature, Gompertz hazard, only after the fall.
-        const old = cfg.lifeCourse && (s.tick + c.id * 7) % (YEAR / 12) === 0 && draw(s, c.id, STREAMS.ageing[0]) < 1 - Math.exp(-ageHazard(age(s, c)) / 12);
-        const cause = c.starving >= s.config.starveTicks ? 'Sustained food deprivation' : c.eden.parched >= cfg.thirstDeathTicks ? 'Thirst' : c.eden.health <= 0 ? 'Injury and illness' : old ? 'Old age' : null;
+        const old = cfg.lifeCourse && (s.tick + c.id * 7) % Math.round(YR(s) / 12) === 0 && draw(s, c.id, STREAMS.ageing[0]) < 1 - Math.exp(-ageHazard(age(s, c)) / 12);
+        const cause = real(s) ? (starved(c) ? 'Sustained food deprivation' : dehydrated(c) ? 'Thirst' : c.eden.health <= 0 ? 'Injury and illness' : old ? 'Old age' : null)
+          : c.starving >= s.config.starveTicks ? 'Sustained food deprivation' : c.eden.parched >= cfg.thirstDeathTicks ? 'Thirst' : c.eden.health <= 0 ? 'Injury and illness' : old ? 'Old age' : null;
         if (cause) { c.alive = false; c.death = { tick: s.tick, cause, ...(c.eden.covered ? { covered: true } : {}) }; c.action = null; s.eden.deaths[cause] = (s.eden.deaths[cause] ?? 0) + 1; event(s, `${c.name} died: ${cause.toLowerCase()}.`); }
       } else { c.starving = 0; c.eden.parched = 0; }
     }
@@ -447,6 +518,85 @@ export function edenStep(s, n = 1) {
     for (const c of s.creatures) if (c.alive && dependent(s, c)) { const m = carer(s, c); c.x = m.x; c.y = m.y; } // children move with their carer
   }
   return s;
+}
+
+// ---- Real clock: each hour is spent in full ----
+// An hour can hold more than one thing: arrive, gather, eat, decide again. Each action uses the part of the tick it
+// needs, and the rest of the tick goes to the next one, so what a creature does in a day does not depend on the
+// tick length (the time-step test, tests/clock.test.mjs K11). The legacy chain above is left exactly as it was.
+function actReal(s, c, isReleased) {
+  const cfg = s.eden.config;
+  let budget = 1;
+  for (let guard = 0; budget > 1e-9 && c.alive && guard < 12; guard++) {
+    if (!c.action) edenDecide(s, c);
+    const a = c.action;
+    if (a.route?.length) { budget = walkReal(s, c, a, isReleased, budget); continue; }
+    if (a.type === 'explore') { judge(s, c, 'explore'); c.action = null; continue; }
+    const u = Math.min(budget, Math.max(0, a.left)); budget -= u; a.left -= u;
+    const done = a.left <= 1e-9;
+    if (a.type === 'rest') {
+      c.times.rest += u; c.energy = clamp(c.energy + s.config.restGain * u);
+      if (done) { judge(s, c, 'rest'); c.action = null; }
+    } else if (a.type === 'drink') {
+      const w = s.eden.springs.find(w => w.id === a.spring);
+      c.times.travel += u;
+      if (w.active === false) { (c.eden.dry ??= {})[w.id] = s.tick; c.eden.water[w.id] = true; event(s, `Found ${w.name} dry.`, c); c.action = null; }
+      else if (done) {
+        drinkUp(c); for (const k of nursing(s, c)) drinkUp(k);
+        c.eden.water[w.id] = true; event(s, `Drank at ${w.name}.`, c); judge(s, c, 'drink'); c.action = null;
+      }
+    } else if (a.type === 'gather') {
+      c.times.gather += u;
+      if (done) gatherDone(s, c, a);
+    } else { // cultivate or craft: work in place; progress is kept if interrupted
+      c.times.work += u; c.energy = clamp(c.energy - cfg.workCost * u); c.eden.work[a.type === 'craft' ? a.item : 'cultivate'] += u;
+      if (done) workDone(s, c, a);
+    }
+  }
+}
+function gatherDone(s, c, a) {
+  const cfg = s.eden.config;
+  const p = s.patches.find(p => p.id === a.patch), take = Math.min(p.stock, (a.units ?? 4) + (c.eden.tool ? cfg.toolBonus : 0));
+  p.stock -= take; s.ledger.consumed += take; c.consumed += take; if (p.gift) c.giftConsumed += take;
+  const kids = nursing(s, c), given = shareFood(s, c, kids, take), u = body(s).unitKcal;
+  for (const [k, g] of given) { k.consumed += g / u; c.consumed -= g / u; }
+  if (take > 0 && !p.gift) practise(s, c, p.id, (a.ticks ?? 1) * clockOf(s).hours);
+  c.known[p.id] = { expected: p.stock, last: s.tick };
+  event(s, take ? `Ate ${take.toFixed(1)} from ${p.name}.` : `Found ${p.name} empty.`, c);
+  judge(s, c, 'gather', ` at ${p.name}`); c.action = null;
+}
+function workDone(s, c, a) {
+  const cfg = s.eden.config;
+  c.eden.work[a.type === 'craft' ? a.item : 'cultivate'] = 0;
+  if (a.type === 'cultivate' && !s.patches.some(p => p.x === c.x && p.y === c.y) && !s.patches.some(p => p.field && p.owner === c.id)) {
+    const p = { id: 'f' + s.patches.length, name: `${c.name}'s field`, x: c.x, y: c.y, stock: 0, capacity: cfg.fieldCapacity, regen: cfg.fieldRegen, gift: false, field: true,
+      readyTick: s.tick + cfg.growTicks, owner: c.id, decay: decayFor(cfg.fieldRegen, cfg.fieldCapacity) };
+    s.patches.push(p); c.known[p.id] = { expected: 0, last: s.tick };
+    event(s, `${c.name} tilled a field. It will bear food in about ${(cfg.growTicks / YR(s) * 12).toFixed(0)} months.`);
+  } else if (a.type === 'craft') { c.eden[a.item === 'tool' ? 'tool' : 'clothed'] = true; event(s, `Made ${a.item === 'tool' ? 'a tool' : 'clothing'}.`, c); }
+  judge(s, c, a.type); c.action = null;
+}
+// Walking: this body's pace (slower at night), several tiles an hour; every tile costs energy by the mass moved
+// (body and carried young), water with it, and a small risk of a fall (higher in the dark). Returns the part of
+// the tick left over after arriving.
+function walkReal(s, c, a, isReleased, budget) {
+  const cfg = s.eden.config, v = pace(s, c);
+  const load = carriedBy(s, c, isCarer(s)).reduce((n, k) => n + k.body.mass, 0), walkers = walkersWith(s, c, isCarer(s));
+  c.stride = (c.stride ?? 0) + v * budget;
+  let moved = 0;
+  while (c.stride >= 1 && a.route.length) {
+    c.stride -= 1; moved++; [c.x, c.y] = a.route.shift(); c.tiles = (c.tiles ?? 0) + 1;
+    c.energy = clamp(c.energy - stepCost(s, c, load, walkers) * (1 + (100 - c.eden.health) / 100));
+    edenObserve(s, c);
+  }
+  // One draw a tick (the stream gives one number per creature per tick): the chance of at least one fall in the
+  // tiles walked this tick, 1 - (1 - p)^tiles.
+  if (isReleased && moved && draw(s, c.id, STREAMS.injury[0]) < 1 - (1 - cfg.injuryChance * injuryFactor(s)) ** moved) { c.eden.health = clamp(c.eden.health - cfg.injuryDamage); event(s, 'Fell and was hurt.', c); }
+  const used = a.route.length ? budget : Math.min(budget, moved / v);
+  c.times[a.type === 'explore' ? 'explore' : 'travel'] += used;
+  if (a.route.length) return 0;
+  c.stride = 0;
+  return budget - used;
 }
 
 // Health: harm only after release (no injury or illness in the garden before the fall).
@@ -463,7 +613,7 @@ function adultFed(s, c) { const cfg = s.eden.config; return c.alive && !dependen
 
 // Fertility from demographic figures: conception hazard per tick so that P(conceive in one month) = fecundability.
 function reproduce(s, order) {
-  const E = s.eden, cfg = E.config, hazard = 1 - (1 - cfg.fecundability) ** (1 / (YEAR / 12));
+  const E = s.eden, cfg = E.config, hazard = 1 - (1 - cfg.fecundability) ** (1 / (YR(s) / 12));
   const born = [];
   for (const c of order) {
     const e = c.eden;
@@ -475,13 +625,13 @@ function reproduce(s, order) {
     if (!c.alive || e.sex !== 'F' || e.pregnant || !adultFed(s, c)) continue;
     const a = age(s, c);
     if (a < cfg.menarche || a >= cfg.menopause) continue;
-    if (e.births.length && s.tick - e.births.at(-1) < cfg.postpartum * YEAR) continue;
+    if (e.births.length && s.tick - e.births.at(-1) < cfg.postpartum * YR(s)) continue;
     if (s.creatures.filter(x => x.alive).length + s.creatures.filter(x => x.alive && x.eden.pregnant).length + born.length >= cfg.populationCap) { E.capReached++; continue; }
     const mates = order.filter(m => m.eden.sex === 'M' && adultFed(s, m) && age(s, m) >= cfg.maleMaturity && dist(m, c) <= cfg.mateRadius);
     if (!mates.length) continue;
     if (draw(s, c.id, STREAMS.conception[0]) < hazard) {
       const m = mates[Math.floor(draw(s, c.id, STREAMS.conception[0] + 1) * mates.length)];
-      e.pregnant = { due: s.tick + Math.round(cfg.gestation * YEAR), father: m.id, since: s.tick };
+      e.pregnant = { due: s.tick + Math.round(cfg.gestation * YR(s)), father: m.id, since: s.tick };
       event(s, `Conceived a child with ${m.name}.`, c);
     }
   }
@@ -503,6 +653,7 @@ function birth(s, m, f) {
       sex: r(6) < cfg.maleRatio ? 'M' : 'F', born: s.tick, mother: m.id, father: f.id, pregnant: null, births: [], children: [],
       thirst: 0, parched: 0, health: 100, water: { ...m.eden.water }, sight: s.config.perception, work: { clothing: 0, tool: 0, cultivate: 0 } } };
   s.creatures.push(c); E.births++;
+  if (real(s)) setBody(s, c);
   m.eden.births.push(s.tick); m.eden.children.push(id); f.eden.children.push(id);
   if (fallen) m.energy = clamp(m.energy - cfg.birthCost);
   event(s, `${m.name} gave birth to ${name} (${c.eden.sex === 'M' ? 'a son' : 'a daughter'}), with ${f.name}.${fallen ? '' : ' The Creator warns the child too.'}`);
@@ -514,7 +665,7 @@ export function edenMetrics(s) {
   return { phase: E.phase, fallTick: E.fallTick, firstEater: E.firstEater, decisions: E.decisions, overrides: E.overrides,
     guidedShare: E.decisions ? E.overrides / E.decisions : 0, deliberations: E.deliberations.length,
     population: alive.length, births: E.births, deaths: s.creatures.filter(c => !c.alive).length, children: alive.filter(c => age(s, c) < E.config.menarche).length,
-    birthIntervals: s.creatures.flatMap(c => c.eden.births.slice(1).map((t, i) => (t - c.eden.births[i]) / YEAR)), capReached: E.capReached,
+    birthIntervals: s.creatures.flatMap(c => c.eden.births.slice(1).map((t, i) => (t - c.eden.births[i]) / YR(s))), capReached: E.capReached,
     deathCauses: { ...E.deaths }, meanSight: alive.length ? alive.reduce((n, c) => n + c.eden.sight, 0) / alive.length : 0,
     ...(E.restored ? { restored: { calls: E.restored.calls, returned: E.restored.returned, left: E.restored.left, bread: E.restored.bread, whispers: E.restored.whispers,
       living: alive.filter(c => c.eden.covered).length, ledShare: E.restored.choices ? E.restored.led / E.restored.choices : 0,

@@ -4,6 +4,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createWorld, step, command, serialize, deserialize } from '../dist/sim.js';
 import { PLAN, schedule, runSeed } from '../dist/experiment.js';
+import { setDefaultClock } from '../dist/clock.js';
+setDefaultClock('legacy'); // these tests pin the original (pre-17 Nov) behaviour; tests/clock.test.mjs covers the real clock
 
 const mutated = (fn) => { const e = JSON.parse(serialize(createWorld(41))); fn(e.world); return JSON.stringify(e); };
 

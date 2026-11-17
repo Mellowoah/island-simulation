@@ -14,8 +14,9 @@
 // (angels as intellect and will without body; one human soul holding the powers of the lower layers).
 
 import { noise2, seedKey, STREAMS, clamp } from './sim.js';
+import { clockOf } from './clock.js';
 
-const YEAR = 1440;
+const YR = s => clockOf(s).year; // 1440 on the legacy Eden clock, 8760 on the real clock
 
 // ---------- Layers of existence ----------
 // Each layer holds the powers of the layers below it, except spirit, which has intellect and will without a body.
@@ -101,7 +102,7 @@ export const plasticity = ageYears => PLASTICITY.floor + (1 - PLASTICITY.floor) 
 // layer: which layer of existence the attribute belongs to. channel: Robert's five channels (Body, Feeling, Knowledge,
 // Judgment, Practice), plus Temperament and Early life, which sit underneath them. read(s, c) returns the current value,
 // or null when the attribute is planned and not built.
-const age = (s, c) => (s.tick - c.eden.born) / YEAR;
+const age = (s, c) => (s.tick - c.eden.born) / YR(s);
 const pct = v => Math.round(v * 100);
 export const CHANNELS = ['Body', 'Feeling', 'Knowledge', 'Judgment', 'Practice', 'Temperament', 'Early life'];
 export const HUMAN_ATTRIBUTES = [
@@ -174,7 +175,8 @@ export const DEV = {
 const kinOf = (a, b) => a.eden.mother === b.id || a.eden.father === b.id || b.eden.mother === a.id || b.eden.father === a.id;
 const relatives = (s, c) => [c.eden.mother, c.eden.father, ...c.eden.children].filter(id => id !== null).map(id => s.creatures[id]);
 
-export function develop(s) {
+// f scales every step that runs with time (others, nature, steady conditions) so a year changes the same on any clock.
+export function develop(s, f = 1) {
   const alive = s.creatures.filter(c => c.alive), keys = TEMPERAMENT.map(t => t.key);
   for (const c of alive) if (!c.eden.traits) {
     const born = temperament(s, c);
@@ -182,7 +184,7 @@ export function develop(s) {
   }
   const next = new Map();
   for (const c of alive) {
-    const T = c.eden.traits, p = plasticity((s.tick - c.eden.born) / YEAR), d = {};
+    const T = c.eden.traits, p = plasticity((s.tick - c.eden.born) / YR(s)), d = {};
     for (const k of keys) d[k] = 0;
     // 1. those around it
     let wsum = 0; const pull = {}; for (const k of keys) pull[k] = 0;
@@ -191,18 +193,18 @@ export function develop(s) {
       const w = kinOf(c, o) ? DEV.kin : 1; wsum += w;
       for (const k of keys) pull[k] += w * (o.eden.traits.now[k] - T.now[k]);
     }
-    if (wsum) for (const k of keys) d[k] += DEV.social * p * pull[k] / wsum;
+    if (wsum) for (const k of keys) d[k] += DEV.social * f * p * pull[k] / wsum;
     // 2. what happened to it since the last step (only what it lived through)
     const L = T.last, known = Object.keys(c.known).length, lost = relatives(s, c).filter(r => !r.alive).length;
     const push = (k, amount) => { d[k] += DEV.experience * p * amount * (1 - T.now[k]); };
     if (c.eden.health < L.health) push('fear', (L.health - c.eden.health) / 25);
     if (lost > L.lost) push('grief', lost - L.lost);
     if (known > L.known) push('seeking', 0.5);
-    if (c.eden.children.length > L.children || (c.eden.mother !== null && s.tick - c.eden.born < 3 * YEAR && c.hunger < 40)) push('care', 0.05);
-    if (alive.some(o => o !== c && !kinOf(c, o) && Math.abs(o.x - c.x) + Math.abs(o.y - c.y) <= 1 && Math.abs(o.eden.born - c.eden.born) < 3 * YEAR)) push('play', 0.03);
-    if (c.hunger >= 70 && !Object.keys(c.known).some(id => (s.patches.find(q => q.id === id)?.stock ?? 0) >= 1)) push('frustration', 0.05);
+    if (c.eden.children.length > L.children || (c.eden.mother !== null && s.tick - c.eden.born < 3 * YR(s) && c.hunger < 40)) push('care', 0.05 * (c.eden.children.length > L.children ? 1 : f));
+    if (alive.some(o => o !== c && !kinOf(c, o) && Math.abs(o.x - c.x) + Math.abs(o.y - c.y) <= 1 && Math.abs(o.eden.born - c.eden.born) < 3 * YR(s))) push('play', 0.03 * f);
+    if (c.hunger >= 70 && !Object.keys(c.known).some(id => (s.patches.find(q => q.id === id)?.stock ?? 0) >= 1)) push('frustration', 0.05 * f);
     // 3. nature's pull
-    for (const k of keys) d[k] += DEV.nature * p * (T.base[k] - T.now[k]);
+    for (const k of keys) d[k] += DEV.nature * f * p * (T.base[k] - T.now[k]);
     next.set(c, d);
     T.last = { health: c.eden.health, known, lost, children: c.eden.children.length };
   }
@@ -238,8 +240,8 @@ export function developmentSummary(s) {
 //            age 2-3 ~1,000; 4-8 ~1,400; 9-13 ~1,800; 14-18 ~2,200; 51+ ~1,800. Needs rise to about 20, then fall.
 //   pregnancy: +340 kcal/day in the second trimester, +450 in the third (about +17% and +22%).
 //   ageing : Gompertz law, the yearly risk of dying doubles about every 8 years of adult age.
-// Island has no day and night: one sim day is a year. So "sleep" here is the share of time spent resting, and
-// meals are as often as hunger demands; routines are what creatures end up doing, measured by stage.
+// On the legacy clock there is no day and night (one sim day is a year), so "sleep" is the share of time resting.
+// On the real clock (clock.js) there is: adults sleep at night, and the body's needs come from energy.js.
 export const LIFE_STAGES = [
   { id: 'infant', name: 'Infant', plural: 'infants', from: 0, sleepHours: 14, food: 0.5 },
   { id: 'toddler', name: 'Toddler', plural: 'toddlers', from: 1, sleepHours: 12.5, food: 0.5 },
@@ -271,6 +273,6 @@ export const illnessFactor = ageYears => ageYears < LIFE.youngUntil ? LIFE.illne
 export const ageHazard = ageYears => LIFE.hazardAt70 * 2 ** ((ageYears - 70) / LIFE.hazardDoubling);
 export function pregnancyExtra(s, c) {
   const p = c.eden.pregnant; if (!p) return 0;
-  const g = s.eden.config.gestation * YEAR, progress = 1 - (p.due - s.tick) / g;
+  const g = s.eden.config.gestation * YR(s), progress = 1 - (p.due - s.tick) / g;
   return LIFE.pregnancyFood[Math.min(2, Math.max(0, Math.floor(progress * 3)))];
 }

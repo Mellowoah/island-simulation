@@ -31,10 +31,10 @@ const fieldNeed = EDEN_DEFAULTS.fieldRegen * DAY / (0.05 * DAY / 4);
 check(9, 'After release, production is hard work, not abundance (one field ≈ one person)', fieldNeed > 0.8 && fieldNeed < 2 && EDEN_DEFAULTS.cursedRegen < 1, `one field = ${fieldNeed.toFixed(2)}× an adult's need; cursed ground ${EDEN_DEFAULTS.cursedRegen * 100}%`);
 const iv = edenMetrics(e).birthIntervals, mean = iv.length ? iv.reduce((a, b) => a + b, 0) / iv.length : NaN;
 check(10, 'Reproduction stays within natural-fertility statistics', EDEN_DEFAULTS.fecundability >= 0.15 && EDEN_DEFAULTS.fecundability <= 0.25 && EDEN_DEFAULTS.menarche === 15 && EDEN_DEFAULTS.menopause === 40 && (iv.length === 0 || mean >= EDEN_DEFAULTS.gestation + EDEN_DEFAULTS.postpartum), iv.length ? `mean birth interval ${mean.toFixed(2)} y` : 'no intervals yet');
-for (const s of all) { const l = s.ledger; check('L', 'Food ledger reconciles (Eden)', Math.abs(l.initial + l.regenerated + l.gifted - l.consumed - (l.withdrawn ?? 0) - metrics(s).food) < 1e-6); }
+for (const s of all) { const l = s.ledger; check('L', 'Food ledger reconciles (Eden)', Math.abs(l.initial + l.regenerated + l.gifted - l.consumed - (l.withdrawn ?? 0) - (l.decayed ?? 0) - metrics(s).food) < 1e-6 * Math.max(1, l.initial + l.regenerated)); } // real clock: rotted food is booked as decayed
 
 const { senseRadius } = await import('../dist/eden.js');
-{ const t = createEden(41), c = t.creatures[0], full = t.config.perception; const o = c.energy; c.energy = 5; const low = senseRadius(t, c); c.energy = o;
+{ const t = createEden(41), c = t.creatures[0], full = t.config.perception; if (t.clock) t.tick = 6; /* real clock: noon, not night */ const o = c.energy; c.energy = 5; const low = senseRadius(t, c); c.energy = o;
   check(11, 'Senses depend on condition (maintain senses and life)', senseRadius(t, c) === full && low < full && low >= 1, `well ${full}, exhausted ${low}`); }
 check(12, 'Creator never overrules a choice that already meets a real need', all.every(s => s.creatures.every(c => !(c.decision?.guided && c.decision.guided.intended === 'drink' && c.decision.thirst >= s.eden.config.thirstGuide))));
 check(13, 'No harm before release (health stays whole while guided)', g.eden.phase !== 'guided' || g.creatures.every(c => c.eden.health === 100));

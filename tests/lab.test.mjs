@@ -3,6 +3,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { STREAMS } from '../dist/sim.js';
 import { createLab, labStep, labCommand, labMetrics, runTrial, isLand, confidence, LAB_STREAMS, LAB_DEFAULTS, ACTIONS, serializeLab, deserializeLab, LAB_VERSION, LAB_SAVE_FORMAT } from '../dist/lab.js';
+import { setDefaultClock } from '../dist/clock.js';
+setDefaultClock('legacy'); // these tests pin the original (pre-17 Nov) behaviour; tests/clock.test.mjs covers the real clock
 
 test('L1 same seed and settings give the same history; a different seed gives another', () => {
   const a = createLab(41), b = createLab(41), c = createLab(42);

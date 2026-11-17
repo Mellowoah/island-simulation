@@ -1,4 +1,6 @@
 import test from'node:test';import assert from'node:assert/strict';import{createWorld,step,command,metrics,serialize,deserialize,path}from'../dist/sim.js';
+import { setDefaultClock } from '../dist/clock.js';
+setDefaultClock('legacy'); // these tests pin the original (pre-17 Nov) behaviour; tests/clock.test.mjs covers the real clock
 test('repeatability and mid-action save restore',()=>{const a=createWorld(41);step(a,137);const b=deserialize(serialize(a));step(a,333);step(b,333);assert.equal(serialize(a),serialize(b));});
 test('food accounting reconciles',()=>{const s=createWorld(55);command(s,{type:'food',x:13,y:13});step(s,4000);const l=s.ledger;assert.ok(Math.abs(l.initial+l.regenerated+l.gifted-l.consumed-s.patches.reduce((a,p)=>a+p.stock,0))<1e-6);assert.ok(l.consumed>0);assert.ok(s.patches.every(p=>p.stock>=0));});
 test('unobserved food does not change creature 0 in the first tick (general property: K1 in review.test)',()=>{const a=createWorld(2),b=createWorld(2);b.patches[1].stock=0;step(a);step(b);assert.equal(a.creatures[0].known.b,undefined);assert.deepEqual(a.creatures[0].decision,b.creatures[0].decision);});

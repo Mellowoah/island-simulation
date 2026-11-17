@@ -4,6 +4,8 @@ import assert from 'node:assert/strict';
 import { createWorld, step, command, metrics, serialize, deserialize, noise, noise2, seedKey } from '../dist/sim.js';
 import { PLAN, schedule } from '../dist/experiment.js';
 import { DAY } from '../dist/sim.js';
+import { setDefaultClock } from '../dist/clock.js';
+setDefaultClock('legacy'); // these tests pin the original (pre-17 Nov) behaviour; tests/clock.test.mjs covers the real clock
 
 const corr = (a, b) => { const n = a.length, ma = a.reduce((x, y) => x + y) / n, mb = b.reduce((x, y) => x + y) / n; let s = 0, sa = 0, sb = 0; for (let i = 0; i < n; i++) { s += (a[i] - ma) * (b[i] - mb); sa += (a[i] - ma) ** 2; sb += (b[i] - mb) ** 2; } return s / Math.sqrt(sa * sb); };
 const seq = (f, n = 5000) => Array.from({ length: n }, (_, t) => f(t));

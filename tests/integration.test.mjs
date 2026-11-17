@@ -3,6 +3,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createWorld, step, command, metrics, serialize, deserialize, DEFAULTS, VERSION } from '../dist/sim.js';
 import { runSeed, aggregate } from '../dist/experiment.js';
+import { setDefaultClock } from '../dist/clock.js';
+setDefaultClock('legacy'); // these tests pin the original (pre-17 Nov) behaviour; tests/clock.test.mjs covers the real clock
 
 test('D6 version-2 saves convert to version 3 with default values and continue identically', () => {
   const live = createWorld(41); step(live, 500);

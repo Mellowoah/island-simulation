@@ -14,6 +14,9 @@
 // Figures marked (approx.) are reasonable values not yet pinned to one source; they are listed in THEORY-CHECK.md.
 
 import { registerMap, noise2, seedKey, STREAMS } from './sim.js';
+import { clockOf, body, growPatch } from './clock.js';
+// On the real clock (clock.js) every food has a half-life, and a patch left alone settles where growth equals decay
+// (no capMonths cap); one food unit is 500 kcal and one tick is an hour. Legacy worlds keep the numbers below.
 
 export const YEAR_TICKS = 1440;
 export const TICK_HOURS = 365 * 24 / YEAR_TICKS;          // 6.08 h
@@ -86,16 +89,18 @@ export const yearOf = tick => Math.floor(tick / YEAR_TICKS);
 // return far less (Pretelli et al. 2022: fruit and shellfish returns reach adult levels by adolescence; tubers
 // and game rise slowly into adulthood). season(f): how productive it is at that point of the year (normalised
 // below to average 1). rain: how much its yield follows the year's rain (1 fully, 0 not at all).
-// halfLifeDays: natural decay of ripe food left uncollected (0 = keeps). capMonths: most it can hold.
+// halfLifeDays: natural decay of ripe food left uncollected (0 = keeps). capMonths: most it can hold (legacy only).
+// realHalfLifeDays (real clock): every food decays. Tubers die back or are eaten by others over about 2 years
+// (approx.); hives are abandoned and fish and shellfish populations turn over in about a year (approx.).
 const bump = (f, c, w) => Math.exp(-((((f - c + 1.5) % 1 - 0.5) / w) ** 2));
 export const FOODS = {
-  berries: { label: 'Berries', region: ['woodland', 'river'], share: 0.18, kcalHour: 1500, hard: false, rain: 1, halfLifeDays: 14, capMonths: 2, season: f => f < WET_SHARE ? Math.sin(Math.PI * f / WET_SHARE) : 0 },
-  baobab: { label: 'Baobab fruit', region: ['grass', 'woodland'], share: 0.18, kcalHour: 2000, hard: false, rain: 0.6, halfLifeDays: 180, capMonths: 5, season: f => f >= WET_SHARE ? 0.2 + Math.sin(Math.PI * (f - WET_SHARE) / (1 - WET_SHARE)) : 0.2 },
-  tubers: { label: 'Tubers', region: ['grass', 'woodland'], share: 0.24, kcalHour: 1000, hard: true, rain: 0.4, halfLifeDays: 0, capMonths: 12, season: f => f < WET_SHARE ? 1.1 : 0.85 },
-  nuts: { label: 'Nuts and seeds', region: ['woodland'], share: 0.06, kcalHour: 900, hard: false, rain: 0.8, halfLifeDays: 90, capMonths: 4, season: f => bump(f, 0.55, 0.12) },
-  honey: { label: 'Honey', region: ['woodland', 'rock'], share: 0.08, kcalHour: 3500, hard: true, rain: 0.5, halfLifeDays: 0, capMonths: 3, season: f => 0.6 + 1.2 * bump(f, 0.55, 0.06) },
-  fish: { label: 'Fish', region: ['river', 'shore'], share: 0.13, kcalHour: 900, hard: false, rain: 0.5, halfLifeDays: 0, capMonths: 3, season: f => f < WET_SHARE ? 1.2 : 0.75 },
-  shellfish: { label: 'Shellfish', region: ['shore'], share: 0.13, kcalHour: 1200, hard: false, rain: -0.3, halfLifeDays: 0, capMonths: 3, season: f => f < WET_SHARE ? 0.7 : 1.4 },
+  berries: { label: 'Berries', region: ['woodland', 'river'], share: 0.18, kcalHour: 1500, hard: false, rain: 1, halfLifeDays: 14, realHalfLifeDays: 14, capMonths: 2, season: f => f < WET_SHARE ? Math.sin(Math.PI * f / WET_SHARE) : 0 },
+  baobab: { label: 'Baobab fruit', region: ['grass', 'woodland'], share: 0.18, kcalHour: 2000, hard: false, rain: 0.6, halfLifeDays: 180, realHalfLifeDays: 180, capMonths: 5, season: f => f >= WET_SHARE ? 0.2 + Math.sin(Math.PI * (f - WET_SHARE) / (1 - WET_SHARE)) : 0.2 },
+  tubers: { label: 'Tubers', region: ['grass', 'woodland'], share: 0.24, kcalHour: 1000, hard: true, rain: 0.4, halfLifeDays: 0, realHalfLifeDays: 730, capMonths: 12, season: f => f < WET_SHARE ? 1.1 : 0.85 },
+  nuts: { label: 'Nuts and seeds', region: ['woodland'], share: 0.06, kcalHour: 900, hard: false, rain: 0.8, halfLifeDays: 90, realHalfLifeDays: 90, capMonths: 4, season: f => bump(f, 0.55, 0.12) },
+  honey: { label: 'Honey', region: ['woodland', 'rock'], share: 0.08, kcalHour: 3500, hard: true, rain: 0.5, halfLifeDays: 0, realHalfLifeDays: 365, capMonths: 3, season: f => 0.6 + 1.2 * bump(f, 0.55, 0.06) },
+  fish: { label: 'Fish', region: ['river', 'shore'], share: 0.13, kcalHour: 900, hard: false, rain: 0.5, halfLifeDays: 0, realHalfLifeDays: 365, capMonths: 3, season: f => f < WET_SHARE ? 1.2 : 0.75 },
+  shellfish: { label: 'Shellfish', region: ['shore'], share: 0.13, kcalHour: 1200, hard: false, rain: -0.3, halfLifeDays: 0, realHalfLifeDays: 365, capMonths: 3, season: f => f < WET_SHARE ? 0.7 : 1.4 },
 };
 // Normalise each season curve so its yearly average is 1 (so `share` is the true yearly share).
 for (const F of Object.values(FOODS)) { let m = 0; for (let i = 0; i < 360; i++) m += F.season(i / 360); F.norm = 360 / m; }
@@ -131,7 +136,8 @@ export function waterActive(kind, season, rain) {
 const stand = (x, y, regions = null) => { const ok = (a, b) => walkable(a, b) && (!regions || regions.includes(regionAt(a, b))); if (ok(x, y)) return [x, y]; for (let r = 1; r < 8; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (ok(x + dx, y + dy)) return [x + dx, y + dy]; throw Error('no fitting land near ' + x + ',' + y); };
 
 // Food per patch from the carrying capacity: CARRYING people x 18 units a year x share, split over that food's places.
-export function makePatches() {
+export function makePatches(s = null) {
+  if (s && s.clock) return makePatchesReal(s);
   const yearUnits = CARRYING * 18, out = [];
   for (const [food, list] of Object.entries(PLACES)) {
     const F = FOODS[food], annual = yearUnits * F.share / list.length;
@@ -144,11 +150,26 @@ export function makePatches() {
   }
   return out;
 }
+// Real clock: yearly food = CARRYING people x a year's need (kcal) x share. Growth per tick is that over the year;
+// decay per tick from the half-life; the patch's natural level (capacity) is growth / decay at an average season.
+function makePatchesReal(s) {
+  const C = clockOf(s), B = body(s), yearUnits = CARRYING * 2250 * 365 / B.unitKcal, out = [];
+  for (const [food, list] of Object.entries(PLACES)) {
+    const F = FOODS[food], annual = yearUnits * F.share / list.length;
+    list.forEach(([x0, y0, name], i) => {
+      const [x, y] = stand(x0, y0, F.region);
+      const regen = annual / C.year, decay = Math.LN2 / (F.realHalfLifeDays * C.day), cap = regen / decay;
+      out.push({ id: `${food[0]}${i}`, name, food, x, y, stock: cap * 0.5, capacity: cap, regen, gift: false, decay });
+    });
+  }
+  return out;
+}
 const WATER_REGIONS = { lake: ['shore'], spring: ['rock'], river: ['river'], pools: ['river'], pan: ['grass'] };
 export const makeWaters = () => WATERS.map((w, i) => { const [x, y] = stand(w.x, w.y, WATER_REGIONS[w.kind]); return { id: 'v' + i, name: w.name, x, y, kind: w.kind, active: true }; });
 
 // One step of the land: each food grows by its season and the year's rain, ripe food decays, water comes and goes.
 export function landStep(s, groundFactor = 1) {
+  if (s.clock) return landStepReal(s, groundFactor);
   const rain = rainOf(s.seed, yearOf(s.tick)), season = seasonOf(s.tick);
   for (const p of s.patches) {
     if (!p.food) continue;
@@ -158,7 +179,20 @@ export function landStep(s, groundFactor = 1) {
   }
   if (s.tick % 30 === 0) for (const w of s.eden.springs) w.active = waterActive(w.kind, season, rain);
 }
-
+// Real clock: growth and decay together (clock.js growPatch); no cap but the natural level. Seasons by the calendar.
+export const realFrac = (s, tick = s.tick) => { const C = clockOf(s); return (((tick % C.year) + C.year) % C.year) / C.year; };
+export const realSeason = (s, tick = s.tick) => realFrac(s, tick) < WET_SHARE ? 'wet' : 'dry';
+export const realYear = (s, tick = s.tick) => Math.floor(tick / clockOf(s).year);
+function landStepReal(s, groundFactor) {
+  const C = clockOf(s), rain = rainOf(s.seed, realYear(s)), f = realFrac(s);
+  for (const p of s.patches) {
+    if (!p.food) continue;
+    const F = FOODS[p.food], grow = p.regen * F.season(f) * F.norm * rainFactor(p.food, rain) * groundFactor;
+    const { add, lost } = growPatch(p, grow);
+    s.ledger.regenerated += add; s.ledger.decayed = (s.ledger.decayed ?? 0) + lost;
+  }
+  if (s.tick % Math.round(C.day) === 0) { const season = realSeason(s); for (const w of s.eden.springs) w.active = waterActive(w.kind, season, rain); }
+}
 // How many ticks it takes to gather `units` of a food: units x kcal per unit / (return rate x hours per tick).
 // The return rate falls for the young on skill-intensive foods (Pretelli et al. 2022), and rises with practice.
 export const AGE_RETURN = { hard: [[5, 0.3], [9, 0.5], [14, 0.75], [18, 1]], easy: [[5, 0.6], [9, 0.85], [14, 1], [18, 1]] };
@@ -168,6 +202,8 @@ export function returnRate(food, ageYears, skill) {
   return F.kcalHour * ageF * (0.6 + 0.4 * Math.min(1, skill));
 }
 export const gatherTicks = (units, kcalHour) => Math.max(2, Math.ceil(units * KCAL_PER_UNIT / (kcalHour * TICK_HOURS)));
+// Real clock: hours of foraging for `units` of 500 kcal, at least one tick.
+export const gatherTicksReal = (s, units, kcalHour) => { const C = clockOf(s), B = body(s); return Math.max(0.25 * C.perHour, units * B.unitKcal / (kcalHour * C.hours)); }; // a fraction of a tick is fine on the real clock
 
 // Where the first people start: a camp on the east lakeshore near the river mouth.
 export const CAMP = { x: 35, y: 32, r: 3 };

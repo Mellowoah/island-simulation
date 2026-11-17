@@ -225,6 +225,8 @@ test('S2 the life record follows every creature without touching the world', () 
 });
 
 import { registerMap, MAPS, path as findPath, onLand, mapOf } from '../dist/sim.js';
+import { setDefaultClock } from '../dist/clock.js';
+setDefaultClock('legacy'); // these tests pin the original (pre-17 Nov) behaviour; tests/clock.test.mjs covers the real clock
 
 test('M1 a world can name its own map; with none it is the original island, unchanged', () => {
   const ring = registerMap({ id: 'test-ring', w: 12, h: 9, land: (x, y) => !(x >= 4 && x <= 7 && y >= 3 && y <= 5) }); // a lake in the middle

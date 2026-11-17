@@ -3,6 +3,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DAY, metrics } from '../dist/sim.js';
 import { createEden, edenStep, senseRadius } from '../dist/eden.js';
+import { setDefaultClock } from '../dist/clock.js';
+setDefaultClock('legacy'); // these tests pin the original (pre-17 Nov) behaviour; tests/clock.test.mjs covers the real clock
 
 test('Sight depends on condition: full when well, shrinking with hunger, thirst, tiredness or harm, never below 1', () => {
   const s = createEden(41), c = s.creatures[0], full = s.config.perception;

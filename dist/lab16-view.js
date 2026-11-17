@@ -1,4 +1,5 @@
 // Read-only views of a world for drawing. Copies plain values out; never writes to the world.
+import { clockOf } from './clock.js';
 import { W, H, land } from './sim.js';
 import { isLand } from './lab.js';
 
@@ -8,13 +9,13 @@ export function viewOfEden(s) {
     kind: 'eden', w: W, h: H, tick: s.tick, terrainKey: `eden:${+s.bridge}`,
     isLand: (x, y) => land(x, y, s.bridge),
     phase: E.phase, serpent: E.config.serpent !== false,
-    tree: { x: E.tree.x, y: E.tree.y }, serpentSpoke: E.serpentSpoke ? { tick: E.serpentSpoke.tick, id: E.serpentSpoke.id } : null,
+    tree: E.tree ? { x: E.tree.x, y: E.tree.y } : null, serpentSpoke: E.serpentSpoke ? { tick: E.serpentSpoke.tick, id: E.serpentSpoke.id } : null,
     springs: E.springs.map(w => ({ x: w.x, y: w.y, name: w.name })),
     food: s.patches.map(p => ({ x: p.x, y: p.y, kind: p.gift ? 'gift' : p.field ? (s.tick < p.readyTick ? 'sown' : 'field') : 'bush', fill: p.capacity ? Math.min(1, p.stock / p.capacity) : 0, stock: p.stock })),
     dangers: [], crossings: [],
     creatures: s.creatures.map(c => ({ id: c.id, x: c.x, y: c.y, alive: c.alive, deathTick: c.death?.tick ?? null, act: c.action?.type ?? null,
-      child: E.config && c.eden.mother !== null && (s.tick - c.eden.born) / 1440 < E.config.weanAge,
-      led: !!(c.decision?.guided && s.tick - c.decision.tick < 90), clothed: !!c.eden.clothed, covered: !!c.eden.covered })),
+      child: E.config && c.eden.mother !== null && (s.tick - c.eden.born) / clockOf(s).year < E.config.weanAge,
+      led: !!(c.decision?.guided && s.tick - c.decision.tick < (s.clock ? 24 : 90)), clothed: !!c.eden.clothed, covered: !!c.eden.covered })),
     tempters: (E.tempters ?? []).map(t => ({ x: t.x, y: t.y })),
   };
 }

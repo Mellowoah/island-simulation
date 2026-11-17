@@ -3,6 +3,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DAY, metrics, serialize, createWorld } from '../dist/sim.js';
 import { createEden, edenStep, edenMetrics } from '../dist/eden.js';
+import { setDefaultClock } from '../dist/clock.js';
+setDefaultClock('legacy'); // these tests pin the original (pre-17 Nov) behaviour; tests/clock.test.mjs covers the real clock
 
 test('Every creature is born warned; the serpent\'s claim is never stored as knowledge', () => {
   const s = createEden(41);

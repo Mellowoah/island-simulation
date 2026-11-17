@@ -3,6 +3,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createLab, labStep, ACTIONS } from '../dist/lab.js';
 import { createRenderer, GLYPH, SHAPES } from '../dist/lab-render.js';
+import { setDefaultClock } from '../dist/clock.js';
+setDefaultClock('legacy'); // these tests pin the original (pre-17 Nov) behaviour; tests/clock.test.mjs covers the real clock
 
 const calls = { n: 0 };
 const fakeCtx = () => new Proxy({}, { get: (t, k) => k in t ? t[k] : (...a) => { calls.n++; }, set: (t, k, v) => { t[k] = v; return true; } });

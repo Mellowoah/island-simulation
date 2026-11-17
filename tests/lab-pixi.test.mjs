@@ -4,6 +4,8 @@ import assert from 'node:assert/strict';
 import { createLab, labStep, labCommand, serializeLab, deserializeLab, LAB_SAVE_FORMAT } from '../dist/lab.js';
 import { createRenderer, GLYPH, SHAPES } from '../dist/lab-render.js';
 import { creaturePresentation, dayNightTint, hash } from '../dist/lab-look.js';
+import { setDefaultClock } from '../dist/clock.js';
+setDefaultClock('legacy'); // these tests pin the original (pre-17 Nov) behaviour; tests/clock.test.mjs covers the real clock
 
 const fakeCtx = () => new Proxy({}, { get: (t, k) => k in t ? t[k] : (...a) => {}, set: (t, k, v) => { t[k] = v; return true; } });
 const fakeCanvas = (w, h) => ({ width: w, height: h, getContext: fakeCtx });

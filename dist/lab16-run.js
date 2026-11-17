@@ -3,6 +3,11 @@
 // It never edits creatures or rules. Chunked stepping gives the same history as one long step.
 import { lifeStage } from './being.js';
 import { DAY, land, command } from './sim.js';
+import { clockOf, body } from './clock.js';
+// Ticks in one unit of run time: a year in Eden (8,760 on the real clock, 1,440 on the legacy clock); a day on the Lab island.
+export const unitTicks = s => s.mode === 'eden' ? clockOf(s).year : DAY;
+// Samples: Eden every 1/24 of a year (about 15 days); the Lab every 60 ticks, as before.
+export const sampleEvery = s => s.mode === 'eden' ? Math.round(clockOf(s).year / 24) : SAMPLE_EVERY;
 import { createEden, edenStep } from './eden.js';
 import { createLab, labStep, labMetrics, serializeLab, deserializeLab } from './lab.js';
 import { normalizeSetup, HELP, driveConfig } from './lab16-setup.js';
@@ -41,7 +46,7 @@ export const hardshipEden = c => (c.hunger + c.eden.thirst + (100 - c.energy) + 
 export const hardshipLab = c => (c.needs.hunger + (100 - c.needs.energy) + (100 - c.needs.safety) + (100 - c.needs.social)) / 4;
 export function barSample(run) {
   const s = run.world, f = run.kind === 'lab' ? hardshipLab : hardshipEden, alive = s.creatures.filter(c => c.alive);
-  const a = Math.min(1, SAMPLE_EVERY / (run.setup.barWindow * DAY));
+  const a = Math.min(1, sampleEvery(run.world) / (run.setup.barWindow * unitTicks(run.world)));
   run.bar ??= {};
   let hard = 0, bar = 0, over = 0;
   for (const c of alive) {
@@ -60,7 +65,7 @@ export const ROUTINE_KEYS = ['rest', 'gather', 'travel', 'explore', 'work'];
 export function routineSample(run) {
   const s = run.world; run.prevTimes ??= {}; run.routine ??= {};
   for (const c of s.creatures) if (c.alive) {
-    const p = run.prevTimes[c.id], st = lifeStage((s.tick - c.eden.born) / DAY).id, u = (run.routine[st] ??= Object.fromEntries(ROUTINE_KEYS.map(k => [k, 0])));
+    const p = run.prevTimes[c.id], st = lifeStage((s.tick - c.eden.born) / unitTicks(s)).id, u = (run.routine[st] ??= Object.fromEntries(ROUTINE_KEYS.map(k => [k, 0])));
     if (p) for (const k of ROUTINE_KEYS) u[k] += c.times[k] - (p[k] ?? 0);
     run.prevTimes[c.id] = { ...c.times };
   }
@@ -70,7 +75,8 @@ export function routineSample(run) {
 export const LIFE_SNAP_KEYS = ['health', 'energy', 'hunger', 'thirst', 'credence', 'warning', 'places', 'skill', 'children'];
 function snapOf(s, c) {
   const e = c.eden;
-  return { t: s.tick, age: (s.tick - e.born) / DAY, stage: lifeStage((s.tick - e.born) / DAY).name, health: e.health, energy: c.energy, hunger: c.hunger, thirst: e.thirst,
+  const Y = unitTicks(s);
+  return { t: s.tick, age: (s.tick - e.born) / Y, stage: lifeStage((s.tick - e.born) / Y).name, health: e.health, energy: c.energy, hunger: c.hunger, thirst: e.thirst,
     credence: e.credence * 100, warning: e.warning * 100, places: Object.keys(c.known).length, skill: Math.max(0, ...Object.values(c.skills)) * 100,
     children: e.children.length, restored: !!e.covered, traits: e.traits ? { ...e.traits.now } : null };
 }
@@ -82,7 +88,7 @@ export function lifeSample(run) {
     for (const m of c.memories) if (m.tick > L.seen) { L.events.push(m); L.seen = m.tick; }
     if (L.events.length > 150) L.events.splice(0, L.events.length - 150);
     if (!c.alive) { L.died = { t: c.death.tick, cause: c.death.cause }; L.snaps.push({ ...snapOf(s, c), t: c.death.tick }); continue; }
-    if (!L.snaps.length || s.tick - L.snaps.at(-1).t >= DAY) L.snaps.push(snapOf(s, c));
+    if (!L.snaps.length || s.tick - L.snaps.at(-1).t >= unitTicks(s)) L.snaps.push(snapOf(s, c));
   }
 }
 function edenSample(run) {
@@ -99,7 +105,7 @@ function labSample(m) { return { t: m.tick, pop: m.alive, deaths: m.deaths, trus
 
 export function createRun(input = {}) {
   const setup = normalizeSetup(input);
-  const endTick = setup.runDays * DAY;
+  let endTick = setup.runDays * DAY;
   if (setup.world === 'lab') {
     const world = createLab(setup.seed, { population: setup.population, falseInformationRate: setup.falseInfo, foodQuantity: setup.food, foodRegrowth: setup.regrowth, communication: setup.talk });
     const run = { kind: 'lab', setup, world, endTick, done: false, bar: {}, barSeries: [] };
@@ -107,7 +113,8 @@ export function createRun(input = {}) {
     return run;
   }
   const drives = driveConfig(setup, EDEN_DEFAULTS, SIM_DEFAULTS);
-  const world = createEden(setup.seed, drives.sim, { ...drives.eden, serpentSilentYears: setup.guidanceYears, guidanceRate: setup.guidance, restoration: setup.restoration, tempters: setup.tempters, fallAgain: setup.fallAgain, traitDevelopment: setup.traitDev, lifeCourse: setup.lifeCourse, serpent: setup.serpent });
+  const world = createEden(setup.seed, drives.sim, { ...drives.eden, serpentSilentYears: setup.guidanceYears, guidanceRate: setup.guidance, restoration: setup.restoration, tempters: setup.tempters, fallAgain: setup.fallAgain, traitDevelopment: setup.traitDev, lifeCourse: setup.lifeCourse, serpent: setup.serpent, clock: setup.realClock ? 'real' : 'legacy' });
+  endTick = setup.runDays * unitTicks(world);
   const run = { kind: 'eden', setup, world, endTick, done: false, helpUntil: setup.help ? Math.floor(endTick / 2) : 0, halfTick: Math.floor(endTick / 2),
     help: setup.help ? helpSpot(world) : null, cohort: null, half: null, series: [] };
   run.series.push(edenSample(run));
@@ -125,12 +132,16 @@ export function stepRun(run, n = 1) {
   const s = run.world;
   for (let i = 0; i < n; i++) {
     if (s.tick >= run.endTick) { run.done = true; break; }
-    if (run.kind === 'lab') { labStep(s, 1); if (s.tick % SAMPLE_EVERY === 0) (run.barSeries ??= []).push({ t: s.tick, ...barSample(run) }); continue; }
-    if (run.help && s.tick < run.helpUntil && s.tick % HELP.every === 0) command(s, { type: 'food', x: run.help.x, y: run.help.y, amount: HELP.amount });
+    if (run.kind === 'lab') { labStep(s, 1); if (s.tick % sampleEvery(s) === 0) (run.barSeries ??= []).push({ t: s.tick, ...barSample(run) }); continue; }
+    if (run.help && s.tick < run.helpUntil && s.tick % Math.round(unitTicks(s) / 12) === 0) {
+      // Legacy: 40 units of 1/18 of an adult's year. Real: the same food, in 500 kcal units, left as piles of at most 200.
+      let left = s.clock ? HELP.amount / 18 * body(s).unitsPerAdultYear : HELP.amount;
+      while (left > 0) { const a = Math.min(200, left); command(s, { type: 'food', x: run.help.x, y: run.help.y, amount: a }); left -= a; }
+    }
     edenStep(s, 1);
     if (!run.cohort && s.eden.fallTick !== null) run.cohort = s.creatures.filter(c => c.alive).map(c => c.id);
     if (s.tick === run.halfTick) run.half = { tick: s.tick, consumed: s.ledger.consumed, giftEaten: giftEaten(s) };
-    if (s.tick % SAMPLE_EVERY === 0) run.series.push(edenSample(run));
+    if (s.tick % sampleEvery(s) === 0) run.series.push(edenSample(run));
   }
   if (s.tick >= run.endTick) run.done = true;
   return run;
@@ -139,7 +150,7 @@ export function stepRun(run, n = 1) {
 export function runToEnd(input, endTick = null, onProgress = null) {
   const run = createRun(input), stop = endTick ?? run.endTick;
   run.endTick = Math.min(run.endTick, stop);
-  while (!run.done) { stepRun(run, 1440); if (onProgress) onProgress(run.world.tick / run.endTick); }
+  while (!run.done) { stepRun(run, unitTicks(run.world)); if (onProgress) onProgress(run.world.tick / run.endTick); }
   return run;
 }
 

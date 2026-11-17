@@ -36,9 +36,10 @@ const fmtTick = v => Math.abs(v) >= 1000 ? (v / 1000).toFixed(v >= 10000 ? 0 : 1
 // Chart definitions. Each has a plain-English caption so a non-scientist can read it.
 export function chartSpecs(kind, rows, meta = {}) {
   const per = kind === 'eden' ? 'year' : 'day';
-  const xs = rows.map(r => r.t / 1440);
-  const fall = meta.fallTick != null ? [{ x: meta.fallTick / 1440, label: 'fall' }] : [];
-  const helpStop = meta.helpStop != null ? [{ x: meta.helpStop / 1440, label: 'help stops' }] : [];
+  const U = meta.unit ?? 1440; // ticks per year (Eden) or per day (Lab)
+  const xs = rows.map(r => r.t / U);
+  const fall = meta.fallTick != null ? [{ x: meta.fallTick / U, label: 'fall' }] : [];
+  const helpStop = meta.helpStop != null ? [{ x: meta.helpStop / U, label: 'help stops' }] : [];
   const col = (k) => rows.map(r => r[k] ?? null);
   if (kind === 'lab') return [
     { id: 'pop', title: 'Population', caption: 'How many creatures are alive.', xs, series: [{ label: 'alive', color: '#7fd88f', values: col('pop') }], opts: { xLabel: per } },

@@ -1,6 +1,7 @@
 // Island Lab 16-bit: end-of-run report. Every number is read from the sim's own counters
 // (eden.js / lab.js state, edenMetrics, labMetrics) or from the run's recorded samples. Nothing is estimated.
 import { DAY } from './sim.js';
+import { unitTicks } from './lab16-run.js';
 import { edenMetrics } from './eden.js';
 import { labMetrics } from './lab.js';
 import { PREDICTIONS, THEORY, lineLabel } from './lab16-setup.js';
@@ -20,20 +21,20 @@ const yr = t => r1(t / DAY);
 
 // Facts about one Eden run.
 export function summarizeEden(run) {
-  const s = run.world, E = s.eden, m = edenMetrics(s), series = run.series;
+  const s = run.world, E = s.eden, m = edenMetrics(s), series = run.series, Y = unitTicks(s);
   const fell = E.fallTick !== null;
   const delib = E.deliberations;
   const before = fell ? [...series].reverse().find(r => r.t <= E.fallTick) : null;
   const last = series.at(-1);
   // Survival of everyone alive at the fall, a fixed number of years later (or as far as the run went).
-  const cohortAt = years => { if (!fell) return null; const t = E.fallTick + years * DAY; const row = [...series].reverse().find(r => r.t <= t && r.cohort !== null); return row ? row.cohort : null; };
-  const yearsAfter = fell ? (s.tick - E.fallTick) / DAY : 0;
+  const cohortAt = years => { if (!fell) return null; const t = E.fallTick + years * Y; const row = [...series].reverse().find(r => r.t <= t && r.cohort !== null); return row ? row.cohort : null; };
+  const yearsAfter = fell ? (s.tick - E.fallTick) / Y : 0;
   // Food the creatures gathered from the island itself (not from your help) in the second half of the run, per creature per year.
   let ownLater = null;
   if (run.half && s.tick > run.half.tick) {
     const own = (s.ledger.consumed - run.half.consumed) - (giftEaten(s) - run.half.giftEaten);
     const pops = series.filter(r => r.t >= run.half.tick).map(r => r.pop);
-    const years = (s.tick - run.half.tick) / DAY, avgPop = mean(pops);
+    const years = (s.tick - run.half.tick) / Y, avgPop = mean(pops);
     ownLater = avgPop ? own / avgPop / years : null;
   }
   // Moving bar (measure only): hardship, each creature's own bar, and the share above their bar.
@@ -44,9 +45,9 @@ export function summarizeEden(run) {
   return {
     kind: 'eden', serpent: run.setup.serpent !== false, lifeCourse: !!run.setup.lifeCourse, routine: LIFE_STAGES.map(st => { const u = run.routine?.[st.id]; const n = u ? ROUTINE_KEYS.reduce((a, k) => a + u[k], 0) : 0; return n >= 500 ? { stage: st.name, plural: st.plural, ...Object.fromEntries(ROUTINE_KEYS.map(k => [k, u[k] / n * 100])) } : null; }).filter(Boolean),
     oldAge: s.eden.deaths['Old age'] ?? 0, development: run.setup.traitDev ? developmentSummary(s) : null, restoration: !!run.setup.restoration, tempters: run.setup.tempters ?? 0, fallAgain: run.setup.fallAgain !== false, restored: m.restored ?? null,
-    hardRestored: mean(alive.filter(c => c.eden.covered).map(hardshipEden)), hardOthers: mean(alive.filter(c => !c.eden.covered).map(hardshipEden)), seed: s.seed, guidanceYears: run.setup.guidanceYears, guidance: run.setup.guidance, help: run.setup.help, years: s.tick / DAY, tick: s.tick,
+    hardRestored: mean(alive.filter(c => c.eden.covered).map(hardshipEden)), hardOthers: mean(alive.filter(c => !c.eden.covered).map(hardshipEden)), seed: s.seed, guidanceYears: run.setup.guidanceYears, guidance: run.setup.guidance, help: run.setup.help, years: s.tick / Y, tick: s.tick,
     start: 24, population: m.population, births: m.births, deaths: m.deaths, deathCauses: m.deathCauses,
-    fell, fallYear: fell ? E.fallTick / DAY : null, firstEater: fell ? s.creatures[E.firstEater].name : null,
+    fell, fallYear: fell ? E.fallTick / Y : null, firstEater: fell ? s.creatures[E.firstEater].name : null,
     hearings: hearingsTotal(s), deliberationsKept: delib.length,
     meanChance: delib.length ? mean(delib.map(d => d.P)) * 100 : null,
     minChance: delib.length ? Math.min(...delib.map(d => d.P)) * 100 : null, maxChance: delib.length ? Math.max(...delib.map(d => d.P)) * 100 : null,

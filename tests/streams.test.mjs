@@ -4,6 +4,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { STREAMS } from '../dist/sim.js';
 import { createEden, edenStep } from '../dist/eden.js';
+import { setDefaultClock } from '../dist/clock.js';
+setDefaultClock('legacy'); // these tests pin the original (pre-17 Nov) behaviour; tests/clock.test.mjs covers the real clock
 
 const span = ([lo, hi]) => hi - lo;
 

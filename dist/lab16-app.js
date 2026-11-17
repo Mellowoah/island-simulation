@@ -1,5 +1,7 @@
 // Island Lab 16-bit page: setup screen -> game -> graphs -> report.
 import { DAY } from './sim.js';
+import { clockOf as worldClock, dateOf } from './clock.js';
+import { unitTicks } from './lab16-run.js';
 import { labCommand, confidence } from './lab.js';
 import { WORLDS, fieldsFor, defaultSetup, normalizeSetup, HELP } from './lab16-setup.js';
 import { LIFE_SNAP_KEYS } from './lab16-run.js';
@@ -48,7 +50,7 @@ function renderSetup() {
   // Continue a saved world
   const cont = [];
   const t = store.get(THEORY_SAVE_KEY);
-  if (t) { try { const r = restoreTheoryRun(t).run; cont.push(`<div class="saved"><span>Eden run in progress: seed ${r.setup.seed}, year ${(r.world.tick / DAY).toFixed(1)} of ${r.setup.runDays}.</span><button id="contEden">Continue it</button></div>`); } catch { store.set(THEORY_SAVE_KEY + '-rejected', t); store.del(THEORY_SAVE_KEY); } }
+  if (t) { try { const r = restoreTheoryRun(t).run; cont.push(`<div class="saved"><span>Eden run in progress: seed ${r.setup.seed}, year ${(r.world.tick / unitTicks(r.world)).toFixed(1)} of ${r.setup.runDays}.</span><button id="contEden">Continue it</button></div>`); } catch { store.set(THEORY_SAVE_KEY + '-rejected', t); store.del(THEORY_SAVE_KEY); } }
   const l = store.get(LAB_SAVE_KEY);
   if (l) { try { const r = restoreLabRun(l).run; cont.push(`<div class="saved"><span>Saved Lab island: seed ${r.world.seed}, day ${Math.floor(r.world.tick / DAY) + 1}, ${r.world.creatures.filter(c => c.alive).length} alive.</span><button id="contLab">Continue it</button></div>`); } catch { /* left in place: the old page's rules for rejected saves apply when it is opened */ cont.push('<p class="note">A saved Lab island was found but could not be read.</p>'); } }
   $('continue').innerHTML = cont.join('');
@@ -87,14 +89,14 @@ function persist() {
   const text = serializeRun(run, { selected, paused, speed: run.kind === 'lab' ? Math.min(16, speed) : speed });
   store.set(run.kind === 'lab' ? LAB_SAVE_KEY : THEORY_SAVE_KEY, text);
 }
-const clockOf = t => run.kind === 'eden' ? `YEAR ${(t / DAY).toFixed(1)}` : `DAY ${Math.floor(t / DAY) + 1} ${String(Math.floor(t % DAY / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
+const clockOf = t => run.kind === 'eden' ? (run.world.clock ? dateOf(worldClock(run.world), t).label.toUpperCase() : `YEAR ${(t / DAY).toFixed(1)}`) : `DAY ${Math.floor(t / DAY) + 1} ${String(Math.floor(t % DAY / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
 function hud() {
   const s = run.world, alive = s.creatures.filter(c => c.alive).length;
   if (run.kind === 'eden') {
     const E = s.eden, rel = E.phase === 'released', spoke = s.creatures.reduce((n, c) => n + c.eden.hearings, 0);
-    const silent = s.tick < setup.guidanceYears * DAY;
+    const silent = s.tick < setup.guidanceYears * unitTicks(s);
     const gtxt = setup.guidance < 1 ? ` ${Math.round(setup.guidance * 100)}%` : '';
-    $('hud').innerHTML = `<span>${clockOf(s.tick)}<span class="mute">/${setup.runDays}</span></span><span class="heart">♥ ${alive}</span><span class="phase ${rel ? 'rel' : ''}">${rel ? 'RELEASED' : 'GUIDED' + gtxt}</span><span>🐍 ${setup.serpent === false ? 'absent' : silent ? 'silent' : 'spoke ' + spoke}</span>${setup.help ? `<span>${s.tick < run.helpUntil ? 'HELP ON' : 'HELP ENDED'}</span>` : ''}<span class="mute">seed ${s.seed}</span>`;
+    $('hud').innerHTML = `<span>${clockOf(s.tick)}<span class="mute"> of ${setup.runDays} yrs</span></span><span class="heart">♥ ${alive}</span><span class="phase ${rel ? 'rel' : ''}">${rel ? 'RELEASED' : 'GUIDED' + gtxt}</span><span>🐍 ${setup.serpent === false ? 'absent' : silent ? 'silent' : 'spoke ' + spoke}</span>${setup.help ? `<span>${s.tick < run.helpUntil ? 'HELP ON' : 'HELP ENDED'}</span>` : ''}<span class="mute">seed ${s.seed}</span>`;
   } else {
     const m = s.samples.at(-1);
     $('hud').innerHTML = `<span>${clockOf(s.tick)}<span class="mute">/${setup.runDays}d</span></span><span class="heart">♥ ${alive}</span><span>trust ${m ? m.trustMean.toFixed(0) : s.config.startTrust}</span><span>lies ${Math.round(s.config.falseInformationRate * 100)}%</span><span class="mute">seed ${s.seed}</span>`;
@@ -111,7 +113,7 @@ function inspector() {
     $('inspector').innerHTML = `<h2>${esc(c.name)}</h2><p>Died: ${esc(c.death.cause)} (${clockOf(c.death.tick)}).</p>`; return;
   }
   if (run.kind === 'eden') {
-    const e = c.eden, d = c.decision, age = (s.tick - e.born) / DAY;
+    const e = c.eden, d = c.decision, age = (s.tick - e.born) / unitTicks(s);
     $('inspector').innerHTML = `<h2>${esc(c.name)} <span class="note">age ${age.toFixed(0)} · ${e.sex === 'M' ? 'male' : 'female'} · tap a creature to follow it</span></h2>
       <div class="bars">${bar('Hunger', c.hunger, true)}${bar('Thirst', e.thirst, true)}${bar('Energy', c.energy)}${bar('Health', e.health)}</div>
       <p class="note">Doing: <b>${esc(c.action?.type ?? 'deciding')}</b>${d?.guided && s.tick - d.tick < 90 ? ` · <span style="color:#ffe680">the Creator led it: ${esc(d.guided.reason)}</span>` : d?.own ? ' · its own choice (released)' : ''}</p>
@@ -164,12 +166,12 @@ function charPanel() {
   if (!c) return; $('charPick').value = String(c.id);
   const e = c.eden, L = run.lives?.[c.id], snaps = L?.snaps ?? [], first = snaps[0], now = c.alive ? null : snaps.at(-1);
   const nameOf = id => id === null || id === undefined ? 'none (first generation)' : esc(s.creatures[id].name);
-  const head = `<p><b>${esc(c.name)}</b> · ${e.sex === 'M' ? 'male' : 'female'} · ${c.alive ? `age ${((s.tick - e.born) / DAY).toFixed(0)}` : `died ${esc(c.death.cause.toLowerCase())} at ${((c.death.tick - e.born) / DAY).toFixed(0)}`}<br><span class="note">Mother ${nameOf(e.mother)} · father ${nameOf(e.father)} · children ${e.children.length ? e.children.map(id => esc(s.creatures[id].name)).join(', ') : 'none'}</span></p>`;
+  const head = `<p><b>${esc(c.name)}</b> · ${e.sex === 'M' ? 'male' : 'female'} · ${c.alive ? `age ${((s.tick - e.born) / unitTicks(s)).toFixed(0)}` : `died ${esc(c.death.cause.toLowerCase())} at ${((c.death.tick - e.born) / DAY).toFixed(0)}`}<br><span class="note">Mother ${nameOf(e.mother)} · father ${nameOf(e.father)} · children ${e.children.length ? e.children.map(id => esc(s.creatures[id].name)).join(', ') : 'none'}</span></p>`;
   const cur = k => (now ?? null)?.[k] ?? { health: e.health, energy: c.energy, hunger: c.hunger, thirst: e.thirst, credence: e.credence * 100, warning: e.warning * 100, places: Object.keys(c.known).length, skill: Math.max(0, ...Object.values(c.skills)) * 100, children: e.children.length }[k];
   const row = (label, a, b, unit, series) => { const d = b - a; return `<tr><td>${esc(label)}<br><span class="note">${a === null || a === undefined ? '' : `${Math.round(a)}${unit} → ${Math.round(b)}${unit} (${d >= 0 ? '+' : ''}${Math.round(d)})`}</span></td><td class="v">${spark(series)}</td></tr>`; };
   let rows = LIFE_SNAP_KEYS.map(k => row(LIFE_LABELS[k][0], first?.[k], cur(k), LIFE_LABELS[k][1], [...snaps.map(x => x[k]), c.alive ? cur(k) : null]));
   if (e.traits) rows = rows.concat(Object.keys(e.traits.now).map(k => row(k[0].toUpperCase() + k.slice(1) + ' (trait)', e.traits.base[k] * 100, e.traits.now[k] * 100, '%', [e.traits.base[k] * 100, ...snaps.map(x => x.traits ? x.traits[k] * 100 : null), e.traits.now[k] * 100])));
-  const since = first ? ` (since ${first.t === 0 ? 'the start' : `year ${(first.t / DAY).toFixed(0)}`}, one point a year)` : '';
+  const since = first ? ` (since ${first.t === 0 ? 'the start' : `year ${(first.t / unitTicks(s)).toFixed(0)}`}, one point a year)` : '';
   const story = (L?.events ?? []).slice(-40).reverse().map(m => `<li><span class="t">${clockOf(m.tick)}</span> ${esc(m.text)}</li>`).join('') || '<li class="note">Nothing recorded yet.</li>';
   $('charBody').innerHTML = `${head}<p class="note" style="margin:.4em 0">Changes over its life${since}:</p><table class="attrs">${rows.join('')}</table>`;
   if ($('storyBox').open) $('storyList').innerHTML = story;
@@ -186,7 +188,7 @@ function events() {
   $('events').innerHTML = list.map(e => `<li><span class="t">${clockOf(e.t)}</span> ${esc(e.text)}</li>`).join('');
 }
 function update() { if (!run) return; hud(); inspector(); beingPanels(run.world, run.world.creatures[selected]); charPanel(); events(); if (run.kind === 'lab') $('cross').disabled = run.world.crossingsOpen.length >= run.world.config.crossings.length; }
-function chartMeta() { return run.kind === 'eden' ? { fallTick: run.world.eden.fallTick, helpStop: setup.help ? run.helpUntil : null } : {}; }
+function chartMeta() { return run.kind === 'eden' ? { fallTick: run.world.eden.fallTick, helpStop: setup.help ? run.helpUntil : null, unit: unitTicks(run.world) } : {}; }
 function drawCharts() {
   if (!run) return;
   const rows = seriesOf(run);
@@ -216,7 +218,7 @@ $('endRun').onclick = () => { if (!run) return; if (!run.done && !confirm('End t
 function frame(now) {
   const dt = Math.min(200, now - last); last = now;
   if (run && !paused && !run.done && !document.hidden) {
-    const msPerTick = run.kind === 'eden' ? 100 : 50;
+    const msPerTick = run.kind === 'eden' ? 100 * 1440 / unitTicks(run.world) : 50; // Eden: a year takes the same time on screen on either clock
     acc += dt * speed; const n = Math.min(Math.floor(acc / msPerTick), 400);
     if (n) { stepRun(run, n); acc -= n * msPerTick; if (acc > msPerTick * 400) acc = 0; }
     if (run.done) { paused = true; persist(); finish(); }
