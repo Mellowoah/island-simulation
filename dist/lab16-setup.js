@@ -46,6 +46,8 @@ export const SETUP_FIELDS = [
     note: 'Tests P5 (help builds later ability to get food). When on, you leave 40 food near the start every month for the first half of the run, then stop. T8: help is not assumed good or bad.' },
   { key: 'falseInfo', label: 'False information', type: 'select', options: [[0, 'None'], [0.05, '5%'], [0.1, '10%'], [0.25, '25%']], def: 0, worlds: ['lab'],
     note: 'Share of passed-on messages that are false: a lying voice among the creatures, closest to T4 (doubt cast on what they were told). Not one of P1–P5.' },
+  { key: 'lifeCourse', label: 'The body changes with age', type: 'toggle', def: false, worlds: ['eden'],
+    note: 'Off: every creature has one adult body. On: sleep need, food need, healing and illness change with life stage; pregnancy needs more food; after the fall, the risk of dying of age doubles every 8 years. Figures from CDC sleep guidance, US Dietary Guidelines and the Gompertz law. T5: after release they must provide everything their body needs at each stage of life.' },
   { key: 'traitDev', label: 'Traits develop through life', type: 'toggle', def: false, worlds: ['eden'],
     note: 'Off: each creature keeps the seven traits it was born with. On: born with traits drawn from its parents, then shaped all its life by those it spends time with (parents count double), by what happens to it, and slowly back toward its nature; the young change fast, adults slowly. T5: each develops its own wants, needs, fears and traits. Seeking is curiosity, so it acts on choices; the other six are recorded until later phases.' },
   { key: 'restoration', label: 'A way back after the fall', type: 'toggle', def: false, worlds: ['eden'],
@@ -100,7 +102,7 @@ export function normalizeSetup(input = {}) {
     if (f.fixed && f.fixed[world] !== undefined) v = f.fixed[world];
     out[f.key] = v;
   }
-  if (world === 'lab') { out.guidanceYears = 0; out.guidance = 1; out.help = false; out.restoration = false; out.tempters = 0; out.fallAgain = true; out.traitDev = false; out.dAppetite = 1; out.dThirst = 1; out.dCuriosity = 0; out.dChildren = 0.2; out.dFruit = 0.5; out.dWarning = 3; }
+  if (world === 'lab') { out.guidanceYears = 0; out.guidance = 1; out.help = false; out.restoration = false; out.tempters = 0; out.fallAgain = true; out.traitDev = false; out.lifeCourse = false; out.dAppetite = 1; out.dThirst = 1; out.dCuriosity = 0; out.dChildren = 0.2; out.dFruit = 0.5; out.dWarning = 3; }
   if (world === 'eden') { out.falseInfo = 0; out.food = 60; out.regrowth = 0.03; out.talk = true; }
   return out;
 }

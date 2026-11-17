@@ -114,6 +114,11 @@ export const HUMAN_ATTRIBUTES = [
   { key: 'thirst', label: 'Thirst', layer: 'life', channel: 'Body', status: 'active', unit: '/100', read: (s, c) => c.eden.thirst },
   { key: 'age', label: 'Age', layer: 'life', channel: 'Body', status: 'active', unit: ' years', read: (s, c) => age(s, c) },
   { key: 'children', label: 'Children', layer: 'life', channel: 'Body', status: 'active', unit: '', read: (s, c) => c.eden.children.length },
+  { key: 'stage', label: 'Life stage', note: 'sets food, rest, healing and ageing', layer: 'life', channel: 'Body', status: 'recorded', statusOf: s => s.eden.config.lifeCourse ? 'active' : 'recorded', unit: '',
+    read: (s, c) => lifeStage(age(s, c)).name, sub: (s, c) => { const st = lifeStage(age(s, c)); return `food ×${(st.food + pregnancyExtra(s, c)).toFixed(2)} · rest ${st.sleepHours}h of 24`; } },
+  { key: 'healing', label: 'Healing speed', note: 'slows with age', layer: 'life', channel: 'Body', status: 'recorded', statusOf: s => s.eden.config.lifeCourse ? 'active' : 'recorded', unit: '%', read: (s, c) => pct(healFactor(age(s, c))) },
+  { key: 'ageRisk', label: 'Yearly risk of dying of age', note: 'Gompertz; only after the fall', layer: 'life', channel: 'Body', status: 'recorded', statusOf: s => s.eden.config.lifeCourse ? 'active' : 'recorded', unit: '',
+    read: (s, c) => `${(Math.min(1, ageHazard(age(s, c))) * 100).toFixed(age(s, c) < 40 ? 2 : 1)}%` },
   { key: 'plasticity', label: 'Plasticity', note: 'how fast it can still change', layer: 'life', channel: 'Body', status: 'recorded', unit: '%', read: (s, c) => pct(plasticity(age(s, c))) },
   // Sense: the animal side
   { key: 'sight', label: 'Sight', layer: 'sense', channel: 'Knowledge', status: 'active', unit: ' tiles', read: (s, c) => c.eden.sight },
@@ -144,7 +149,7 @@ export const HUMAN_ATTRIBUTES = [
 // One creature's attributes, grouped by layer. Read-only.
 export function attributesOf(s, c) {
   return LAYERS.filter(l => KINDS.human.layers.includes(l.id)).map(l => ({
-    layer: l, rows: HUMAN_ATTRIBUTES.filter(a => a.layer === l.id).map(a => ({ ...a, value: a.read(s, c) })),
+    layer: l, rows: HUMAN_ATTRIBUTES.filter(a => a.layer === l.id).map(a => ({ ...a, status: a.statusOf ? a.statusOf(s) : a.status, value: a.read(s, c) })),
   })).filter(g => g.rows.length);
 }
 
@@ -223,4 +228,49 @@ export function developmentSummary(s) {
     for (const k of keys) { pairs++; if (Math.abs(c.eden.traits.now[k] - mo.now[k]) < Math.abs(c.eden.traits.base[k] - mo.base[k])) closer++; }
   }
   return { shift, meanShift: keys.reduce((n, k) => n + shift[k], 0) / keys.length, closer, pairs };
+}
+
+// ---------- The body through the life course (Eden input `lifeCourse`, off by default) ----------
+// Figures, rounded, with sources (see docs/THEORY-CHECK.md, "Body through the life course"):
+//   sleep  : CDC / American Academy of Sleep Medicine hours per 24 h by age (toddler 11-14, preschool 10-13,
+//            school age 9-12, teen 8-10, adult 7+, 65+ 7-8). Used as the share of time a creature must rest.
+//   food   : Dietary Guidelines for Americans estimated calorie needs by age, relative to an adult (~2,000 kcal):
+//            age 2-3 ~1,000; 4-8 ~1,400; 9-13 ~1,800; 14-18 ~2,200; 51+ ~1,800. Needs rise to about 20, then fall.
+//   pregnancy: +340 kcal/day in the second trimester, +450 in the third (about +17% and +22%).
+//   ageing : Gompertz law, the yearly risk of dying doubles about every 8 years of adult age.
+// Island has no day and night: one sim day is a year. So "sleep" here is the share of time spent resting, and
+// meals are as often as hunger demands; routines are what creatures end up doing, measured by stage.
+export const LIFE_STAGES = [
+  { id: 'infant', name: 'Infant', from: 0, sleepHours: 14, food: 0.5 },
+  { id: 'toddler', name: 'Toddler', from: 1, sleepHours: 12.5, food: 0.5 },
+  { id: 'preschool', name: 'Young child', from: 3, sleepHours: 11.5, food: 0.6 },
+  { id: 'child', name: 'Child', from: 5, sleepHours: 10.5, food: 0.7 },
+  { id: 'juvenile', name: 'Older child', from: 9, sleepHours: 10, food: 0.9 },
+  { id: 'adolescent', name: 'Adolescent', from: 14, sleepHours: 9, food: 1.1 },
+  { id: 'adult', name: 'Adult', from: 18, sleepHours: 7.5, food: 1.0 },
+  { id: 'middle', name: 'Middle age', from: 50, sleepHours: 7.5, food: 0.9 },
+  { id: 'elder', name: 'Elder', from: 65, sleepHours: 7.5, food: 0.85 },
+];
+export const LIFE = {
+  adultSleepHours: 7.5,
+  pregnancyFood: [0, 0.17, 0.22],   // extra food need by trimester
+  hazardAt70: 0.05,                 // yearly risk of dying of age at 70 (assumption; Robert to set)
+  hazardDoubling: 8,                // years (Gompertz)
+  healFullUntil: 30, healLossPerYear: 0.01, healFloor: 0.4, // healing slows with age (assumption)
+  illnessYoung: 1.3, illnessOld: 1.5, youngUntil: 12, oldFrom: 65, // susceptibility (assumption)
+};
+export const lifeStage = ageYears => [...LIFE_STAGES].reverse().find(st => ageYears >= st.from) ?? LIFE_STAGES[0];
+// How much faster than an adult this stage tires: the odds of resting r/(1-r) against an adult's.
+export const sleepFactor = st => { const odds = h => (h / 24) / (1 - h / 24); return odds(st.sleepHours) / odds(LIFE.adultSleepHours); };
+// Sleep pressure: tiredness from simply being awake, set so that a creature that rests only to recover needs to rest
+// about its stage's share of the day: awake drain d and rest gain g balance when rest share r = d / (d + g).
+export const wakeDrain = (st, restGain) => { const r = st.sleepHours / 24; return restGain * r / (1 - r); };
+export const healFactor = ageYears => Math.max(LIFE.healFloor, 1 - LIFE.healLossPerYear * Math.max(0, ageYears - LIFE.healFullUntil));
+export const illnessFactor = ageYears => ageYears < LIFE.youngUntil ? LIFE.illnessYoung : ageYears >= LIFE.oldFrom ? LIFE.illnessOld : 1;
+// Yearly hazard of dying of age (Gompertz): mu(x) = mu(70) * 2^((x - 70) / doubling).
+export const ageHazard = ageYears => LIFE.hazardAt70 * 2 ** ((ageYears - 70) / LIFE.hazardDoubling);
+export function pregnancyExtra(s, c) {
+  const p = c.eden.pregnant; if (!p) return 0;
+  const g = s.eden.config.gestation * YEAR, progress = 1 - (p.due - s.tick) / g;
+  return LIFE.pregnancyFood[Math.min(2, Math.max(0, Math.floor(progress * 3)))];
 }

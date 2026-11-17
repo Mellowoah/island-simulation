@@ -2,7 +2,7 @@
 // Phases: guided (Creator's warning at birth, Creator leads choices that fall outside what is best,
 // no death) -> released (first creature to eat from the tree; everyone released at once).
 import { W, DAY, clamp, land, path, createWorld, decide, event, noise2, seedKey, STREAMS } from './sim.js';
-import { develop, DEV_EVERY } from './being.js';
+import { develop, DEV_EVERY, lifeStage, wakeDrain, healFactor, illnessFactor, ageHazard, pregnancyExtra } from './being.js';
 
 export const EDEN_VERSION = 2;
 export const EDEN_DEFAULTS = {
@@ -42,6 +42,7 @@ export const EDEN_DEFAULTS = {
   restHeal: 0.15, baseHeal: 0.01, healthRestWeight: 0.3, healthGuide: 30,
   urgentThirst: 60, urgentHunger: 70, // a released creature breaks off what it is doing when a need becomes urgent (if it knows where to go)
   // One of many worlds: the biblical reading of what follows the fall (all off by default = original behaviour).
+  lifeCourse: false,        // being.js: food, rest, healing, illness and dying of age change with life stage; pregnancy costs food (off = the original single adult body)
   traitDevelopment: false,  // being.js: traits shaped through life by parents, others and what happens (off = traits fixed at birth, the original rule)
   restoration: false,       // after the fall the Creator calls each creature once a year; those who turn back are guided, fed and kept from want
   fallAgain: true,          // a restored creature can be drawn away again by a tempter (traditions differ; this is a setting)
@@ -346,10 +347,11 @@ export function edenStep(s, n = 1) {
         c.eden.thirst = clamp(c.eden.thirst + cfg.thirstRate * cfg.childHunger);
       } else {
       if (!c.action) edenDecide(s, c); // a child just weaned, or an orphan
-      const a = c.action;
-      c.hunger = clamp(c.hunger + s.config.hungerRate);
-      c.eden.thirst = clamp(c.eden.thirst + cfg.thirstRate);
+      const a = c.action, L = cfg.lifeCourse ? lifeStage(age(s, c)) : null, need = L ? L.food + pregnancyExtra(s, c) : 1;
+      c.hunger = clamp(c.hunger + s.config.hungerRate * need);
+      c.eden.thirst = clamp(c.eden.thirst + cfg.thirstRate * need);
       if (released() && !c.eden.clothed) c.energy = clamp(c.energy - cfg.exposureCost);
+      if (L && a.type !== 'rest') c.energy = clamp(c.energy - wakeDrain(L, s.config.restGain)); // sleep pressure by life stage
       if (a.type === 'rest') {
         c.times.rest++; c.energy = clamp(c.energy + s.config.restGain);
         if (--a.left <= 0) { judge(s, c, 'rest'); c.action = null; }
@@ -403,7 +405,9 @@ export function edenStep(s, n = 1) {
       if (released()) {
         c.starving = c.hunger >= 99 ? c.starving + 1 : 0;
         c.eden.parched = c.eden.thirst >= 99 ? c.eden.parched + 1 : 0;
-        const cause = c.starving >= s.config.starveTicks ? 'Sustained food deprivation' : c.eden.parched >= cfg.thirstDeathTicks ? 'Thirst' : c.eden.health <= 0 ? 'Injury and illness' : null;
+        // Dying of age (lifeCourse): checked once a month per creature, Gompertz hazard, only after the fall.
+        const old = cfg.lifeCourse && (s.tick + c.id * 7) % (YEAR / 12) === 0 && draw(s, c.id, STREAMS.ageing[0]) < 1 - Math.exp(-ageHazard(age(s, c)) / 12);
+        const cause = c.starving >= s.config.starveTicks ? 'Sustained food deprivation' : c.eden.parched >= cfg.thirstDeathTicks ? 'Thirst' : c.eden.health <= 0 ? 'Injury and illness' : old ? 'Old age' : null;
         if (cause) { c.alive = false; c.death = { tick: s.tick, cause, ...(c.eden.covered ? { covered: true } : {}) }; c.action = null; s.eden.deaths[cause] = (s.eden.deaths[cause] ?? 0) + 1; event(s, `${c.name} died: ${cause.toLowerCase()}.`); }
       } else { c.starving = 0; c.eden.parched = 0; }
     }
@@ -417,9 +421,10 @@ export function edenStep(s, n = 1) {
 function health(s, c, released) {
   const e = c.eden, cfg = s.eden.config;
   if (!released) { e.health = 100; return; }
-  if (c.hunger >= 80 || e.thirst >= 80) e.health = clamp(e.health - cfg.illnessRate);
-  else if (c.action?.type === 'rest') e.health = clamp(e.health + cfg.restHeal);
-  else if (c.hunger < 50 && e.thirst < 50) e.health = clamp(e.health + cfg.baseHeal);
+  const a = age(s, c), heal = cfg.lifeCourse ? healFactor(a) : 1, ill = cfg.lifeCourse ? illnessFactor(a) : 1;
+  if (c.hunger >= 80 || e.thirst >= 80) e.health = clamp(e.health - cfg.illnessRate * ill);
+  else if (c.action?.type === 'rest') e.health = clamp(e.health + cfg.restHeal * heal);
+  else if (c.hunger < 50 && e.thirst < 50) e.health = clamp(e.health + cfg.baseHeal * heal);
 }
 
 function adultFed(s, c) { const cfg = s.eden.config; return c.alive && !dependent(s, c) && c.hunger < cfg.fedHunger && c.energy > cfg.fedEnergy && c.eden.thirst < cfg.fedHunger; }

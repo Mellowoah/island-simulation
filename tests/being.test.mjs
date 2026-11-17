@@ -127,3 +127,68 @@ test('D5 the report describes development only when it is on', () => {
   assert.match(md, /Traits developed through life/); assert.doesNotMatch(md, /undefined|NaN/);
   assert.equal(normalizeSetup({ world: 'lab', traitDev: true }).traitDev, false);
 });
+
+import { LIFE_STAGES, LIFE, lifeStage, wakeDrain, healFactor, illnessFactor, ageHazard, pregnancyExtra } from '../dist/being.js';
+import { DEFAULTS } from '../dist/sim.js';
+
+test('L1 the body changing with age is off by default, and off is the original world', () => {
+  assert.equal(EDEN_DEFAULTS.lifeCourse, false);
+  const a = createEden(45), b = createEden(45, {}, { lifeCourse: false }); edenStep(a, 9 * 1440); edenStep(b, 9 * 1440);
+  assert.deepEqual(strip(a), strip(b));
+  assert.ok(!Object.keys(a.eden.deaths).includes('Old age'));
+});
+
+test('L2 stage figures match their sources (hand-checked)', () => {
+  const at = a => lifeStage(a);
+  assert.equal(at(0).id, 'infant'); assert.equal(at(2).id, 'toddler'); assert.equal(at(4.9).id, 'preschool'); assert.equal(at(5).id, 'child');
+  assert.equal(at(16).id, 'adolescent'); assert.equal(at(30).id, 'adult'); assert.equal(at(55).id, 'middle'); assert.equal(at(80).id, 'elder');
+  // sleep hours within CDC / AASM ranges
+  const range = { toddler: [11, 14], preschool: [10, 13], child: [9, 12], juvenile: [9, 12], adolescent: [8, 10], adult: [7, 9], middle: [7, 9], elder: [7, 8] };
+  for (const [id, [lo, hi]] of Object.entries(range)) { const h = LIFE_STAGES.find(x => x.id === id).sleepHours; assert.ok(h >= lo && h <= hi, id); }
+  // food need rises to adolescence, then falls (Dietary Guidelines)
+  const f = id => LIFE_STAGES.find(x => x.id === id).food;
+  assert.ok(f('child') < f('juvenile') && f('juvenile') < f('adolescent') && f('adolescent') > f('adult') && f('adult') > f('middle') && f('middle') >= f('elder'));
+  // sleep pressure: an adult resting only to recover rests 7.5/24 of the time
+  const d = wakeDrain(at(30), DEFAULTS.restGain); assert.ok(Math.abs(d / (d + DEFAULTS.restGain) - 7.5 / 24) < 1e-12);
+  // Gompertz: doubles every 8 years
+  assert.ok(Math.abs(ageHazard(78) / ageHazard(70) - 2) < 1e-12); assert.equal(ageHazard(70), LIFE.hazardAt70);
+  assert.equal(healFactor(30), 1); assert.ok(Math.abs(healFactor(50) - 0.8) < 1e-12); assert.equal(healFactor(200), LIFE.healFloor);
+  assert.equal(illnessFactor(8), LIFE.illnessYoung); assert.equal(illnessFactor(40), 1); assert.equal(illnessFactor(70), LIFE.illnessOld);
+});
+
+test('L3 pregnancy needs more food, by trimester', () => {
+  const s = createEden(41, {}, { lifeCourse: true }), m = s.creatures.find(c => c.eden.sex === 'F'), g = s.eden.config.gestation * 1440;
+  assert.equal(pregnancyExtra(s, m), 0);
+  m.eden.pregnant = { due: s.tick + g, father: 1 }; assert.equal(pregnancyExtra(s, m), 0);
+  m.eden.pregnant.due = s.tick + g / 2; assert.equal(pregnancyExtra(s, m), 0.17);
+  m.eden.pregnant.due = s.tick + g / 10; assert.equal(pregnancyExtra(s, m), 0.22);
+  // and the sim uses it: hunger rises faster in the third trimester
+  const h0 = m.hunger; m.action = { type: 'rest', left: 99 }; edenStep(s, 1);
+  const rise = m.hunger - h0; assert.ok(Math.abs(rise - DEFAULTS.hungerRate * (1.0 + 0.22)) < 1e-9, `rise ${rise}`);
+});
+
+test('L4 nobody dies of age before the fall; after it, the old do', () => {
+  const s = createEden(41, {}, { lifeCourse: true }, ); for (const c of s.creatures) c.eden.born -= 60 * 1440; // everyone about 78
+  edenStep(s, 2 * 1440);
+  if (s.eden.phase === 'guided') assert.ok(s.creatures.every(c => c.alive), 'no death in the garden');
+  const t = createEden(41, {}, { lifeCourse: true, guidanceRate: 0 }); for (const c of t.creatures) c.eden.born -= 60 * 1440;
+  edenStep(t, 25 * 1440);
+  assert.equal(t.eden.phase, 'released');
+  const old = t.creatures.filter(c => !c.alive && c.death.cause === 'Old age');
+  assert.ok(old.length > 0, 'some died of age');
+  for (const c of old) assert.ok(c.death.tick > t.eden.fallTick);
+});
+
+test('L5 rest shares by stage come close to real sleep shares, and the report shows routines', () => {
+  const run = runToEnd(normalizeSetup({ world: 'eden', seed: 61, runDays: 25, lifeCourse: true }));
+  const r = run.routine, share = id => { const u = r[id]; const n = Object.values(u).reduce((a, b) => a + b, 0); return u.rest / n; };
+  assert.ok(share('adult') > 0.25 && share('adult') < 0.45, 'adult rest ' + share('adult'));
+  assert.ok(share('child') > share('adult'), 'children rest more than adults');
+  const off = runToEnd(normalizeSetup({ world: 'eden', seed: 61, runDays: 25 }));
+  const so = (() => { const u = off.routine.adult; return u.rest / Object.values(u).reduce((a, b) => a + b, 0); })();
+  assert.ok(so < 0.15, 'with the rules off adults barely rest: ' + so);
+  const m = summarizeEden(run); assert.ok(m.routine.length >= 3);
+  const tw = twinSetups(run.setup), md = reportMarkdown(buildEdenReport(m, summarizeEden(runToEnd({ ...tw.guidance, runDays: 6 })), summarizeEden(runToEnd({ ...tw.help, runDays: 6 })), {}));
+  assert.match(md, /How each stage spent its time \(life-stage rules on/); assert.doesNotMatch(md, /undefined|NaN/);
+  assert.equal(normalizeSetup({ world: 'lab', lifeCourse: true }).lifeCourse, false);
+});

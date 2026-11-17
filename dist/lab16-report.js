@@ -6,7 +6,8 @@ import { labMetrics } from './lab.js';
 import { PREDICTIONS, THEORY, lineLabel } from './lab16-setup.js';
 import { batchMarkdown, batchHTML } from './lab16-batch.js';
 import { hardshipEden } from './lab16-run.js';
-import { developmentSummary } from './being.js';
+import { developmentSummary, LIFE_STAGES } from './being.js';
+import { ROUTINE_KEYS } from './lab16-run.js';
 import { hearingsTotal, habitSpread, curiositySpread, giftEaten, seriesOf } from './lab16-run.js';
 
 export const MARGIN = 0.05; // a difference must be at least 5% of the smaller value to count; smaller gaps count as "no difference"
@@ -41,7 +42,8 @@ export function summarizeEden(run) {
   const alive = s.creatures.filter(c => c.alive);
   const skill = mean(alive.map(c => ((c.skills.a ?? 0) + (c.skills.b ?? 0)) / 2));
   return {
-    kind: 'eden', development: run.setup.traitDev ? developmentSummary(s) : null, restoration: !!run.setup.restoration, tempters: run.setup.tempters ?? 0, fallAgain: run.setup.fallAgain !== false, restored: m.restored ?? null,
+    kind: 'eden', lifeCourse: !!run.setup.lifeCourse, routine: LIFE_STAGES.map(st => { const u = run.routine?.[st.id]; const n = u ? ROUTINE_KEYS.reduce((a, k) => a + u[k], 0) : 0; return n >= 500 ? { stage: st.name, ...Object.fromEntries(ROUTINE_KEYS.map(k => [k, u[k] / n * 100])) } : null; }).filter(Boolean),
+    oldAge: s.eden.deaths['Old age'] ?? 0, development: run.setup.traitDev ? developmentSummary(s) : null, restoration: !!run.setup.restoration, tempters: run.setup.tempters ?? 0, fallAgain: run.setup.fallAgain !== false, restored: m.restored ?? null,
     hardRestored: mean(alive.filter(c => c.eden.covered).map(hardshipEden)), hardOthers: mean(alive.filter(c => !c.eden.covered).map(hardshipEden)), seed: s.seed, guidanceYears: run.setup.guidanceYears, guidance: run.setup.guidance, help: run.setup.help, years: s.tick / DAY, tick: s.tick,
     start: 24, population: m.population, births: m.births, deaths: m.deaths, deathCauses: m.deathCauses,
     fell, fallYear: fell ? E.fallTick / DAY : null, firstEater: fell ? s.creatures[E.firstEater].name : null,
@@ -142,6 +144,10 @@ function storyEden(m) {
   else p.push('No one ate from the tree during this run, so everyone stayed guided and no one died. (Never eating is allowed: T3.)');
   p.push(`At the end ${m.population} were alive. There were ${m.births} births and ${m.deaths} deaths${m.deaths ? ` (${Object.entries(m.deathCauses).map(([k, v]) => `${v} from ${k.toLowerCase()}`).join(', ')})` : ''}.`);
   if (m.fell) p.push(`After release they tilled ${m.fields} field${m.fields === 1 ? '' : 's'}; ${m.clothed} of the living had made clothing and ${m.tools} had made a tool.`);
+  if (m.routine?.length) {
+    const own = m.routine.filter(r => r.rest < 85);
+    if (own.length) p.push(`How each stage spent its time${m.lifeCourse ? ' (life-stage rules on: sleep need, food need, healing and ageing change with age)' : ' (life-stage rules off: one adult body for all)'}: ${own.map(r => `${r.stage.toLowerCase()}s rested ${fmt(r.rest, '%')}, gathered ${fmt(r.gather, '%')}, travelled ${fmt(r.travel, '%')}, explored ${fmt(r.explore, '%')}, worked ${fmt(r.work, '%')}`).join('; ')}. Young children are carried by their mother, so they are counted as resting. Island has no night: one sim day is a year, so rest stands for sleep as a share of life, not a nightly routine.${m.lifeCourse ? ` ${m.oldAge} died of age.` : ''}`);
+  }
   if (m.development) {
     const D = m.development, top = Object.entries(D.shift).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([k, v]) => `${k} ${fmt(v)}`).join(' and ');
     p.push(`Traits developed through life. On average the living moved ${fmt(D.meanShift)} points (of 100) from the traits they were born with; most in ${top}. ${D.pairs ? `Of ${D.pairs} trait comparisons between a living child and its mother, the child had moved closer to her in ${D.closer} (${pct(D.closer / D.pairs * 100)}).` : 'No living child had a living record of its mother.'}`);

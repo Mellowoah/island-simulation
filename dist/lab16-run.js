@@ -1,6 +1,7 @@
 // Island Lab 16-bit: runs a world from the setup screen and records graph samples.
 // The driver only calls the sims' own step functions and the existing player command ('food').
 // It never edits creatures or rules. Chunked stepping gives the same history as one long step.
+import { lifeStage } from './being.js';
 import { DAY, land, command } from './sim.js';
 import { createEden, edenStep } from './eden.js';
 import { createLab, labStep, labMetrics, serializeLab, deserializeLab } from './lab.js';
@@ -53,7 +54,19 @@ export function barSample(run) {
   return n ? { hard: hard / n, bar: bar / n, over: over / n * 100 } : { hard: null, bar: null, over: null };
 }
 
+// Routines by life stage (measure only): how each stage spends its time, from the creatures' own time counters.
+// Kept on the run, never on the world. Stages follow being.js whether or not the lifeCourse rules are on.
+export const ROUTINE_KEYS = ['rest', 'gather', 'travel', 'explore', 'work'];
+export function routineSample(run) {
+  const s = run.world; run.prevTimes ??= {}; run.routine ??= {};
+  for (const c of s.creatures) if (c.alive) {
+    const p = run.prevTimes[c.id], st = lifeStage((s.tick - c.eden.born) / DAY).id, u = (run.routine[st] ??= Object.fromEntries(ROUTINE_KEYS.map(k => [k, 0])));
+    if (p) for (const k of ROUTINE_KEYS) u[k] += c.times[k] - (p[k] ?? 0);
+    run.prevTimes[c.id] = { ...c.times };
+  }
+}
 function edenSample(run) {
+  routineSample(run);
   const s = run.world, E = s.eden, alive = s.creatures.filter(c => c.alive);
   const cohort = run.cohort ? run.cohort.filter(id => s.creatures[id].alive).length / run.cohort.length * 100 : null;
   return { t: s.tick, phase: E.phase, pop: alive.length, births: E.births, deaths: s.creatures.length - alive.length,
@@ -74,7 +87,7 @@ export function createRun(input = {}) {
     return run;
   }
   const drives = driveConfig(setup, EDEN_DEFAULTS, SIM_DEFAULTS);
-  const world = createEden(setup.seed, drives.sim, { ...drives.eden, serpentSilentYears: setup.guidanceYears, guidanceRate: setup.guidance, restoration: setup.restoration, tempters: setup.tempters, fallAgain: setup.fallAgain, traitDevelopment: setup.traitDev });
+  const world = createEden(setup.seed, drives.sim, { ...drives.eden, serpentSilentYears: setup.guidanceYears, guidanceRate: setup.guidance, restoration: setup.restoration, tempters: setup.tempters, fallAgain: setup.fallAgain, traitDevelopment: setup.traitDev, lifeCourse: setup.lifeCourse });
   const run = { kind: 'eden', setup, world, endTick, done: false, helpUntil: setup.help ? Math.floor(endTick / 2) : 0, halfTick: Math.floor(endTick / 2),
     help: setup.help ? helpSpot(world) : null, cohort: null, half: null, series: [] };
   run.series.push(edenSample(run));
