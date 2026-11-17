@@ -84,8 +84,8 @@ export const SETUP_FIELDS = [
     note: 'Measure only; it changes no creature, so it tests nothing by itself. Each creature\'s bar is its own average hardship over about this many days (years in Eden). T8: how they are doing is kept apart from how it compares with what they are used to.' },
   { key: 'speed', label: 'Sim speed', type: 'select', options: [[1, '1× slow'], [4, '4×'], [16, '16×'], [64, '64× fast']], def: 16, worlds: ['eden', 'lab'],
     note: 'Display only. Results are identical at every speed, so it tests nothing.' },
-  { key: 'runDays', label: 'Run length (days)', type: 'number', min: 2, max: 30, step: 1, def: 15, worlds: ['eden', 'lab'],
-    note: 'In Eden one day is one year. Long enough to see release and the years after it: T5, P2 and P3.' },
+  { key: 'runDays', label: 'Run length (Eden: years; Lab island: days)', type: 'number', min: 2, max: 500, step: 1, def: 15, worlds: ['eden', 'lab'],
+    note: 'Eden runs up to 500 years, many generations (the Lab island stays at most 30 days). Long enough to see release, the years after it, and what passes down: T5, P2 and P3. Long runs take minutes; the population cap (96) still applies and is reported.' },
 ];
 
 export function defaultSetup(world = 'eden') {
@@ -109,6 +109,7 @@ export function normalizeSetup(input = {}) {
   }
   if (world === 'lab') { out.guidanceYears = 0; out.guidance = 1; out.help = false; out.restoration = false; out.tempters = 0; out.fallAgain = true; out.traitDev = false; out.lifeCourse = false; out.serpent = true; out.dAppetite = 1; out.dThirst = 1; out.dCuriosity = 0; out.dChildren = 0.2; out.dFruit = 0.5; out.dWarning = 3; }
   if (input.realClock === undefined) out.realClock = defaultClock() === 'real' ? 1 : 0; // new runs use the real clock unless a test asks for the old one
+  if (world === 'lab') out.runDays = Math.min(30, out.runDays); // the Lab island's own limit
   if (world === 'eden') { out.falseInfo = 0; out.food = 60; out.regrowth = 0.03; out.talk = true; }
   return out;
 }

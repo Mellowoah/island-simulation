@@ -1,5 +1,5 @@
 // Island: the small world, on a phone. Presentation only: it reads the world and steps it; it never changes a rule.
-import { createWorld2, stepWorld, worldMetrics, ageOf } from './world.js';
+import { createWorld2, stepWorld, worldMetrics, ageOf, living } from './world.js';
 import { clockOf, dateOf, hourOf, isNight } from './clock.js';
 import * as T from './terrain.js';
 import { FOODS } from './savanna.js';
@@ -10,6 +10,8 @@ const seed = Number(new URLSearchParams(location.search).get('seed')) || 41;
 const s = createWorld2(seed);
 const C = clockOf(s);
 
+let skipping = 0, skipEnd = 0;
+const history = []; // one row a year (measure only, kept here, not in the world)
 let px = 6, speed = 24, paused = false, selected = null, follow = false, acc = 0, last = performance.now(), drawnDiscovered = -1, lastUi = 0;
 
 const REGION_COL = { sea: '#1d4f86', lake: '#3a86c8', river: '#4aa3df', rock: '#8a7f72', shore: '#e4d7a0', woodland: '#3f7d3a', grass: '#a8c45a' };
@@ -76,7 +78,7 @@ function who() {
   const parents = [p.mother, p.father].map(i => i === null ? null : s.people[i]).filter(Boolean).map(q => esc(q.name) + (q.alive ? '' : ' †')).join(' and ') || 'not recorded (first generation)';
   const carer = s.carer.get(p.id);
   const doing = !p.alive ? `died: ${esc(p.death.cause.toLowerCase())}` : carer ? `with ${esc(carer.name)}${a < 3 ? ', carried' : ''}` : (STEP_WORD[p.step?.k] ?? 'deciding') + (p.step?.q ? ` ${esc(p.step.q.name.toLowerCase())}` : '') + (p.step?.explore ? ' (exploring)' : '');
-  let known = 0; for (let i = 0; i < p.seen.length; i++) known += p.seen[i];
+  let known = p.seenCount ?? 0; if (p.seen) { known = 0; for (let i = 0; i < p.seen.length; i++) known += p.seen[i]; }
   const d = p.decision;
   $('whoTitle').textContent = `${p.name} · ${p.sex === 'F' ? 'female' : 'male'} · ${Math.floor(a)}`;
   $('who').innerHTML = `<p>Parents: ${parents}. Household: ${fam}.</p>
@@ -88,13 +90,13 @@ function who() {
 }
 function ui(force = false) {
   const m = worldMetrics(s);
-  $('hud').innerHTML = `<span>${esc(m.date.toUpperCase())}</span><span>♥ ${m.population}</span><span class="mute">${m.households} families</span><span class="mute">known ${Math.round(m.discoveredShare * 100)}% of ${Math.round(m.landKm2)} km²</span><span class="mute">${paused ? 'paused' : speed === 24 ? '1 day/s' : speed === 168 ? '1 week/s' : '1 month/s'}</span>`;
+  $('hud').innerHTML = `<span>${esc(m.date.toUpperCase())}</span><span>♥ ${m.population}</span><span class="mute">${m.households} families · ${m.generations + 1} generation${m.generations ? 's' : ''}</span><span class="mute">known ${Math.round(m.discoveredShare * 100)}% of ${Math.round(m.landKm2)} km²</span><span class="mute">${paused ? 'paused' : speed === 24 ? '1 day/s' : speed === 168 ? '1 week/s' : '1 month/s'}</span>`;
   const dd = Object.entries(m.deaths).map(([k, v]) => `${v} ${k.toLowerCase()}`).join(', ') || 'none';
   $('band').innerHTML = `Born: ${m.births}. Died: ${dd}. Children under 14: ${m.children}. Grown members' body fat: ${Math.round(m.meanFat * 100)}% of full. Food shared between families so far: ${Math.round(m.shared / 1000)} thousand kcal. Camp: ${esc(s.waters.find(w => w.id === s.camp.water).name.toLowerCase())}.`;
   $('log').innerHTML = s.events.slice(-14).reverse().map(e => `<li><span class="t">${esc(dateOf(C, e.t).label)}</span>${esc(e.text)}</li>`).join('');
   if (selected !== null) who();
   for (const b of document.querySelectorAll('[data-speed]')) b.classList.toggle('on', Number(b.dataset.speed) === speed && !paused);
-  $('pause').textContent = paused ? 'Play' : 'Pause'; $('follow').classList.toggle('on', follow);
+  $('pause').textContent = paused ? 'Play' : 'Pause'; if (skipping) $('hud').innerHTML += `<span>SKIPPING to year ${Math.floor(skipEnd / C.year) + 1}…</span>`; $('follow').classList.toggle('on', follow);
 }
 
 $('pause').onclick = () => { paused = !paused; ui(); };
@@ -104,8 +106,35 @@ $('zoomOut').onclick = () => { const cx = (wrap.scrollLeft + wrap.clientWidth / 
 $('toCamp').onclick = () => centerOn(s.camp.x, s.camp.y, true);
 $('follow').onclick = () => { if (selected === null) selected = s.people.find(p => p.alive && p.body.age >= 18)?.id ?? null; follow = !follow; ui(true); };
 
+function record() {
+  const y = Math.floor(s.tick / C.year); if (history.length && history.at(-1).y >= y) return;
+  const m = worldMetrics(s), died = Object.values(m.deaths).reduce((a, b) => a + b, 0), prev = history.at(-1);
+  history.push({ y, pop: m.population, born: m.births - (prev?.bornTot ?? 0), died: died - (prev?.diedTot ?? 0), bornTot: m.births, diedTot: died, known: m.discoveredShare, gen: m.generations });
+}
+function drawLong() {
+  const c = $('long'), g = c.getContext('2d'), W2 = c.width, H2 = c.height, pad = 28;
+  g.clearRect(0, 0, W2, H2); g.fillStyle = '#0a1230'; g.fillRect(0, 0, W2, H2);
+  if (history.length < 2) { g.fillStyle = '#aab4d4'; g.font = '14px monospace'; g.fillText('A point appears each simulated year.', 20, H2 / 2); return; }
+  const n = history.length, maxPop = Math.max(10, ...history.map(h => h.pop)), maxGen = Math.max(1, ...history.map(h => h.gen));
+  const X = i => pad + (W2 - pad - 8) * i / (n - 1), Y = (v, mx) => H2 - pad - (H2 - pad - 10) * v / mx;
+  g.strokeStyle = '#33478c'; g.beginPath(); g.moveTo(pad, 10); g.lineTo(pad, H2 - pad); g.lineTo(W2 - 8, H2 - pad); g.stroke();
+  g.fillStyle = '#aab4d4'; g.font = '12px monospace'; g.fillText(String(maxPop), 2, 18); g.fillText(`year ${history[0].y + 1}`, pad, H2 - 8); g.fillText(`year ${history.at(-1).y + 1}`, W2 - 90, H2 - 8);
+  const line = (k, mx, col) => { g.strokeStyle = col; g.lineWidth = 2; g.beginPath(); history.forEach((h, i) => { const y = Y(h[k], mx); i ? g.lineTo(X(i), y) : g.moveTo(X(i), y); }); g.stroke(); };
+  line('known', 1, '#ffd84a'); line('gen', maxGen * 1.1, '#7fc4ff'); line('born', maxPop, '#7fd88f'); line('died', maxPop, '#ff6a6a'); line('pop', maxPop, '#ffffff');
+}
+for (const b of document.querySelectorAll('[data-skip]')) b.onclick = () => { skipping = Number(b.dataset.skip); skipEnd = s.tick + skipping * C.year; paused = false; $('stopSkip').disabled = false; for (const x of document.querySelectorAll('[data-skip]')) x.disabled = true; };
+$('stopSkip').onclick = () => { skipEnd = s.tick; };
+function skipStep(now) {
+  // run in slices so the page stays responsive; the map is not drawn while skipping
+  const until = performance.now() + 40;
+  while (performance.now() < until && s.tick < skipEnd && worldMetrics(s).population > 0) { stepWorld(s, 24); record(); }
+  if (s.tick >= skipEnd || !living(s).length) { skipping = 0; $('stopSkip').disabled = true; for (const x of document.querySelectorAll('[data-skip]')) x.disabled = false; drawnDiscovered = -1; }
+  $('longNote').firstChild && ($('longNote').dataset.k = 1);
+}
+
 function frame(now) {
   const dt = Math.min(200, now - last); last = now;
+  if (skipping) { skipStep(now); if (now - lastUi > 500) { ui(); drawLong(); lastUi = now; } requestAnimationFrame(frame); return; }
   if (!paused) {
     acc += dt / 1000 * speed;
     const n = Math.min(Math.floor(acc), 400);
@@ -114,7 +143,8 @@ function frame(now) {
   if (s.discovered !== drawnDiscovered && (now - lastUi > 400 || drawnDiscovered < 0)) drawLand();
   drawPeople();
   if (follow && selected !== null) { const p = s.people[selected]; if (p?.alive) centerOn(p.x, p.y); }
-  if (now - lastUi > 500) { ui(); lastUi = now; }
+  record();
+  if (now - lastUi > 500) { ui(); drawLong(); lastUi = now; }
   requestAnimationFrame(frame);
 }
 sizeCanvases(); drawLand(); ui();

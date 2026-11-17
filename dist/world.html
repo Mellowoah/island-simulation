@@ -30,7 +30,9 @@
   <div class="ctl">
     <button id="pause">Pause</button><button data-speed="24">1 day/s</button><button data-speed="168">1 week/s</button><button data-speed="720">1 month/s</button>
     <button id="zoomOut">− Zoom</button><button id="zoomIn">+ Zoom</button><button id="toCamp">Camp</button><button id="follow">Follow</button>
+    <button data-skip="10">Skip 10 yrs</button><button data-skip="50">Skip 50 yrs</button><button data-skip="100">Skip 100 yrs</button><button id="stopSkip" disabled>Stop skip</button>
   </div>
+  <div class="box"><h2>The long view</h2><canvas id="long" width="720" height="260" style="width:100%;height:auto"></canvas><p class="note" id="longNote">One point a year: people alive (white), born that year (green), died that year (red), share of the island known (gold, 0-100%), generations (blue). Skipping runs the same world faster without drawing the map.</p></div>
   <div class="box"><h2 id="whoTitle">Tap a person</h2><div id="who" class="note">Tap someone on the map (or press Follow) to see their body, what they are doing and why, and their life so far.</div></div>
   <div class="box"><h2>The band</h2><div id="band" class="note"></div></div>
   <div class="box"><h2>What has happened</h2><ul id="log"></ul></div>

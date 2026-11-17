@@ -53,6 +53,12 @@ const dist = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 
 export const ageOf = (s, p) => (s.tick - p.born) / clockOf(s).year;
+// The living and the households with someone alive, cached until a birth or a death (long runs keep everyone who
+// ever lived, so loops must not walk the dead).
+const LIVE = new WeakMap(), HOMES = new WeakMap();
+export const living = s => { let l = LIVE.get(s); if (!l) { l = s.people.filter(p => p.alive); LIVE.set(s, l); } return l; };
+const homes = s => { let h = HOMES.get(s); if (!h) { h = s.households.filter(x => x.members.some(i => s.people[i].alive)); HOMES.set(s, h); } return h; };
+const changed = s => { LIVE.delete(s); HOMES.delete(s); };
 const W = T.TW, H = T.TH;
 
 // ---------- the land's food and water ----------
@@ -150,12 +156,13 @@ function liveTick(s, p, mother) {
 // ---------- people and families at the start ----------
 function newPerson(s, { sex, born, mother = null, father = null, household = null, f, mind }) {
   const id = s.people.length;
-  const p = { id, name: nameOf(s, id), sex, born, mother, father, partner: null, household, alive: true, death: null,
+  const gen = mother === null ? 0 : 1 + Math.max(s.people[mother]?.gen ?? 0, s.people[father]?.gen ?? 0);
+  const p = { id, name: nameOf(s, id), gen, sex, born, mother, father, partner: null, household, alive: true, death: null,
     x: s.camp.x, y: s.camp.y, hunger: 20, reserve: undefined, energy: 80, health: 100, deficit: 0, thirst: 0,
     f, mind, skills: {}, places: {}, waters: {}, seen: new Uint8Array(W * H), plan: [], step: null, carry: 0,
     times: { sleep: 0, rest: 0, walk: 0, gather: 0, explore: 0, camp: 0, drink: 0 }, tiles: 0,
     pregnant: null, births: [], young: [], memories: [] };
-  s.people.push(p); setBody(s, p);
+  s.people.push(p); changed(s); setBody(s, p);
   if (household !== null) s.households[household].members.push(id);
   return p;
 }
@@ -176,7 +183,7 @@ export function createWorld2(seed = 41, opts = {}) {
   const C = clockOf(s);
   s.patches = makeFood(s); s.ledger.initial = s.patches.reduce((n, p) => n + p.stock, 0);
   s.waters = T.waterSites().map(w => ({ ...w, active: true }));
-  s.seenAt = new Int32Array(W * H).fill(-1); s.seenBy = new Int16Array(W * H).fill(-1);
+  s.seenAt = new Int32Array(W * H).fill(-1); s.seenBy = new Int32Array(W * H).fill(-1); // person ids pass 32,767 in long runs
   attachIndex(s);
   // The first camp: at the lake if there is one (it never dries), on its shore.
   const lake = s.waters.filter(w => w.kind === 'lake'), pick = lake.length ? lake : s.waters.filter(w => w.kind === 'spring');
@@ -225,7 +232,7 @@ function attachIndex(s) {
   } });
   Object.defineProperty(s, 'carer', { enumerable: false, configurable: true, writable: true, value: new Map() });
 }
-function refreshCarers(s) { s.carer = new Map(); for (const p of s.people) if (p.alive) { const c = carerOf(s, p); if (c) s.carer.set(p.id, c); } }
+function refreshCarers(s) { s.carer = new Map(); for (const p of living(s)) { const c = carerOf(s, p); if (c) s.carer.set(p.id, c); } }
 
 // Siler hazard (per year) and its integral from 0 to x.
 export const siler = (S, x) => S.a1 * Math.exp(-S.b1 * x) + S.a2 + S.a3 * Math.exp(S.b3 * x);
@@ -414,7 +421,7 @@ function related(s, a, b) {
 // r x benefit to them > cost to you, with benefit and cost measured by how short each side is (with a floor of 1/4
 // on r, since unrelated campmates also share).
 function share(s) {
-  const B = body(s), hs = s.households.filter(h => h.members.some(i => s.people[i].alive));
+  const B = body(s), hs = homes(s);
   const keep = h => h.members.reduce((n, i) => { const q = s.people[i]; return n + (q.alive ? q.hunger / q.body.hpk : 0); }, 0);
   const short = h => h.members.reduce((n, i) => { const q = s.people[i]; return n + (q.alive ? q.hunger / q.body.hpk + Math.max(0, q.body.fatMax * 0.6 - q.reserve) / B.fatStoreEff : 0); }, 0);
   for (const g of hs) {
@@ -425,11 +432,11 @@ function share(s) {
   }
 }
 function evening(s) {
-  const hs = s.households.filter(h => h.members.some(i => s.people[i].alive));
+  const hs = homes(s);
   share(s);
   // news: people at camp tell what they know. Household members hear everything; others as sociable as the teller.
   // Everyone talks with their own household, and with up to three others around the fire, more if sociable.
-  const here = s.people.filter(p => p.alive && atCamp(s, p) && p.body.age >= 5);
+  const here = living(s).filter(p => atCamp(s, p) && p.body.age >= 5);
   const tell = (a, b) => {
     for (const id in a.places) { const k = a.places[id], kb = b.places[id]; if (!kb || kb.t < k.t) { if (!kb) note(s, b, `Heard from ${a.name} about ${s.patchById.get(id).name.toLowerCase()}.`); b.places[id] = { exp: k.exp, t: k.t }; } }
     for (const id in a.waters) { const k = a.waters[id], kb = b.waters[id]; if (!kb || kb.t < k.t) b.waters[id] = { active: k.active, t: k.t }; }
@@ -451,9 +458,9 @@ function campValue(s, w, knowledge) {
   return v;
 }
 // The band is going hungry when a quarter of its grown members are getting thin.
-const bandThin = s => { const a = s.people.filter(p => p.alive && p.body.age >= 14); return a.length && a.filter(p => p.reserve / p.body.fatMax < 0.4).length >= a.length / 4; };
+const bandThin = s => { const a = living(s).filter(p => p.body.age >= 14); return a.length && a.filter(p => p.reserve / p.body.fatMax < 0.4).length >= a.length / 4; };
 function maybeMoveCamp(s, urgent = false) {
-  const alive = s.people.filter(p => p.alive && p.body.age >= 14); if (!alive.length) return;
+  const alive = living(s).filter(p => p.body.age >= 14); if (!alive.length) return;
   const know = new Map(), waters = new Set();
   for (const p of alive) { for (const [id, k] of Object.entries(p.places)) know.set(id, Math.max(know.get(id) ?? 0, expected(s, s.patchById.get(id), k))); for (const [id, w] of Object.entries(p.waters)) if (w.active) waters.add(id); }
   const lasting = w => w.kind === 'lake' || w.kind === 'spring'; // only water that does not fail in the dry season
@@ -462,13 +469,13 @@ function maybeMoveCamp(s, urgent = false) {
   for (const id of waters) { const w = s.waterById.get(id); if (!lasting(w) || id === here.id) continue; const v = campValue(s, w, know); if (v > bv) { bv = v; best = w; } }
   if (!best) return;
   s.camp = { x: best.x, y: best.y, water: best.id, since: s.tick };
-  for (const p of s.people) if (p.alive && !s.carer.get(p.id)) { p.plan = []; p.step = null; }
+  for (const p of living(s)) if (!s.carer.get(p.id)) { p.plan = []; p.step = null; }
   event(s, `The band moved camp to ${best.name.toLowerCase()}, where more food is known nearby.`);
 }
 
 // ---------- once a month: pairing, conceiving, illness and old age ----------
 function monthly(s) {
-  const C = clockOf(s), cfg = s.config, alive = s.people.filter(p => p.alive);
+  const C = clockOf(s), cfg = s.config, alive = [...living(s)];
   maybeMoveCamp(s);
   // pairing: unpartnered adults pair with an unrelated unpartnered adult of the other sex, closest in age
   for (const p of alive) {
@@ -482,11 +489,12 @@ function monthly(s) {
     const hh = { id: s.households.length, members: [], pool: 0 }; s.households.push(hh);
     for (const q of [p, m]) { const old = s.households[q.household]; if (old) old.members = old.members.filter(i => i !== q.id); q.household = hh.id; hh.members.push(q.id); }
     for (const k of p.young.map(i => s.people[i]).filter(k => k.alive && k.body.age < 14 && k.household !== hh.id)) { const old = s.households[k.household]; if (old) old.members = old.members.filter(i => i !== k.id); k.household = hh.id; hh.members.push(k.id); }
-    event(s, `${p.name} and ${m.name} made a home together.`);
+    changed(s); event(s, `${p.name} and ${m.name} made a home together.`);
   }
   // conception: a fed woman with a partner, past the nursing of her last child; fertility falls with her fat
   for (const p of alive) {
     if (p.sex !== 'F' || p.pregnant || p.body.age < cfg.menarche || p.body.age >= cfg.menopause) continue;
+    if (living(s).length >= cfg.populationCap) { s.capReached = (s.capReached ?? 0) + 1; continue; } // technical limit, counted and reported
     const m = s.people[p.partner]; if (!m?.alive) continue;
     const last = p.births.at(-1); if (last !== undefined && (s.tick - last) / C.year < EN.LAW.weanYears * 0.9) continue;
     const fed = Math.min(1, (p.reserve / p.body.fatMax) / 0.6);
@@ -500,7 +508,7 @@ function monthly(s) {
 }
 function births(s) {
   const C = clockOf(s), cfg = s.config;
-  for (const p of s.people) if (p.alive && p.pregnant && s.tick >= p.pregnant.due) {
+  for (const p of [...living(s)]) if (p.alive && p.pregnant && s.tick >= p.pregnant.due) {
     const dad = s.people[p.pregnant.father]; p.pregnant = null;
     const { f, mind } = drawFactors(s, s.people.length + 5000, [p, dad]);
     const kid = newPerson(s, { sex: draw(s, s.people.length, SALT.newborn) < cfg.maleRatio ? 'M' : 'F', born: s.tick, mother: p.id, father: dad.id, household: p.household, f, mind });
@@ -512,7 +520,8 @@ function births(s) {
 }
 function die(s, p, cause) {
   if (!p.alive) return;
-  p.alive = false; p.death = { t: s.tick, cause, age: p.body.age }; s.deaths[cause] = (s.deaths[cause] ?? 0) + 1;
+  p.alive = false; p.death = { t: s.tick, cause, age: p.body.age }; s.deaths[cause] = (s.deaths[cause] ?? 0) + 1; changed(s);
+  p.seenCount = p.seen.reduce((n, v) => n + v, 0); p.seen = null; p.places = {}; p.waters = {}; p.plan = []; p.step = null; // the dead keep their story, not their maps (memory in long runs)
   event(s, `${p.name} died (${cause.toLowerCase()}, age ${Math.floor(p.body.age)}).`);
   refreshCarers(s);
 }
@@ -525,8 +534,8 @@ export function stepWorld(s, n = 1) {
   for (let z = 0; z < n; z++) {
     s.tick++;
     landStep(s, 1);
-    if (s.tick % day === 0) { for (const p of s.people) if (p.alive) { setBody(s, p); forget(s, p); } refreshCarers(s); }
-    const alive = s.people.filter(p => p.alive);
+    if (s.tick % day === 0) { for (const p of living(s)) { setBody(s, p); forget(s, p); } refreshCarers(s); }
+    const alive = [...living(s)];
     for (const p of alive) {
       const carer = s.carer.get(p.id);
       liveTick(s, p, carer && carer.id === p.mother ? carer : null);
@@ -548,7 +557,7 @@ export function stepWorld(s, n = 1) {
     { const hr = hourOf(C, s.tick); if (hr === 19) evening(s); else if (hr === 10 || hr === 13 || hr === 16) share(s); }
     if (s.tick % day === 0) {
       // how far grown people have had to walk lately (a ten-day average): long days mean the food near camp is used up
-      const ad = s.people.filter(p => p.alive && p.body.age >= 18), tiles = ad.reduce((n, p) => n + p.tiles, 0);
+      const ad = living(s).filter(p => p.body.age >= 18), tiles = ad.reduce((n, p) => n + p.tiles, 0);
       const km = s.lastTiles === undefined ? 0 : (tiles - s.lastTiles) / Math.max(1, ad.length) * T.TILE_KM; s.lastTiles = tiles;
       s.dayKm = s.dayKm === undefined ? km : s.dayKm + (km - s.dayKm) / 10;
       if (!s.waterById.get(s.camp.water).active || (s.tick % (7 * day) === 0 && (bandThin(s) || s.dayKm > 12))) maybeMoveCamp(s, true);
@@ -561,10 +570,10 @@ export function stepWorld(s, n = 1) {
 
 // ---------- measures (never change the world) ----------
 export function worldMetrics(s) {
-  const C = clockOf(s), alive = s.people.filter(p => p.alive), adults = alive.filter(p => p.body.age >= 18);
+  const C = clockOf(s), alive = living(s), adults = alive.filter(p => p.body.age >= 18);
   const landTiles = T.MAIN_TILES, seenLand = (() => { let n = 0; for (let i = 0; i < W * H; i++) if (s.seenAt[i] >= 0 && T.isWalkable(i % W, (i / W) | 0)) n++; return n; })();
   return { tick: s.tick, date: dateOf(C, s.tick).label, population: alive.length, adults: adults.length, children: alive.filter(p => p.body.age < 14).length,
-    births: s.births, deaths: { ...s.deaths }, households: s.households.filter(h => h.members.some(i => s.people[i].alive)).length,
+    births: s.births, deaths: { ...s.deaths }, households: homes(s).length, generations: alive.reduce((m, p) => Math.max(m, p.gen ?? 0), 0), everLived: s.people.length, capReached: s.capReached ?? 0,
     discoveredKm2: seenLand * T.TILE_KM ** 2, landKm2: T.LAND_KM2, discoveredShare: seenLand / landTiles,
     meanFat: adults.length ? adults.reduce((n, p) => n + p.reserve / p.body.fatMax, 0) / adults.length : 0,
     food: s.patches.reduce((n, q) => n + q.stock, 0), shared: s.shared ?? 0, camp: { ...s.camp } };
