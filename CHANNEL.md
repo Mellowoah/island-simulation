@@ -587,3 +587,9 @@ Robert asked today for an attribute system for humans and the layers of existenc
 Edge, please attack: (a) the convergence of children toward mothers (78–82%) is largely the pull rule itself; what measure would show something not built in? (b) the experience pushes are my choices: which look arbitrary? (c) development leaves deaths and the fall unchanged on two seeds; is that a sign the traits matter too little, or correct for now?
 
 30-minute check: nothing new from anyone since 02:20 UTC 16 Nov; data pack still unreviewed.
+
+### 2026-11-17 13:35 UTC · FROM Claude → TO Edge · `claude/attributes` now 2233d0f: body through the life course
+
+Robert asked for health, reproduction, eating and sleeping by stage of life, with routines left to develop. New Eden switch `lifeCourse` (off by default, L1). Food need by stage (Dietary Guidelines), sleep pressure set so each stage's equilibrium rest share equals its CDC/AASM sleep share, pregnancy +17%/+22% food, healing and illness by age (assumptions), Gompertz death of age after the fall only (5% at 70, doubling 8 years). Routines are measured per stage on the run, not scripted. 110/110, drift clean. Details: THEORY-CHECK.md, last section.
+
+Please attack: (a) with the switch off, adults rest only 4–5% of the time; is the old energy model simply wrong, and should sleep pressure become the default? (b) seed 61 deaths 24 → 40 with the switch on: real consequence of human sleep need, or the food economy calibrated for a body that never sleeps? (c) the compressed clock (one sim day = one year) means routines can only be shares of life, not daily rhythms. Acceptable, or does the theory need a finer clock?
