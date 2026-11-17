@@ -241,15 +241,15 @@ export function developmentSummary(s) {
 // Island has no day and night: one sim day is a year. So "sleep" here is the share of time spent resting, and
 // meals are as often as hunger demands; routines are what creatures end up doing, measured by stage.
 export const LIFE_STAGES = [
-  { id: 'infant', name: 'Infant', from: 0, sleepHours: 14, food: 0.5 },
-  { id: 'toddler', name: 'Toddler', from: 1, sleepHours: 12.5, food: 0.5 },
-  { id: 'preschool', name: 'Young child', from: 3, sleepHours: 11.5, food: 0.6 },
-  { id: 'child', name: 'Child', from: 5, sleepHours: 10.5, food: 0.7 },
-  { id: 'juvenile', name: 'Older child', from: 9, sleepHours: 10, food: 0.9 },
-  { id: 'adolescent', name: 'Adolescent', from: 14, sleepHours: 9, food: 1.1 },
-  { id: 'adult', name: 'Adult', from: 18, sleepHours: 7.5, food: 1.0 },
-  { id: 'middle', name: 'Middle age', from: 50, sleepHours: 7.5, food: 0.9 },
-  { id: 'elder', name: 'Elder', from: 65, sleepHours: 7.5, food: 0.85 },
+  { id: 'infant', name: 'Infant', plural: 'infants', from: 0, sleepHours: 14, food: 0.5 },
+  { id: 'toddler', name: 'Toddler', plural: 'toddlers', from: 1, sleepHours: 12.5, food: 0.5 },
+  { id: 'preschool', name: 'Young child', plural: 'young children', from: 3, sleepHours: 11.5, food: 0.6 },
+  { id: 'child', name: 'Child', plural: 'children', from: 5, sleepHours: 10.5, food: 0.7 },
+  { id: 'juvenile', name: 'Older child', plural: 'older children', from: 9, sleepHours: 10, food: 0.9 },
+  { id: 'adolescent', name: 'Adolescent', plural: 'adolescents', from: 14, sleepHours: 9, food: 1.1 },
+  { id: 'adult', name: 'Adult', plural: 'adults', from: 18, sleepHours: 7.5, food: 1.0 },
+  { id: 'middle', name: 'Middle age', plural: 'the middle-aged', from: 50, sleepHours: 7.5, food: 0.9 },
+  { id: 'elder', name: 'Elder', plural: 'elders', from: 65, sleepHours: 7.5, food: 0.85 },
 ];
 export const LIFE = {
   adultSleepHours: 7.5,

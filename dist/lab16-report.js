@@ -42,7 +42,7 @@ export function summarizeEden(run) {
   const alive = s.creatures.filter(c => c.alive);
   const skill = mean(alive.map(c => ((c.skills.a ?? 0) + (c.skills.b ?? 0)) / 2));
   return {
-    kind: 'eden', lifeCourse: !!run.setup.lifeCourse, routine: LIFE_STAGES.map(st => { const u = run.routine?.[st.id]; const n = u ? ROUTINE_KEYS.reduce((a, k) => a + u[k], 0) : 0; return n >= 500 ? { stage: st.name, ...Object.fromEntries(ROUTINE_KEYS.map(k => [k, u[k] / n * 100])) } : null; }).filter(Boolean),
+    kind: 'eden', lifeCourse: !!run.setup.lifeCourse, routine: LIFE_STAGES.map(st => { const u = run.routine?.[st.id]; const n = u ? ROUTINE_KEYS.reduce((a, k) => a + u[k], 0) : 0; return n >= 500 ? { stage: st.name, plural: st.plural, ...Object.fromEntries(ROUTINE_KEYS.map(k => [k, u[k] / n * 100])) } : null; }).filter(Boolean),
     oldAge: s.eden.deaths['Old age'] ?? 0, development: run.setup.traitDev ? developmentSummary(s) : null, restoration: !!run.setup.restoration, tempters: run.setup.tempters ?? 0, fallAgain: run.setup.fallAgain !== false, restored: m.restored ?? null,
     hardRestored: mean(alive.filter(c => c.eden.covered).map(hardshipEden)), hardOthers: mean(alive.filter(c => !c.eden.covered).map(hardshipEden)), seed: s.seed, guidanceYears: run.setup.guidanceYears, guidance: run.setup.guidance, help: run.setup.help, years: s.tick / DAY, tick: s.tick,
     start: 24, population: m.population, births: m.births, deaths: m.deaths, deathCauses: m.deathCauses,
@@ -146,7 +146,7 @@ function storyEden(m) {
   if (m.fell) p.push(`After release they tilled ${m.fields} field${m.fields === 1 ? '' : 's'}; ${m.clothed} of the living had made clothing and ${m.tools} had made a tool.`);
   if (m.routine?.length) {
     const own = m.routine.filter(r => r.rest < 85);
-    if (own.length) p.push(`How each stage spent its time${m.lifeCourse ? ' (life-stage rules on: sleep need, food need, healing and ageing change with age)' : ' (life-stage rules off: one adult body for all)'}: ${own.map(r => `${r.stage.toLowerCase()}s rested ${fmt(r.rest, '%')}, gathered ${fmt(r.gather, '%')}, travelled ${fmt(r.travel, '%')}, explored ${fmt(r.explore, '%')}, worked ${fmt(r.work, '%')}`).join('; ')}. Young children are carried by their mother, so they are counted as resting. Island has no night: one sim day is a year, so rest stands for sleep as a share of life, not a nightly routine.${m.lifeCourse ? ` ${m.oldAge} died of age.` : ''}`);
+    if (own.length) p.push(`How each stage spent its time${m.lifeCourse ? ' (life-stage rules on: sleep need, food need, healing and ageing change with age)' : ' (life-stage rules off: one adult body for all)'}: ${own.map(r => `${r.plural} rested ${fmt(r.rest, '%')}, gathered ${fmt(r.gather, '%')}, travelled ${fmt(r.travel, '%')}, explored ${fmt(r.explore, '%')}, worked ${fmt(r.work, '%')}`).join('; ')}. Young children are carried by their mother, so they are counted as resting. Island has no night: one sim day is a year, so rest stands for sleep as a share of life, not a nightly routine.${m.lifeCourse ? ` ${m.oldAge} died of age.` : ''}`);
   }
   if (m.development) {
     const D = m.development, top = Object.entries(D.shift).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([k, v]) => `${k} ${fmt(v)}`).join(' and ');
