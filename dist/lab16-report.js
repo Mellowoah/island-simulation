@@ -6,6 +6,7 @@ import { labMetrics } from './lab.js';
 import { PREDICTIONS, THEORY, lineLabel } from './lab16-setup.js';
 import { batchMarkdown, batchHTML } from './lab16-batch.js';
 import { hardshipEden } from './lab16-run.js';
+import { developmentSummary } from './being.js';
 import { hearingsTotal, habitSpread, curiositySpread, giftEaten, seriesOf } from './lab16-run.js';
 
 export const MARGIN = 0.05; // a difference must be at least 5% of the smaller value to count; smaller gaps count as "no difference"
@@ -40,7 +41,7 @@ export function summarizeEden(run) {
   const alive = s.creatures.filter(c => c.alive);
   const skill = mean(alive.map(c => ((c.skills.a ?? 0) + (c.skills.b ?? 0)) / 2));
   return {
-    kind: 'eden', restoration: !!run.setup.restoration, tempters: run.setup.tempters ?? 0, fallAgain: run.setup.fallAgain !== false, restored: m.restored ?? null,
+    kind: 'eden', development: run.setup.traitDev ? developmentSummary(s) : null, restoration: !!run.setup.restoration, tempters: run.setup.tempters ?? 0, fallAgain: run.setup.fallAgain !== false, restored: m.restored ?? null,
     hardRestored: mean(alive.filter(c => c.eden.covered).map(hardshipEden)), hardOthers: mean(alive.filter(c => !c.eden.covered).map(hardshipEden)), seed: s.seed, guidanceYears: run.setup.guidanceYears, guidance: run.setup.guidance, help: run.setup.help, years: s.tick / DAY, tick: s.tick,
     start: 24, population: m.population, births: m.births, deaths: m.deaths, deathCauses: m.deathCauses,
     fell, fallYear: fell ? E.fallTick / DAY : null, firstEater: fell ? s.creatures[E.firstEater].name : null,
@@ -141,6 +142,10 @@ function storyEden(m) {
   else p.push('No one ate from the tree during this run, so everyone stayed guided and no one died. (Never eating is allowed: T3.)');
   p.push(`At the end ${m.population} were alive. There were ${m.births} births and ${m.deaths} deaths${m.deaths ? ` (${Object.entries(m.deathCauses).map(([k, v]) => `${v} from ${k.toLowerCase()}`).join(', ')})` : ''}.`);
   if (m.fell) p.push(`After release they tilled ${m.fields} field${m.fields === 1 ? '' : 's'}; ${m.clothed} of the living had made clothing and ${m.tools} had made a tool.`);
+  if (m.development) {
+    const D = m.development, top = Object.entries(D.shift).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([k, v]) => `${k} ${fmt(v)}`).join(' and ');
+    p.push(`Traits developed through life. On average the living moved ${fmt(D.meanShift)} points (of 100) from the traits they were born with; most in ${top}. ${D.pairs ? `Of ${D.pairs} trait comparisons between a living child and its mother, the child had moved closer to her in ${D.closer} (${pct(D.closer / D.pairs * 100)}).` : 'No living child had a living record of its mother.'}`);
+  }
   if (m.restored && m.restoration) {
     const R = m.restored;
     p.push(`A way back was open. The Creator called ${R.calls} times; ${R.returned} creature${R.returned === 1 ? '' : 's'} chose to turn back and ${R.calls - R.returned} calls were refused. At the end ${R.living} of the ${m.population} living were restored. The Creator led them on ${pct(R.ledShare * 100)} of their choices and gave bread or water ${R.bread} times. ${R.deathsRestored} restored creature${R.deathsRestored === 1 ? '' : 's'} died.${m.hardRestored !== null && m.hardOthers !== null ? ` At the end, hardship averaged ${fmt(m.hardRestored)} among the restored and ${fmt(m.hardOthers)} among the rest.` : ''}`);

@@ -74,7 +74,7 @@ export function createRun(input = {}) {
     return run;
   }
   const drives = driveConfig(setup, EDEN_DEFAULTS, SIM_DEFAULTS);
-  const world = createEden(setup.seed, drives.sim, { ...drives.eden, serpentSilentYears: setup.guidanceYears, guidanceRate: setup.guidance, restoration: setup.restoration, tempters: setup.tempters, fallAgain: setup.fallAgain });
+  const world = createEden(setup.seed, drives.sim, { ...drives.eden, serpentSilentYears: setup.guidanceYears, guidanceRate: setup.guidance, restoration: setup.restoration, tempters: setup.tempters, fallAgain: setup.fallAgain, traitDevelopment: setup.traitDev });
   const run = { kind: 'eden', setup, world, endTick, done: false, helpUntil: setup.help ? Math.floor(endTick / 2) : 0, halfTick: Math.floor(endTick / 2),
     help: setup.help ? helpSpot(world) : null, cohort: null, half: null, series: [] };
   run.series.push(edenSample(run));

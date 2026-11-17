@@ -6,6 +6,7 @@ import { createRun, stepRun, seriesOf, serializeRun, restoreLabRun, restoreTheor
 import { viewOfEden, viewOfLab } from './lab16-view.js';
 import { createPixelRenderer, loadImage } from './lab16-render.js';
 import { chartSpecs, drawLineChart } from './lab16-charts.js';
+import { attributesOf, beingsOf, LAYERS, SOURCE } from './being.js';
 import { batchSeeds, batchEden, batchLab } from './lab16-batch.js';
 import { summarizeEden, summarizeLab, buildEdenReport, buildLabReport, reportMarkdown, reportHTML, reportBodyHTML, twinSetups } from './lab16-report.js';
 
@@ -120,12 +121,30 @@ function inspector() {
       <p class="note">${c.knowledge.slice(0, 4).map(k => `${k.type} at ${k.x},${k.y} (${Math.round(confidence(s, k))}%${k.verified ? '' : ', unchecked'})`).join(' · ') || 'Knows no places yet.'}</p>`;
   }
 }
+// ---------- Attributes and layers of existence (read-only views; they change nothing) ----------
+// The <details> boxes are static in the page; only their contents are refreshed, and only while open.
+function fmtAttr(a) {
+  if (a.status === 'planned') return `<span class="note">planned, phase ${a.phase}</span>`;
+  const v = a.value, shown = typeof v === 'number' ? (Number.isInteger(v) ? v : v.toFixed(a.unit === ' years' ? 1 : 0)) : esc(String(v));
+  const small = [a.subText, a.status === 'recorded' ? 'recorded' : null].filter(Boolean).join(' · ');
+  return `${shown}${a.unit && typeof v === 'number' ? esc(a.unit) : ''}${small ? `<br><span class="note">${esc(small)}</span>` : ''}`;
+}
+const attrRow = a => `<tr><td>${esc(a.label)}<br><span class="note">${esc(a.channel)}${a.note ? ' · ' + esc(a.note) : ''}</span></td><td class="v">${fmtAttr(a)}</td></tr>`;
+function beingPanels(s, c) {
+  $('beingBox').hidden = !(run.kind === 'eden' && c && c.alive);
+  if ($('beingBox').hidden) return;
+  $('attrTitle').textContent = `Attributes of ${c.name}`;
+  if ($('attrBox').open) $('attrBody').innerHTML = attributesOf(s, c).map(g => `<p class="note" style="margin:.6em 0 .2em"><b>${esc(g.layer.name)}</b> · ${esc(g.layer.powers)}</p><table class="attrs">${g.rows.map(a => attrRow({ ...a, subText: a.sub ? a.sub(s, c) : null })).join('')}</table>`).join('');
+  if ($('layerBox').open) { const byId = Object.fromEntries(LAYERS.map(l => [l.id, l])); $('layerBody').innerHTML = `<table class="attrs">${beingsOf(s).map(b => { const l = b.layer ? byId[b.layer] : SOURCE; return `<tr><td><b>${esc(l.name)}</b><br><span class="note">${esc(l.powers)}</span></td><td class="v">${esc(b.items.join(', '))}</td></tr>`; }).join('')}</table>`; }
+}
+$('attrBox').ontoggle = () => { if (run) beingPanels(run.world, run.world.creatures[selected]); };
+$('layerBox').ontoggle = () => { if (run) beingPanels(run.world, run.world.creatures[selected]); };
 function events() {
   const s = run.world;
   const list = run.kind === 'eden' ? [...s.events].reverse().slice(0, 7).map(e => ({ t: e.tick, text: e.text })) : s.events.slice(0, 7).map(e => ({ t: e.tick, text: (e.id !== null ? s.creatures[e.id].name + ': ' : '') + e.text }));
   $('events').innerHTML = list.map(e => `<li><span class="t">${clockOf(e.t)}</span> ${esc(e.text)}</li>`).join('');
 }
-function update() { if (!run) return; hud(); inspector(); events(); if (run.kind === 'lab') $('cross').disabled = run.world.crossingsOpen.length >= run.world.config.crossings.length; }
+function update() { if (!run) return; hud(); inspector(); beingPanels(run.world, run.world.creatures[selected]); events(); if (run.kind === 'lab') $('cross').disabled = run.world.crossingsOpen.length >= run.world.config.crossings.length; }
 function chartMeta() { return run.kind === 'eden' ? { fallTick: run.world.eden.fallTick, helpStop: setup.help ? run.helpUntil : null } : {}; }
 function drawCharts() {
   if (!run) return;

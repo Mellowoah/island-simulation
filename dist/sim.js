@@ -29,6 +29,7 @@ export const STREAMS={
   guidanceLapse:[340,340], // eden: per creature per month, whether the Creator steps in. Only drawn when guidanceRate < 1.
   returnChoice:[341,341],  // eden restoration: a released creature's own answer to the Creator's yearly call
   leaveChoice:[342,342],   // eden restoration: a restored creature's own answer when a tempter whispers
+  temperament:[343,349],   // being.js: one stream per temperament system (seeking reuses birthCuriosity / newborn). Read-only; changes no world.
 };
 const draw=(s,t,id,salt)=>s.rng===2?noise2(seedKey(s.seed),t,id,salt):noise(s.seed,t,id,salt);
 const cache=new Map();

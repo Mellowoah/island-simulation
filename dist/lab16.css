@@ -59,3 +59,11 @@ body[data-screen="setup"] .title .logo{display:block;text-align:center}
 .title .logo img{display:block;margin:0 auto;width:min(100%,420px);height:auto;image-rendering:pixelated;border:3px solid var(--edge);border-radius:6px;box-shadow:0 0 0 3px #000,6px 6px 0 #0008}
 body[data-screen="setup"] .title h1{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 body[data-screen="setup"] .title .sub{text-align:center}
+
+/* attributes and layers (read-only views) */
+details { margin-top: .6em; }
+details > summary { cursor: pointer; color: #ffe680; font-size: .95em; }
+table.attrs { width: 100%; border-collapse: collapse; font-size: .82em; }
+table.attrs td { padding: 2px 4px; border-bottom: 1px solid rgba(255,255,255,.08); vertical-align: top; }
+table.attrs td.v { text-align: right; width: 40%; overflow-wrap: anywhere; }
+table.attrs .note { font-size: .9em; }

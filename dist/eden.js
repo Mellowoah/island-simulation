@@ -2,6 +2,7 @@
 // Phases: guided (Creator's warning at birth, Creator leads choices that fall outside what is best,
 // no death) -> released (first creature to eat from the tree; everyone released at once).
 import { W, DAY, clamp, land, path, createWorld, decide, event, noise2, seedKey, STREAMS } from './sim.js';
+import { develop, DEV_EVERY } from './being.js';
 
 export const EDEN_VERSION = 2;
 export const EDEN_DEFAULTS = {
@@ -41,6 +42,7 @@ export const EDEN_DEFAULTS = {
   restHeal: 0.15, baseHeal: 0.01, healthRestWeight: 0.3, healthGuide: 30,
   urgentThirst: 60, urgentHunger: 70, // a released creature breaks off what it is doing when a need becomes urgent (if it knows where to go)
   // One of many worlds: the biblical reading of what follows the fall (all off by default = original behaviour).
+  traitDevelopment: false,  // being.js: traits shaped through life by parents, others and what happens (off = traits fixed at birth, the original rule)
   restoration: false,       // after the fall the Creator calls each creature once a year; those who turn back are guided, fed and kept from want
   fallAgain: true,          // a restored creature can be drawn away again by a tempter (traditions differ; this is a setting)
   tempters: 0,              // demons: separate beings directed by the deceiver. They can only whisper; they cannot touch or force anyone
@@ -335,6 +337,7 @@ export function edenStep(s, n = 1) {
     for (const c of order) if (!dependent(s, c) && (!c.action || (c.energy < 5 && c.action.type !== 'rest') || pressing(s, c))) edenDecide(s, c);
     for (const c of order) serpent(s, c);
     if (E.phase === 'released' && (cfg.restoration || cfg.tempters)) afterFall(s, order);
+    if (cfg.traitDevelopment && s.tick % DEV_EVERY === 0) develop(s);
     for (const c of order) {
       if (dependent(s, c)) {
         const m = carer(s, c);
@@ -452,7 +455,7 @@ function birth(s, m, f) {
   const E = s.eden, cfg = E.config, id = s.creatures.length, k = seedKey(s.seed);
   const r = i => noise2(k, s.tick, id, STREAMS.newborn[0] + i - 1);
   const name = (SYL[Math.floor(r(1) * 16)] + SYL[Math.floor(r(2) * 16)]).replace(/^./, x => x.toUpperCase());
-  const mean = (cfg.curiosityMin + cfg.curiosityMax) / 2, mid = (m.eden.curiosity + f.eden.curiosity) / 2;
+  const mean = (cfg.curiosityMin + cfg.curiosityMax) / 2, born = x => x.eden.traits?.base.seeking ?? x.eden.curiosity, mid = (born(m) + born(f)) / 2; // parents pass on what they were born with
   const noise = (r(3) + r(4) + r(5) - 1.5) * 0.2; // approx. normal, sd ~0.1
   const curiosity = clamp(mean + cfg.heritability * (mid - mean) + noise, cfg.curiosityMin, cfg.curiosityMax);
   const fallen = E.phase === 'released';
