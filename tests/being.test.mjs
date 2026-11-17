@@ -192,3 +192,34 @@ test('L5 rest shares by stage come close to real sleep shares, and the report sh
   assert.match(md, /How each stage spent its time \(life-stage rules on/); assert.doesNotMatch(md, /undefined|NaN/);
   assert.equal(normalizeSetup({ world: 'lab', lifeCourse: true }).lifeCourse, false);
 });
+
+import { createRun, stepRun, LIFE_SNAP_KEYS } from '../dist/lab16-run.js';
+
+test('S1 the deceiver can be switched off: no one is tempted, no fall, and on is the original world', () => {
+  assert.equal(EDEN_DEFAULTS.serpent, true);
+  const off = createEden(41, {}, { serpent: false }); edenStep(off, 15 * 1440);
+  assert.equal(off.eden.phase, 'guided'); assert.equal(off.eden.fallTick, null);
+  assert.ok(off.creatures.every(c => c.eden.hearings === 0)); assert.equal(off.eden.deliberations.length, 0);
+  assert.ok(off.creatures.every(c => c.alive), 'no death in the garden');
+  const a = createEden(41), b = createEden(41, {}, { serpent: true }); edenStep(a, 6 * 1440); edenStep(b, 6 * 1440); assert.deepEqual(strip(a), strip(b));
+  const set = normalizeSetup({ world: 'eden', seed: 41, runDays: 6, serpent: false }), m = summarizeEden(runToEnd(set)), tw = twinSetups(set);
+  const md = reportMarkdown(buildEdenReport(m, summarizeEden(runToEnd(tw.guidance)), summarizeEden(runToEnd(tw.help)), {}));
+  assert.match(md, /The deceiver was absent/); assert.doesNotMatch(md, /undefined|NaN/);
+  assert.equal(normalizeSetup({ world: 'eden' }).serpent, true);
+});
+
+test('S2 the life record follows every creature without touching the world', () => {
+  const r = createRun({ world: 'eden', seed: 61, runDays: 12, traitDev: true }); stepRun(r, 12 * 1440);
+  const plain = createEden(61, {}, { serpentSilentYears: 0, guidanceRate: 1, restoration: false, tempters: 0, fallAgain: true, traitDevelopment: true, lifeCourse: false, serpent: true }); edenStep(plain, 12 * 1440);
+  assert.deepEqual(strip(r.world), strip(plain));
+  const s = r.world;
+  for (const c of s.creatures) {
+    const L = r.lives[c.id]; assert.ok(L, 'every creature has a record: ' + c.name);
+    assert.ok(L.snaps.length >= 1); for (const k of LIFE_SNAP_KEYS) assert.ok(Number.isFinite(L.snaps[0][k]), k);
+    for (let i = 1; i < L.snaps.length; i++) assert.ok(L.snaps[i].t > L.snaps[i - 1].t);
+    if (!c.alive) { assert.equal(L.died.cause, c.death.cause); }
+  }
+  const founder = r.lives[0]; assert.ok(founder.snaps.length >= 11, 'about one snapshot a year');
+  assert.ok(founder.events.length > c0(s), 'keeps more of its story than the creature itself remembers');
+  function c0(w) { return w.creatures[0].memories.length; }
+});

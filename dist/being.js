@@ -52,7 +52,7 @@ export function beingsOf(s) {
     { kind: 'plant', layer: 'life', items: [`${groves} grove${groves === 1 ? '' : 's'}`, `${fields} tilled field${fields === 1 ? '' : 's'}`, 'the fruit of the tree'] },
     { kind: 'animal', layer: 'sense', items: ['none yet (an option in the design)'] },
     { kind: 'human', layer: 'reason', items: [`${alive.length} living`, `${s.creatures.length - alive.length} dead`] },
-    { kind: 'spirit', layer: 'spirit', items: ['the deceiver', `${E.tempters?.length ?? 0} demon${(E.tempters?.length ?? 0) === 1 ? '' : 's'}`] },
+    { kind: 'spirit', layer: 'spirit', items: [E.config.serpent === false ? 'the deceiver (absent)' : 'the deceiver', `${E.tempters?.length ?? 0} demon${(E.tempters?.length ?? 0) === 1 ? '' : 's'}`] },
     { kind: 'source', layer: null, items: ['the Creator'] },
   ];
 }

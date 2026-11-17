@@ -42,7 +42,7 @@ export function summarizeEden(run) {
   const alive = s.creatures.filter(c => c.alive);
   const skill = mean(alive.map(c => ((c.skills.a ?? 0) + (c.skills.b ?? 0)) / 2));
   return {
-    kind: 'eden', lifeCourse: !!run.setup.lifeCourse, routine: LIFE_STAGES.map(st => { const u = run.routine?.[st.id]; const n = u ? ROUTINE_KEYS.reduce((a, k) => a + u[k], 0) : 0; return n >= 500 ? { stage: st.name, plural: st.plural, ...Object.fromEntries(ROUTINE_KEYS.map(k => [k, u[k] / n * 100])) } : null; }).filter(Boolean),
+    kind: 'eden', serpent: run.setup.serpent !== false, lifeCourse: !!run.setup.lifeCourse, routine: LIFE_STAGES.map(st => { const u = run.routine?.[st.id]; const n = u ? ROUTINE_KEYS.reduce((a, k) => a + u[k], 0) : 0; return n >= 500 ? { stage: st.name, plural: st.plural, ...Object.fromEntries(ROUTINE_KEYS.map(k => [k, u[k] / n * 100])) } : null; }).filter(Boolean),
     oldAge: s.eden.deaths['Old age'] ?? 0, development: run.setup.traitDev ? developmentSummary(s) : null, restoration: !!run.setup.restoration, tempters: run.setup.tempters ?? 0, fallAgain: run.setup.fallAgain !== false, restored: m.restored ?? null,
     hardRestored: mean(alive.filter(c => c.eden.covered).map(hardshipEden)), hardOthers: mean(alive.filter(c => !c.eden.covered).map(hardshipEden)), seed: s.seed, guidanceYears: run.setup.guidanceYears, guidance: run.setup.guidance, help: run.setup.help, years: s.tick / DAY, tick: s.tick,
     start: 24, population: m.population, births: m.births, deaths: m.deaths, deathCauses: m.deathCauses,
@@ -137,8 +137,9 @@ const fmt = (n, unit = '') => n === null || n === undefined ? 'n/a' : `${r1(n)}$
 function storyEden(m) {
   const p = [];
   p.push(`This island (seed ${m.seed}) ran for ${r1(m.years)} years. It began with ${m.start} creatures, each warned by the Creator not to eat from the tree.`);
-  p.push(`${m.guidanceYears === 0 ? 'The deceiver could speak from the very start' : `The deceiver was kept silent for the first ${m.guidanceYears === 1 ? 'year' : m.guidanceYears + ' years'}`}. While they were guided, the Creator stepped in on ${pct(m.guidedShare)} of their choices (${m.overrides} of ${m.decisions}); the rest were their own.`);
-  if (m.hearings === 0) p.push('The deceiver never got to speak to anyone.');
+  p.push(`${!m.serpent ? 'The deceiver was absent from this island' : m.guidanceYears === 0 ? 'The deceiver could speak from the very start' : `The deceiver was kept silent for the first ${m.guidanceYears === 1 ? 'year' : m.guidanceYears + ' years'}`}. While they were guided, the Creator stepped in on ${pct(m.guidedShare)} of their choices (${m.overrides} of ${m.decisions}); the rest were their own.`);
+  if (!m.serpent) p.push('With no deceiver, no one was ever tempted, so no one could be drawn to eat (T3: never eating is acceptable; T4: the fall comes through his doubt).');
+  else if (m.hearings === 0) p.push('The deceiver never got to speak to anyone.');
   else p.push(`The deceiver spoke ${m.hearings} time${m.hearings === 1 ? '' : 's'}. Each time, the creature weighed it and the sim worked out its chance of eating; on average that chance was ${fmt(m.meanChance, '%')} (lowest ${fmt(m.minChance, '%')}, highest ${fmt(m.maxChance, '%')}). They refused ${m.refusals} time${m.refusals === 1 ? '' : 's'}.`);
   if (m.fell) p.push(`In year ${r1(m.fallYear)}, ${m.firstEater} ate from the tree, and everyone was released to their own devices. Of the ${m.cohortSize} creatures alive at that moment, ${fmt(m.cohortEnd, '%')} were still alive at the end.`);
   else p.push('No one ate from the tree during this run, so everyone stayed guided and no one died. (Never eating is allowed: T3.)');

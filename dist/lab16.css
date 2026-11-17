@@ -67,3 +67,7 @@ table.attrs { width: 100%; border-collapse: collapse; font-size: .82em; }
 table.attrs td { padding: 2px 4px; border-bottom: 1px solid rgba(255,255,255,.08); vertical-align: top; }
 table.attrs td.v { text-align: right; width: 40%; overflow-wrap: anywhere; }
 table.attrs .note { font-size: .9em; }
+/* Characters panel: small arrow buttons, the name list takes the rest of the row */
+#charBox .row { display: flex; flex-wrap: nowrap; gap: 6px; align-items: stretch; }
+#charBox .row button { flex: 0 0 48px; min-width: 48px; padding: 6px 0; }
+#charBox .row select { flex: 1 1 auto; min-width: 0; font-size: 1em; }

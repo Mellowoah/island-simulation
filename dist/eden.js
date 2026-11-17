@@ -42,6 +42,7 @@ export const EDEN_DEFAULTS = {
   restHeal: 0.15, baseHeal: 0.01, healthRestWeight: 0.3, healthGuide: 30,
   urgentThirst: 60, urgentHunger: 70, // a released creature breaks off what it is doing when a need becomes urgent (if it knows where to go)
   // One of many worlds: the biblical reading of what follows the fall (all off by default = original behaviour).
+  serpent: true,            // Island Lab setup input: the deceiver is present. Off: nobody is ever tempted (T3: never eating is acceptable). On = original.
   lifeCourse: false,        // being.js: food, rest, healing, illness and dying of age change with life stage; pregnancy costs food (off = the original single adult body)
   traitDevelopment: false,  // being.js: traits shaped through life by parents, others and what happens (off = traits fixed at birth, the original rule)
   restoration: false,       // after the fall the Creator calls each creature once a year; those who turn back are guided, fed and kept from want
@@ -306,7 +307,7 @@ function afterFall(s, order) {
 
 function serpent(s, c) {
   const E = s.eden, cfg = E.config, e = c.eden;
-  if (E.phase !== 'guided' || s.tick < (cfg.serpentSilentYears ?? 0) * YEAR || dependent(s, c) || dist(c, E.tree) > 1 || (e.lastSerpent !== null && s.tick - e.lastSerpent < DAY)) return;
+  if (cfg.serpent === false || E.phase !== 'guided' || s.tick < (cfg.serpentSilentYears ?? 0) * YEAR || dependent(s, c) || dist(c, E.tree) > 1 || (e.lastSerpent !== null && s.tick - e.lastSerpent < DAY)) return;
   e.hearings++; e.lastSerpent = s.tick; e.credence = 1 - (1 - cfg.credenceStep) ** e.hearings;
   E.serpentSpoke = { tick: s.tick, id: c.id };
   event(s, 'The serpent spoke from the tree: "You will not die." (a claim, not verified)', c);

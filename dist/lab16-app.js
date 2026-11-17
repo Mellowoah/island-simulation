@@ -2,6 +2,7 @@
 import { DAY } from './sim.js';
 import { labCommand, confidence } from './lab.js';
 import { WORLDS, fieldsFor, defaultSetup, normalizeSetup, HELP } from './lab16-setup.js';
+import { LIFE_SNAP_KEYS } from './lab16-run.js';
 import { createRun, stepRun, seriesOf, serializeRun, restoreLabRun, restoreTheoryRun, THEORY_SAVE_KEY, LAB_SAVE_KEY } from './lab16-run.js';
 import { viewOfEden, viewOfLab } from './lab16-view.js';
 import { createPixelRenderer, loadImage } from './lab16-render.js';
@@ -18,6 +19,7 @@ const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const store = { get: k => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); return true; } catch { return false; } }, del: k => { try { localStorage.removeItem(k); } catch {} } };
 
 let setup = defaultSetup('eden'), run = null, renderer = null, layoutInfo = null, drawInfo = null;
+let pinned = false; // a character chosen from the Characters list stays chosen, even after it dies
 let selected = 0, paused = false, speed = 16, zoom = false, acc = 0, last = performance.now(), lastUI = 0, lastChart = 0, lastSave = 0;
 let report = null, reportImages = [];
 const cv = $('map'); const g = cv.getContext('2d');
@@ -92,7 +94,7 @@ function hud() {
     const E = s.eden, rel = E.phase === 'released', spoke = s.creatures.reduce((n, c) => n + c.eden.hearings, 0);
     const silent = s.tick < setup.guidanceYears * DAY;
     const gtxt = setup.guidance < 1 ? ` ${Math.round(setup.guidance * 100)}%` : '';
-    $('hud').innerHTML = `<span>${clockOf(s.tick)}<span class="mute">/${setup.runDays}</span></span><span class="heart">♥ ${alive}</span><span class="phase ${rel ? 'rel' : ''}">${rel ? 'RELEASED' : 'GUIDED' + gtxt}</span><span>🐍 ${silent ? 'silent' : 'spoke ' + spoke}</span>${setup.help ? `<span>${s.tick < run.helpUntil ? 'HELP ON' : 'HELP ENDED'}</span>` : ''}<span class="mute">seed ${s.seed}</span>`;
+    $('hud').innerHTML = `<span>${clockOf(s.tick)}<span class="mute">/${setup.runDays}</span></span><span class="heart">♥ ${alive}</span><span class="phase ${rel ? 'rel' : ''}">${rel ? 'RELEASED' : 'GUIDED' + gtxt}</span><span>🐍 ${setup.serpent === false ? 'absent' : silent ? 'silent' : 'spoke ' + spoke}</span>${setup.help ? `<span>${s.tick < run.helpUntil ? 'HELP ON' : 'HELP ENDED'}</span>` : ''}<span class="mute">seed ${s.seed}</span>`;
   } else {
     const m = s.samples.at(-1);
     $('hud').innerHTML = `<span>${clockOf(s.tick)}<span class="mute">/${setup.runDays}d</span></span><span class="heart">♥ ${alive}</span><span>trust ${m ? m.trustMean.toFixed(0) : s.config.startTrust}</span><span>lies ${Math.round(s.config.falseInformationRate * 100)}%</span><span class="mute">seed ${s.seed}</span>`;
@@ -102,6 +104,7 @@ function inspector() {
   const s = run.world, c = s.creatures[selected];
   const bar = (label, v, invert = false) => `<span>${label}</span><div class="bar"><i style="width:${Math.max(0, Math.min(100, v))}%;${invert ? 'background:#ff9a6a' : ''}"></i></div><span>${Math.round(v)}</span>`;
   if (!c) { $('inspector').innerHTML = ''; return; }
+  if (!c.alive && pinned) { $('inspector').innerHTML = `<h2>${esc(c.name)}</h2><p>Died: ${esc(c.death.cause)} (${clockOf(c.death.tick)}). Choose another in Characters, or tap one on the map.</p>`; return; }
   if (!c.alive) {
     const next = s.creatures.find(o => o.alive && o.id > c.id) ?? s.creatures.find(o => o.alive);
     if (next) { selected = next.id; toast(`${c.name} died (${c.death.cause.toLowerCase()}). Now following ${next.name}.`); return inspector(); }
@@ -131,7 +134,7 @@ function fmtAttr(a) {
 }
 const attrRow = a => `<tr><td>${esc(a.label)}<br><span class="note">${esc(a.channel)}${a.note ? ' · ' + esc(a.note) : ''}</span></td><td class="v">${fmtAttr(a)}</td></tr>`;
 function beingPanels(s, c) {
-  $('beingBox').hidden = !(run.kind === 'eden' && c && c.alive);
+  $('beingBox').hidden = !(run.kind === 'eden' && c && (c.alive || pinned));
   if ($('beingBox').hidden) return;
   $('attrTitle').textContent = `Attributes of ${c.name}`;
   if ($('attrBox').open) $('attrBody').innerHTML = attributesOf(s, c).map(g => `<p class="note" style="margin:.6em 0 .2em"><b>${esc(g.layer.name)}</b> · ${esc(g.layer.powers)}</p><table class="attrs">${g.rows.map(a => attrRow({ ...a, subText: a.sub ? a.sub(s, c) : null })).join('')}</table>`).join('');
@@ -139,12 +142,50 @@ function beingPanels(s, c) {
 }
 $('attrBox').ontoggle = () => { if (run) beingPanels(run.world, run.world.creatures[selected]); };
 $('layerBox').ontoggle = () => { if (run) beingPanels(run.world, run.world.creatures[selected]); };
+// ---------- Characters: pick anyone, see their attributes and how they changed over their life ----------
+const LIFE_LABELS = { health: ['Health', ''], energy: ['Energy', ''], hunger: ['Hunger', ''], thirst: ['Thirst', ''], credence: ['Belief in the claim', '%'],
+  warning: ['The word held', '%'], places: ['Food places known', ''], skill: ['Gathering skill', '%'], children: ['Children', ''] };
+let charKey = '';
+function spark(vals) {
+  const v = vals.filter(x => x !== null && x !== undefined); if (v.length < 2) return '';
+  const lo = Math.min(...v), hi = Math.max(...v), span = hi - lo || 1, w = 90, h = 18;
+  const pts = v.map((x, i) => `${(i / (v.length - 1) * w).toFixed(1)},${(h - 2 - (x - lo) / span * (h - 4)).toFixed(1)}`).join(' ');
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="#ffe680" stroke-width="1.5"/></svg>`;
+}
+function charOptions(s) {
+  const key = s.creatures.map(c => c.alive ? 1 : 0).join('');
+  if (key === charKey) return; charKey = key;
+  const order = [...s.creatures].sort((a, b) => (b.alive - a.alive) || a.id - b.id);
+  $('charPick').innerHTML = order.map(c => `<option value="${c.id}">${esc(c.name)} · ${c.eden.sex === 'M' ? 'm' : 'f'}${c.alive ? '' : ' · died'}</option>`).join('');
+}
+function charPanel() {
+  if ($('charBox').hidden || !run || run.kind !== 'eden') return;
+  const s = run.world, c = s.creatures[selected]; charOptions(s);
+  if (!c) return; $('charPick').value = String(c.id);
+  const e = c.eden, L = run.lives?.[c.id], snaps = L?.snaps ?? [], first = snaps[0], now = c.alive ? null : snaps.at(-1);
+  const nameOf = id => id === null || id === undefined ? 'none (first generation)' : esc(s.creatures[id].name);
+  const head = `<p><b>${esc(c.name)}</b> · ${e.sex === 'M' ? 'male' : 'female'} · ${c.alive ? `age ${((s.tick - e.born) / DAY).toFixed(0)}` : `died ${esc(c.death.cause.toLowerCase())} at ${((c.death.tick - e.born) / DAY).toFixed(0)}`}<br><span class="note">Mother ${nameOf(e.mother)} · father ${nameOf(e.father)} · children ${e.children.length ? e.children.map(id => esc(s.creatures[id].name)).join(', ') : 'none'}</span></p>`;
+  const cur = k => (now ?? null)?.[k] ?? { health: e.health, energy: c.energy, hunger: c.hunger, thirst: e.thirst, credence: e.credence * 100, warning: e.warning * 100, places: Object.keys(c.known).length, skill: Math.max(0, ...Object.values(c.skills)) * 100, children: e.children.length }[k];
+  const row = (label, a, b, unit, series) => { const d = b - a; return `<tr><td>${esc(label)}<br><span class="note">${a === null || a === undefined ? '' : `${Math.round(a)}${unit} → ${Math.round(b)}${unit} (${d >= 0 ? '+' : ''}${Math.round(d)})`}</span></td><td class="v">${spark(series)}</td></tr>`; };
+  let rows = LIFE_SNAP_KEYS.map(k => row(LIFE_LABELS[k][0], first?.[k], cur(k), LIFE_LABELS[k][1], [...snaps.map(x => x[k]), c.alive ? cur(k) : null]));
+  if (e.traits) rows = rows.concat(Object.keys(e.traits.now).map(k => row(k[0].toUpperCase() + k.slice(1) + ' (trait)', e.traits.base[k] * 100, e.traits.now[k] * 100, '%', [e.traits.base[k] * 100, ...snaps.map(x => x.traits ? x.traits[k] * 100 : null), e.traits.now[k] * 100])));
+  const since = first ? ` (since ${first.t === 0 ? 'the start' : `year ${(first.t / DAY).toFixed(0)}`}, one point a year)` : '';
+  const story = (L?.events ?? []).slice(-40).reverse().map(m => `<li><span class="t">${clockOf(m.tick)}</span> ${esc(m.text)}</li>`).join('') || '<li class="note">Nothing recorded yet.</li>';
+  $('charBody').innerHTML = `${head}<p class="note" style="margin:.4em 0">Changes over its life${since}:</p><table class="attrs">${rows.join('')}</table>`;
+  if ($('storyBox').open) $('storyList').innerHTML = story;
+}
+function pick(id) { selected = id; pinned = true; $('attrBox').open = true; inspector(); beingPanels(run.world, run.world.creatures[selected]); charPanel(); }
+$('chars').onclick = () => { if (!run || run.kind !== 'eden') { toast('Characters are for the Eden test.'); return; } $('charBox').hidden = !$('charBox').hidden; charKey = ''; if (!$('charBox').hidden) pick(selected); else pinned = false; };
+$('charPick').onchange = () => pick(Number($('charPick').value));
+$('storyBox').ontoggle = () => charPanel();
+const step = d => { const opts = [...$('charPick').options].map(o => Number(o.value)), i = opts.indexOf(selected); pick(opts[(i + d + opts.length) % opts.length]); };
+$('charPrev').onclick = () => step(-1); $('charNext').onclick = () => step(1);
 function events() {
   const s = run.world;
   const list = run.kind === 'eden' ? [...s.events].reverse().slice(0, 7).map(e => ({ t: e.tick, text: e.text })) : s.events.slice(0, 7).map(e => ({ t: e.tick, text: (e.id !== null ? s.creatures[e.id].name + ': ' : '') + e.text }));
   $('events').innerHTML = list.map(e => `<li><span class="t">${clockOf(e.t)}</span> ${esc(e.text)}</li>`).join('');
 }
-function update() { if (!run) return; hud(); inspector(); beingPanels(run.world, run.world.creatures[selected]); events(); if (run.kind === 'lab') $('cross').disabled = run.world.crossingsOpen.length >= run.world.config.crossings.length; }
+function update() { if (!run) return; hud(); inspector(); beingPanels(run.world, run.world.creatures[selected]); charPanel(); events(); if (run.kind === 'lab') $('cross').disabled = run.world.crossingsOpen.length >= run.world.config.crossings.length; }
 function chartMeta() { return run.kind === 'eden' ? { fallTick: run.world.eden.fallTick, helpStop: setup.help ? run.helpUntil : null } : {}; }
 function drawCharts() {
   if (!run) return;
@@ -161,7 +202,7 @@ cv.addEventListener('pointerdown', e => {
   if (!run || !drawInfo) return;
   const r = cv.getBoundingClientRect(), px = (e.clientX - r.left) / r.width * cv.width, py = (e.clientY - r.top) / r.height * cv.height;
   const id = renderer.pick(view(), px, py, drawInfo);
-  if (id !== null) { selected = id; inspector(); }
+  if (id !== null) { selected = id; pinned = false; inspector(); charPanel(); }
 });
 $('pause').onclick = () => { paused = !paused; $('pause').textContent = paused ? 'Resume' : 'Pause'; persist(); };
 $('speed').onclick = () => { speed = speed === 1 ? 4 : speed === 4 ? 16 : speed === 16 ? 64 : 1; $('speed').textContent = speed + '×'; };

@@ -40,13 +40,20 @@
     <div id="hud" class="hud"></div>
     <div class="mapwrap"><canvas id="map" width="576" height="416" aria-label="Island map. Tap a creature to follow it."></canvas></div>
     <div class="row">
-      <button id="pause">Pause</button><button id="speed">16×</button><button id="zoom">Zoom</button><button id="endRun">End &amp; report</button>
+      <button id="pause">Pause</button><button id="speed">16×</button><button id="zoom">Zoom</button><button id="chars">Characters</button><button id="endRun">End &amp; report</button>
     </div>
     <div class="row" id="labActions" hidden>
       <button id="reveal">Reveal food to selected</button><button id="cross">Open a crossing</button><button id="trust">Boost trust +20</button>
     </div>
     <div id="toast" role="status" aria-live="polite"></div>
     <div class="box" id="inspector"></div>
+    <div class="box" id="charBox" hidden>
+      <h2>Characters</h2>
+      <div class="row"><button id="charPrev" aria-label="Previous character">◀</button><select id="charPick" aria-label="Choose a character"></select><button id="charNext" aria-label="Next character">▶</button></div>
+      <div id="charBody"></div>
+      <details id="storyBox"><summary>Its story (latest first)</summary><ul id="storyList" class="events"></ul></details>
+      <p class="note">The full list of its attributes, grouped by layer, is just below.</p>
+    </div>
     <div class="box" id="beingBox" hidden>
       <details id="attrBox"><summary id="attrTitle">Attributes</summary><div id="attrBody"></div><p class="note">Recorded = computed and shown, but it does not act yet. Planned = in the design, not built.</p></details>
       <details id="layerBox"><summary>Layers of existence on this island</summary><div id="layerBody"></div><p class="note">Each layer holds the powers of those below it; humans have matter, life, sense and reason in one being. Spirit has intellect and will without a body. The Creator is the source of all of them, not one layer among them.</p></details>

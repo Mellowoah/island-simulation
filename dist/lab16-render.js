@@ -204,7 +204,7 @@ export function createPixelRenderer({ makeCanvas, town = null, dungeon = null, r
         const px = view.tree.x * T, py = view.tree.y * T;
         g.fillStyle = 'rgba(20,40,20,0.35)'; g.fillRect(px - 4, py + 13, 24, 3);
         if (art) g.drawImage(town, (TILE.fruitTree % 12) * T, Math.floor(TILE.fruitTree / 12) * T, T, T, px - 8, py - 16, T * 2, T * 2); else { g.fillStyle = '#d9822b'; g.fillRect(px + 2, py, 12, 12); g.fillStyle = '#6b4226'; g.fillRect(px + 7, py + 12, 2, 4); }
-        if (view.phase === 'guided') {
+        if (view.phase === 'guided' && view.serpent !== false) {
           g.drawImage(sprites.serpent, px + 9, py - 4);
           if (view.serpentSpoke && view.tick - view.serpentSpoke.tick < 120) {
             g.fillStyle = '#fff'; g.fillRect(px + 18, py - 24, 15, 9); g.fillRect(px + 20, py - 15, 3, 2);

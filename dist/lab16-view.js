@@ -7,7 +7,7 @@ export function viewOfEden(s) {
   return {
     kind: 'eden', w: W, h: H, tick: s.tick, terrainKey: `eden:${+s.bridge}`,
     isLand: (x, y) => land(x, y, s.bridge),
-    phase: E.phase,
+    phase: E.phase, serpent: E.config.serpent !== false,
     tree: { x: E.tree.x, y: E.tree.y }, serpentSpoke: E.serpentSpoke ? { tick: E.serpentSpoke.tick, id: E.serpentSpoke.id } : null,
     springs: E.springs.map(w => ({ x: w.x, y: w.y, name: w.name })),
     food: s.patches.map(p => ({ x: p.x, y: p.y, kind: p.gift ? 'gift' : p.field ? (s.tick < p.readyTick ? 'sown' : 'field') : 'bush', fill: p.capacity ? Math.min(1, p.stock / p.capacity) : 0, stock: p.stock })),

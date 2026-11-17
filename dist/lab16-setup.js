@@ -38,6 +38,8 @@ export const SETUP_FIELDS = [
     fixed: { eden: 24 },
     note: 'How many creatures start. T8: group gains don\'t erase individual losses, so each one is counted.',
     fixedNote: 'Fixed at 24 in Eden: the Eden code has no setting for it, and this run does not change sim rules.' },
+  { key: 'serpent', label: 'The deceiver is present', type: 'toggle', def: true, worlds: ['eden'],
+    note: 'Off: the serpent never appears or speaks, so nobody is tempted and the fall cannot come from him. T3: never eating is acceptable; the fall is not required. T4: the fall comes through the deceiver\'s doubt.' },
   { key: 'guidance', label: 'How often the Creator steps in', type: 'select', options: [[1, 'Always'], [0.75, '75% of months'], [0.5, '50% of months'], [0.25, '25% of months'], [0, 'Never']], def: 1, worlds: ['eden'],
     note: 'Tests P1 (guided more, less likely to eat when the deceiver speaks) and P2 (guided more, survive the first years after release better). Lines T2, T4 and T7 (proposed). "Always" is the original rule.' },
   { key: 'guidanceYears', label: 'Deceiver stays silent at first (years)', type: 'number', min: 0, max: 10, step: 1, def: 0, worlds: ['eden'],
@@ -102,7 +104,7 @@ export function normalizeSetup(input = {}) {
     if (f.fixed && f.fixed[world] !== undefined) v = f.fixed[world];
     out[f.key] = v;
   }
-  if (world === 'lab') { out.guidanceYears = 0; out.guidance = 1; out.help = false; out.restoration = false; out.tempters = 0; out.fallAgain = true; out.traitDev = false; out.lifeCourse = false; out.dAppetite = 1; out.dThirst = 1; out.dCuriosity = 0; out.dChildren = 0.2; out.dFruit = 0.5; out.dWarning = 3; }
+  if (world === 'lab') { out.guidanceYears = 0; out.guidance = 1; out.help = false; out.restoration = false; out.tempters = 0; out.fallAgain = true; out.traitDev = false; out.lifeCourse = false; out.serpent = true; out.dAppetite = 1; out.dThirst = 1; out.dCuriosity = 0; out.dChildren = 0.2; out.dFruit = 0.5; out.dWarning = 3; }
   if (world === 'eden') { out.falseInfo = 0; out.food = 60; out.regrowth = 0.03; out.talk = true; }
   return out;
 }

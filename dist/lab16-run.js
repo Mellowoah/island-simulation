@@ -65,8 +65,28 @@ export function routineSample(run) {
     run.prevTimes[c.id] = { ...c.times };
   }
 }
+// Each creature's life record (measure only), kept on the run, never on the world: a yearly snapshot of its
+// attributes, its own memories as they happen, and how it died. Lets the Characters panel show changes over a life.
+export const LIFE_SNAP_KEYS = ['health', 'energy', 'hunger', 'thirst', 'credence', 'warning', 'places', 'skill', 'children'];
+function snapOf(s, c) {
+  const e = c.eden;
+  return { t: s.tick, age: (s.tick - e.born) / DAY, stage: lifeStage((s.tick - e.born) / DAY).name, health: e.health, energy: c.energy, hunger: c.hunger, thirst: e.thirst,
+    credence: e.credence * 100, warning: e.warning * 100, places: Object.keys(c.known).length, skill: Math.max(0, ...Object.values(c.skills)) * 100,
+    children: e.children.length, restored: !!e.covered, traits: e.traits ? { ...e.traits.now } : null };
+}
+export function lifeSample(run) {
+  const s = run.world; run.lives ??= {};
+  for (const c of s.creatures) {
+    const L = (run.lives[c.id] ??= { snaps: [], events: [], seen: -1, died: null });
+    if (L.died) continue;
+    for (const m of c.memories) if (m.tick > L.seen) { L.events.push(m); L.seen = m.tick; }
+    if (L.events.length > 150) L.events.splice(0, L.events.length - 150);
+    if (!c.alive) { L.died = { t: c.death.tick, cause: c.death.cause }; L.snaps.push({ ...snapOf(s, c), t: c.death.tick }); continue; }
+    if (!L.snaps.length || s.tick - L.snaps.at(-1).t >= DAY) L.snaps.push(snapOf(s, c));
+  }
+}
 function edenSample(run) {
-  routineSample(run);
+  routineSample(run); lifeSample(run);
   const s = run.world, E = s.eden, alive = s.creatures.filter(c => c.alive);
   const cohort = run.cohort ? run.cohort.filter(id => s.creatures[id].alive).length / run.cohort.length * 100 : null;
   return { t: s.tick, phase: E.phase, pop: alive.length, births: E.births, deaths: s.creatures.length - alive.length,
@@ -87,7 +107,7 @@ export function createRun(input = {}) {
     return run;
   }
   const drives = driveConfig(setup, EDEN_DEFAULTS, SIM_DEFAULTS);
-  const world = createEden(setup.seed, drives.sim, { ...drives.eden, serpentSilentYears: setup.guidanceYears, guidanceRate: setup.guidance, restoration: setup.restoration, tempters: setup.tempters, fallAgain: setup.fallAgain, traitDevelopment: setup.traitDev, lifeCourse: setup.lifeCourse });
+  const world = createEden(setup.seed, drives.sim, { ...drives.eden, serpentSilentYears: setup.guidanceYears, guidanceRate: setup.guidance, restoration: setup.restoration, tempters: setup.tempters, fallAgain: setup.fallAgain, traitDevelopment: setup.traitDev, lifeCourse: setup.lifeCourse, serpent: setup.serpent });
   const run = { kind: 'eden', setup, world, endTick, done: false, helpUntil: setup.help ? Math.floor(endTick / 2) : 0, halfTick: Math.floor(endTick / 2),
     help: setup.help ? helpSpot(world) : null, cohort: null, half: null, series: [] };
   run.series.push(edenSample(run));
