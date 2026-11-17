@@ -165,3 +165,20 @@ Every death on 4 islands × 20 years was logged with its context (tools/diag-dea
 - **No drive to stay alive.** Tiredness could outweigh hunger to the death. Now, as body fat falls below 40% of its most (one's own or a child's in one's care), getting food overrides rest and comfort, and with nothing worth going for nearby people go looking for new food.
 
 Result on 4 islands × 20 years: hunger and thirst fell from 57% to 43% of deaths; illness is now the largest cause. What remains comes mainly in drought years and in large bands (35+), i.e. scarcity and crowding.
+
+## Animals, stone, fire, cooking, know-how and the inner voice (17 Nov 2026)
+
+Integrated nature.js into the small world. Nothing here says who does what; results come from the laws of the things involved and from what people learn.
+
+- **Animals**: six species with densities from field counts and logistic growth by body size (Fenchel 1974). Groups are met at the standard random-search encounter rate. A small share of natural deaths (CARCASS_FOUND = 5%, approx.; sweep) leave meat a person can reach for about a day; vultures make them visible from about 3 km.
+- **Hunting**: chosen from what each person expects it to return (their own record, the most experienced teller's record, and a modest guess for the untried), plus motives: survival (the drive), success (ambition: meat is shared and brings standing; Hawkes), against caution. Getting within reach falls with the animal's flight distance (reach/flight, changed from its square root, which let spears approach impala too easily). Stalking is slow (0.3 of walking pace), at most 6 hours.
+  - Check: large kills per 6-hour hunter-day 0–0.019 on three islands over 8 years, against 0.01–0.03 for Hadza with bows (no bows here: should not beat them). Pass.
+  - Emerged, not set: men hunt 1.6–3× the hours women do (stalking with an infant is harder).
+  - Open: meat is about 3% of food against roughly 30% for the Hadza. The gap is bows and poison, which the laws do not yet allow.
+- **Stone and wood**: people pick up what lies to hand (a chance, more for the curious). Trying things combines two held things with an action at random. The laws decide: a hard stone struck on flint gives a flake; a sharp edge cuts a stick to a point; dry wood rubbed on dry wood can give an ember, wet wood never. Flakes and spears appeared on every island, at different times.
+- **Know-how**: a recipe is known while its skill lasts (unused skills fade by the power law). It is shown to others in the evening by chance and lost with the last person who knows it.
+- **Fire**: lit from an ember caught in dry grass, or carried as a burning stick from a lightning grass fire. It burns about 1 kg of wood an hour by day and smoulders at night (banked; approx.), is fed by people at camp when dead wood is within about a kilometre, and the rain can put it out. Fires were lit on every island but often went out.
+- **Cooking**: found by chance by someone tending a fire, then shown to others. Eating at camp with a fire gives +15% energy (assumption; Carmody et al. 2011 give the direction only; sweep 5–30%). The gain is booked in the kcal ledger.
+- **Boom and bust found and fixed**: on one island a spear and a few lucky kills spread high hopes and almost everyone took up hunting, and the island fell to 20 people. Causes: hunting hours were not recorded when a trip was cut short (hopes never fell); approach was too easy; hunting days reached 60 km. All three fixed. Three islands are now stable.
+- **Inner voice**: each choice now carries its motives in words (survival, pleasure, success, risk), shown on the phone page.
+- **Ledgers**: kcal gathered from plants plus meat taken plus cooking gain = eaten + carried + at camp + spoiled; carcass kcal made = taken + rotted + lying. Both are checked daily (alarms) and in tests.

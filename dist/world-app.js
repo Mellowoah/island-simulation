@@ -45,6 +45,9 @@ function drawPeople() {
   for (const w of s.waters) if (seen(w.x, w.y)) { g.strokeStyle = w.active ? '#bfe8ff' : '#6b5a40'; g.lineWidth = 2; g.beginPath(); g.arc((w.x + 0.5) * px, (w.y + 0.5) * px, Math.max(2, px * 0.5), 0, 7); g.stroke(); }
   // camp
   for (const b of s.bands) if (!b.ended) { g.fillStyle = '#ff6a2a'; g.beginPath(); g.arc((b.camp.x + 0.5) * px, (b.camp.y + 0.5) * px, Math.max(4, px * 0.9), 0, 7); g.fill(); g.fillStyle = '#fff'; g.font = `${Math.max(9, px * 1.4)}px monospace`; g.fillText(String(b.id + 1), (b.camp.x + 1.2) * px, (b.camp.y + 0.4) * px); }
+  for (const b of s.bands) if (!b.ended && b.fire?.fuel > 0) { g.strokeStyle = '#ffe14a'; g.lineWidth = 2; g.beginPath(); g.arc((b.camp.x + 0.5) * px, (b.camp.y + 0.5) * px, Math.max(7, px * 1.6), 0, 7); g.stroke(); } // a fire at camp
+  for (const w of s.wildfires ?? []) if (s.seenAt[w.y * T.TW + w.x] >= 0) { g.fillStyle = 'rgba(255,120,30,0.35)'; g.fillRect((w.x - 4) * px, (w.y - 4) * px, 8 * px, 8 * px); } // a grass fire, where someone has seen land
+  for (const c of s.carcasses ?? []) if (s.seenAt[c.y * T.TW + c.x] >= 0) { g.fillStyle = '#c0392b'; g.fillRect(c.x * px, c.y * px, Math.max(2, px), Math.max(2, px)); }
   // people
   for (const p of s.people) {
     if (!p.alive) continue;
@@ -71,7 +74,7 @@ wrap.addEventListener('click', e => {
 
 const pct = v => Math.round(v);
 function bar(label, v, col, txt) { return `<span>${label}</span><span class="bar"><i style="width:${Math.max(0, Math.min(100, v))}%;background:${col}"></i></span><span>${txt ?? pct(v)}</span>`; }
-const STEP_WORD = { walk: 'walking', gather: 'gathering', sleep: 'asleep', rest: 'resting', camp: 'at camp', drink: 'drinking', unload: 'bringing food home' };
+const STEP_WORD = { walk: 'walking', gather: 'gathering', sleep: 'asleep', rest: 'resting', camp: 'at camp', drink: 'drinking', unload: 'bringing food home', hunt: 'hunting', butcher: 'cutting meat', tinker: 'trying things' };
 function who() {
   const p = s.people[selected]; if (!p) return;
   const a = ageOf(s, p), fam = s.households[p.household]?.members.filter(i => i !== p.id).map(i => s.people[i]).filter(q => q.alive).map(q => `${esc(q.name)} (${Math.floor(ageOf(s, q))})`).join(', ') || 'none';
@@ -85,8 +88,12 @@ function who() {
   $('who').innerHTML = `<p>${bandTxt}. Parents: ${parents}. Household: ${fam}.</p>
     <div class="bars">${bar('Hunger', p.hunger, '#e0703a')}${bar('Thirst', p.thirst, '#4aa3df')}${bar('Body fat', p.reserve / p.body.fatMax * 100, '#f0c040', pct(p.reserve / p.body.fatMax * 100) + '%')}${bar('Energy', p.energy, '#7fd88f')}${bar('Health', p.health, '#ff8aa0')}</div>
     <p><b>Now:</b> ${doing}. ${p.carry > 0 ? `Carrying ${Math.round(p.carry)} kcal home.` : ''}</p>
+    ${d && !carer && d.thought ? `<p><b>Thinking:</b> <i>${esc(d.thought)}</i></p>` : ''}
+    ${p.items?.length || p.brand ? `<p><b>Has:</b> ${esc([...(p.items ?? []), ...(p.brand ? ['a burning stick'] : [])].join(', '))}.</p>` : ''}
+    ${(() => { const k = Object.keys(p.skills ?? {}).filter(x => (x.startsWith('make:') || x === 'cook') && p.skills[x] >= 0.03); return k.length ? `<p><b>Knows how to:</b> ${esc(k.map(x => x === 'cook' ? 'cook by the fire' : x.split(':')[1] + ' ' + x.split(':')[2].replace('+', ' with ')).join('; '))}.</p>` : ''; })()}
+    ${p.hunt?.hours > 0 ? `<p><b>Hunting so far:</b> ${p.hunt.hours.toFixed(0)} hours, ${Math.round(p.hunt.kcal)} kcal of meat.</p>` : ''}
     ${d && !carer ? `<p class="opts"><b>Last choice:</b> ${esc(d.chose)}, because ${esc(d.why)}.<br>Options weighed: ${d.options.map(o => `${esc(o.k)} ${o.u.toFixed(2)}`).join(' · ')}</p>` : ''}
-    <p class="note">Body: ${p.body.mass.toFixed(1)} kg, burns about ${Math.round(p.body.base)} kcal a day at rest and work, walks ${(p.body.kmh).toFixed(1)} km/h. Temperament: curiosity ${pct(p.mind.curiosity * 100)}, caution ${pct(p.mind.caution * 100)}, care ${pct(p.mind.care * 100)}, sociability ${pct(p.mind.social * 100)}. Knows ${(known * T.TILE_KM ** 2).toFixed(0)} km² of the island and ${Object.keys(p.places).length} food places. Walked ${(p.tiles * T.TILE_KM).toFixed(0)} km in all.</p>
+    <p class="note">Body: ${p.body.mass.toFixed(1)} kg, burns about ${Math.round(p.body.base)} kcal a day at rest and work, walks ${(p.body.kmh).toFixed(1)} km/h. Temperament: curiosity ${pct(p.mind.curiosity * 100)}, caution ${pct(p.mind.caution * 100)}, care ${pct(p.mind.care * 100)}, sociability ${pct(p.mind.social * 100)}, ambition ${pct((p.mind.ambition ?? 0.5) * 100)}. Knows ${(known * T.TILE_KM ** 2).toFixed(0)} km² of the island and ${Object.keys(p.places).length} food places. Walked ${(p.tiles * T.TILE_KM).toFixed(0)} km in all.</p>
     <details><summary>Their life so far</summary><ul id="story">${p.memories.slice(-30).reverse().map(m => `<li><span class="t">${esc(dateOf(C, m.t).label)}</span>${esc(m.text)}</li>`).join('')}</ul></details>`;
 }
 function ui(force = false) {

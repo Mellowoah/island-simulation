@@ -53,18 +53,20 @@ test('Y4 a settled forager day: adults walk 5-15 km and gather 3-6 hours a day',
   assert.ok(r.all >= 5 && r.all <= 15, `${r.all.toFixed(1)} km a day`);
   assert.ok(r.gather >= 3 && r.gather <= 6, `${r.gather.toFixed(1)} h gathering a day`);
 });
-test('Y4b day range by sex like the Hadza (women ~6, men ~11 km)', { todo: 'men walk less than Hadza men (about 9 km against 11): there is no hunting yet, which is what takes Hadza men far' }, () => {
+test('Y4b day range by sex like the Hadza (women ~6, men ~11 km)', { todo: 'men walk less than Hadza men (about 9 km against 11): hunting is in, but without bows it stays rare, and long hunts are what take Hadza men far' }, () => {
   const r = settled();
   assert.ok(r.F >= 4 && r.F <= 8 && r.M >= 9 && r.M <= 13, `women ${r.F.toFixed(1)}, men ${r.M.toFixed(1)} km`);
 });
 
-test('Y5 the books balance: food grown = eaten, rotted or left; kcal gathered = eaten, carried, at camp or spoiled', () => {
+test('Y5 the books balance: food grown = eaten, rotted or left; kcal gathered (plants, meat, cooking gain) = eaten, carried, at camp or spoiled; carcasses = taken, rotted or lying', () => {
   const s = createWorld2(43); stepWorld(s, 24 * 90);
   const L = s.ledger, left = s.patches.reduce((n, q) => n + q.stock, 0), tol = 1e-6 * (L.initial + L.regenerated);
   assert.ok(Math.abs(L.initial + L.regenerated - L.consumed - L.decayed - left) < tol, 'food ledger');
-  const gathered = L.consumed * 500, held = s.people.reduce((n, p) => n + p.carry, 0) + s.households.reduce((n, h) => n + h.pool, 0);
+  const gathered = L.consumed * 500 + (L.meatKcal ?? 0) + (L.cookGain ?? 0), held = s.people.reduce((n, p) => n + p.carry, 0) + s.households.reduce((n, h) => n + h.pool, 0) + (s.lostCarry ?? 0);
   const err = gathered - (s.energyLedger.eaten - (L.milkKcal ?? 0)) - held - L.poolSpoiled;
   assert.ok(Math.abs(err) < 1e-6 * gathered, `unbooked ${err.toFixed(1)} kcal of ${gathered.toFixed(0)}`);
+  const C2 = L.carcass, lying = s.carcasses.reduce((n, c) => n + c.kcal, 0);
+  assert.ok(Math.abs(C2.made - C2.taken - C2.rotted - lying) < 1e-6 * Math.max(1, C2.made), 'carcass ledger');
 });
 
 test('Y6 the same seed gives the same history', () => {
@@ -92,4 +94,21 @@ test('Y9 bands: a large band can split into two camps, and families can move bet
   const ev = s.events.map(e => e.text).join('\n');
   assert.ok(/ split: /.test(ev) || s.bands.length > 3, 'a split happened');
   assert.ok(/went to live with/.test(ev), 'a family moved band');
+});
+
+test('Y10 animals and hunting: herds stay within their land, and large kills are rare (Hadza with bows: 1-3 per 100 hunter-days)', () => {
+  const s = createWorld2(45); stepWorld(s, 24 * 365);
+  for (const id in s.animals) assert.ok(s.animals[id].every(n => n >= 0 && Number.isFinite(n)), id);
+  const H = s.hunting, days = Math.max(1, H.tripHours / 6);
+  assert.ok(H.largeKills / days <= 0.03, `large kills per hunter-day ${(H.largeKills / days).toFixed(3)} (no bows here: should not beat the Hadza)`);
+  assert.equal((s.alarms ?? []).length, 0, JSON.stringify(s.alarms));
+});
+
+test('Y11 no recipes: a flake needs a hard stone struck on flint; an ember needs dry wood (laws, not a list)', async () => {
+  const N = await import('../dist/nature.js');
+  const s = createWorld2(46);
+  assert.equal(N.law(s, 'strike', 'stick', 'flint', 1, 0), null, 'wood does not knap flint');
+  assert.equal(N.law(s, 'strike', 'cobble', 'flint', 1, 0)?.made, 'flake');
+  assert.equal(N.law(s, 'cut', 'flake', 'stick', 1, 0)?.made, 'spear');
+  s.tick = 0; const wet = N.moisture(s) > 0.15; assert.equal(N.law(s, 'rub', 'stick', 'stick', 1, 0)?.made ?? null, wet ? null : 'ember');
 });

@@ -43,6 +43,7 @@ export const SPECIES = {
   buffalo: { label: 'buffalo', mass: 500, density: 1, herd: 20, see: 0.3, flee: 50, speed: 15, danger: 0.12, habitat: { woodland: 0.8, river: 1, grass: 0.4 }, src: 'buffalo (assumption)' },
 };
 export const MEAT = { edible: 0.55, kcalPerKg: 1500 }; // share of live mass eaten; kcal per kg of wild carcass meat (approx.)
+export const CARCASS_FOUND = 0.05; // share of medium and large natural deaths that leave meat a person could reach (approx.; sweep)
 export const LARGE = 40; // kg: what counts as a large animal in the checks
 const rMax = m => 1.1 * m ** -0.26; // per year (Fenchel 1974 slope)
 const CELL = 8; export const CW = Math.ceil(T.TW / CELL), CH = Math.ceil(T.TH / CELL);
@@ -69,15 +70,19 @@ export function animalDay(s) {
       const K = capacity(sp, c); if (K <= 0) continue;
       const n = N[c], births = r * n * dt, deaths = r * n * n / K * dt;
       N[c] = Math.max(0, n + births - deaths);
-      // a carcass a person could find: a share of medium and large deaths, lying about a day
-      if (sp.mass >= 20 && draw(s, c * 7 + Object.keys(SPECIES).indexOf(id), SALT.carcass) < Math.min(1, deaths * 0.5)) {
+      // a carcass a person could find: most natural deaths are kills that lions and hyenas finish; a small share
+      // (CARCASS_FOUND, approx.) lies with meat on it for about a day
+      if (sp.mass >= 20 && draw(s, c * 7 + Object.keys(SPECIES).indexOf(id), SALT.carcass) < Math.min(1, deaths * CARCASS_FOUND)) {
         const tiles = []; for (let k = 0; k < 6; k++) { const x = (c % CW) * CELL + Math.floor(draw(s, c, SALT.carcass + 1, s.tick * 6 + k) * CELL), y = Math.floor(c / CW) * CELL + Math.floor(draw(s, c, SALT.carcass + 2, s.tick * 6 + k) * CELL); if (T.isWalkable(x, y)) { tiles.push([x, y]); break; } }
-        if (tiles.length) s.carcasses.push({ id: s.nextId++, species: id, x: tiles[0][0], y: tiles[0][1], kcal: sp.mass * MEAT.edible * MEAT.kcalPerKg * 0.5, until: s.tick + C.day, natural: true, roasted: false });
+        if (tiles.length) { const kcal = sp.mass * MEAT.edible * MEAT.kcalPerKg * 0.5; s.carcasses.push({ id: s.nextId++, species: id, x: tiles[0][0], y: tiles[0][1], kcal, kcal0: kcal, taken: 0, until: s.tick + C.day, natural: true, roasted: false }); book(s, 'made', kcal); }
       }
     }
   }
-  s.carcasses = s.carcasses.filter(k => k.until > s.tick && k.kcal > 100);
+  dropCarcasses(s);
 }
+// carcasses that rot or are eaten by scavengers leave the world (booked)
+export function dropCarcasses(s) { s.carcasses = s.carcasses.filter(k => { const keep = k.until > s.tick && k.kcal > 100; if (!keep) book(s, 'rotted', k.kcal); return keep; }); }
+export const book = (s, k, kcal) => { const L = (s.ledger.carcass ??= { made: 0, taken: 0, rotted: 0 }); L[k] += kcal; };
 // Groups met while walking `km` in a cell: Poisson mean = km x 2 x sighting distance x group density.
 export function sightings(s, p, km) {
   const c = cellOf(p.x, p.y), h = habitat()[c], area = Object.values(h).reduce((a, b) => a + b, 0) || 1, out = [];
@@ -145,7 +150,7 @@ export function law(s, verb, a, b, skill, r) {
 export const VERBS = ['strike', 'cut', 'rub'];
 
 // ---------- fire ----------
-export const FIRE = { burnKgH: 1.0, fuelPerStick: 0.6, startFuel: 1.5, rainOut: 0.02 }; // approx.; a small cooking fire
+export const FIRE = { burnKgH: 1.0, fuelPerStick: 0.6, startFuel: 1.5, rainOut: 0.005 }; // approx.; a small cooking fire
 export const COOK = { tubers: 1.3, meat: 1.15, fish: 1.1, shellfish: 1.05, nuts: 1.1 }; // energy gain from cooking (assumption; Carmody et al. 2011 give direction only)
 // Lightning: in the dry season, about one fire per 1,000 km² a day lights the grass of one cell for a day, so a given
 // patch of grass burns every few years (approx.; savanna fire return 2-6 years).
@@ -157,7 +162,7 @@ export function wildfireDay(s) {
     const x = (c % CW) * CELL + CELL / 2 | 0, y = Math.floor(c / CW) * CELL + CELL / 2 | 0;
     s.wildfires.push({ x, y, cell: c, until: s.tick + C.day });
     // small animals caught by the fire: roasted carcasses for anyone who comes
-    for (let k = 0; k < 2; k++) s.carcasses.push({ id: s.nextId++, species: 'hare', x: x + k, y, kcal: 2.5 * MEAT.edible * MEAT.kcalPerKg, until: s.tick + 2 * C.day, natural: true, roasted: true });
+    for (let k = 0; k < 2; k++) { if (!T.isWalkable(x + k, y)) continue; const kcal = 2.5 * MEAT.edible * MEAT.kcalPerKg; s.carcasses.push({ id: s.nextId++, species: 'hare', x: x + k, y, kcal, kcal0: kcal, taken: 0, until: s.tick + 2 * C.day, natural: true, roasted: true }); book(s, 'made', kcal); }
   }
   s.wildfires = s.wildfires.filter(w => w.until > s.tick);
 }
@@ -172,7 +177,7 @@ export const WEAPON = { hands: { reach: 1, joule: 50, point: false }, stone: { r
 const KILL_K = 15.6;
 export function attempt(s, p, species, weapon, skill, stealth) {
   const sp = SPECIES[species], w = WEAPON[weapon], r = i => draw(s, p.id, SALT.attempt + i);
-  const close = Math.min(1, Math.sqrt(w.reach / sp.flee)) * stealth;
+  const close = Math.min(1, w.reach / sp.flee) * stealth; // getting within reach before it bolts: harder the further it flees
   if (r(0) > close) return { got: false, why: 'it ran before I was close' };
   if (r(1) > 0.4 + 0.4 * skill) return { got: false, why: 'I missed', hurt: r(3) < sp.danger };
   const dmg = w.joule * (w.point ? 3 : 1), disable = 1 - Math.exp(-dmg / (KILL_K * sp.mass));
