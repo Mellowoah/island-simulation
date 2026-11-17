@@ -1,5 +1,5 @@
 // Island: the small world, on a phone. Presentation only: it reads the world and steps it; it never changes a rule.
-import { createWorld2, stepWorld, worldMetrics, ageOf, living } from './world.js';
+import { createWorld2, stepWorld, worldMetrics, ageOf, living, bandOf, bandName } from './world.js';
 import { clockOf, dateOf, hourOf, isNight } from './clock.js';
 import * as T from './terrain.js';
 import { FOODS } from './savanna.js';
@@ -44,7 +44,7 @@ function drawPeople() {
   g.globalAlpha = 1;
   for (const w of s.waters) if (seen(w.x, w.y)) { g.strokeStyle = w.active ? '#bfe8ff' : '#6b5a40'; g.lineWidth = 2; g.beginPath(); g.arc((w.x + 0.5) * px, (w.y + 0.5) * px, Math.max(2, px * 0.5), 0, 7); g.stroke(); }
   // camp
-  g.fillStyle = '#ff6a2a'; g.beginPath(); g.arc((s.camp.x + 0.5) * px, (s.camp.y + 0.5) * px, Math.max(4, px * 0.9), 0, 7); g.fill();
+  for (const b of s.bands) if (!b.ended) { g.fillStyle = '#ff6a2a'; g.beginPath(); g.arc((b.camp.x + 0.5) * px, (b.camp.y + 0.5) * px, Math.max(4, px * 0.9), 0, 7); g.fill(); g.fillStyle = '#fff'; g.font = `${Math.max(9, px * 1.4)}px monospace`; g.fillText(String(b.id + 1), (b.camp.x + 1.2) * px, (b.camp.y + 0.4) * px); }
   // people
   for (const p of s.people) {
     if (!p.alive) continue;
@@ -75,13 +75,14 @@ const STEP_WORD = { walk: 'walking', gather: 'gathering', sleep: 'asleep', rest:
 function who() {
   const p = s.people[selected]; if (!p) return;
   const a = ageOf(s, p), fam = s.households[p.household]?.members.filter(i => i !== p.id).map(i => s.people[i]).filter(q => q.alive).map(q => `${esc(q.name)} (${Math.floor(ageOf(s, q))})`).join(', ') || 'none';
+  const bandTxt = `${bandName(s, bandOf(s, p))}`;
   const parents = [p.mother, p.father].map(i => i === null ? null : s.people[i]).filter(Boolean).map(q => esc(q.name) + (q.alive ? '' : ' †')).join(' and ') || 'not recorded (first generation)';
   const carer = s.carer.get(p.id);
   const doing = !p.alive ? `died: ${esc(p.death.cause.toLowerCase())}` : carer ? `with ${esc(carer.name)}${a < 3 ? ', carried' : ''}` : (STEP_WORD[p.step?.k] ?? 'deciding') + (p.step?.q ? ` ${esc(p.step.q.name.toLowerCase())}` : '') + (p.step?.explore ? ' (exploring)' : '');
   let known = p.seenCount ?? 0; if (p.seen) { known = 0; for (let i = 0; i < p.seen.length; i++) known += p.seen[i]; }
   const d = p.decision;
   $('whoTitle').textContent = `${p.name} · ${p.sex === 'F' ? 'female' : 'male'} · ${Math.floor(a)}`;
-  $('who').innerHTML = `<p>Parents: ${parents}. Household: ${fam}.</p>
+  $('who').innerHTML = `<p>${bandTxt}. Parents: ${parents}. Household: ${fam}.</p>
     <div class="bars">${bar('Hunger', p.hunger, '#e0703a')}${bar('Thirst', p.thirst, '#4aa3df')}${bar('Body fat', p.reserve / p.body.fatMax * 100, '#f0c040', pct(p.reserve / p.body.fatMax * 100) + '%')}${bar('Energy', p.energy, '#7fd88f')}${bar('Health', p.health, '#ff8aa0')}</div>
     <p><b>Now:</b> ${doing}. ${p.carry > 0 ? `Carrying ${Math.round(p.carry)} kcal home.` : ''}</p>
     ${d && !carer ? `<p class="opts"><b>Last choice:</b> ${esc(d.chose)}, because ${esc(d.why)}.<br>Options weighed: ${d.options.map(o => `${esc(o.k)} ${o.u.toFixed(2)}`).join(' · ')}</p>` : ''}
@@ -92,7 +93,7 @@ function ui(force = false) {
   const m = worldMetrics(s);
   $('hud').innerHTML = `<span>${esc(m.date.toUpperCase())}</span><span>♥ ${m.population}</span><span class="mute">${m.households} families · ${m.generations + 1} generation${m.generations ? 's' : ''}</span><span class="mute">known ${Math.round(m.discoveredShare * 100)}% of ${Math.round(m.landKm2)} km²</span><span class="mute">${paused ? 'paused' : speed === 24 ? '1 day/s' : speed === 168 ? '1 week/s' : '1 month/s'}</span>`;
   const dd = Object.entries(m.deaths).map(([k, v]) => `${v} ${k.toLowerCase()}`).join(', ') || 'none';
-  $('band').innerHTML = `Born: ${m.births}. Died: ${dd}. Children under 14: ${m.children}. Grown members' body fat: ${Math.round(m.meanFat * 100)}% of full. Food shared between families so far: ${Math.round(m.shared / 1000)} thousand kcal. Camp: ${esc(s.waters.find(w => w.id === s.camp.water).name.toLowerCase())}.`;
+  $('band').innerHTML = `Born: ${m.births}. Died: ${dd}. Children under 14: ${m.children}. Grown members' body fat: ${Math.round(m.meanFat * 100)}% of full. Food shared between families so far: ${Math.round(m.shared / 1000)} thousand kcal. Bands: ${m.bands.map(b => `${b.id + 1} (${b.n} people, at ${esc(s.waters.find(w => w.id === b.camp.water).name.toLowerCase())})`).join('; ') || 'none'}.${m.alarms ? ` Alarms: ${m.alarms} (see console).` : ''}`;
   $('log').innerHTML = s.events.slice(-14).reverse().map(e => `<li><span class="t">${esc(dateOf(C, e.t).label)}</span>${esc(e.text)}</li>`).join('');
   if (selected !== null) who();
   for (const b of document.querySelectorAll('[data-speed]')) b.classList.toggle('on', Number(b.dataset.speed) === speed && !paused);
@@ -103,7 +104,8 @@ $('pause').onclick = () => { paused = !paused; ui(); };
 for (const b of document.querySelectorAll('[data-speed]')) b.onclick = () => { speed = Number(b.dataset.speed); paused = false; ui(); };
 $('zoomIn').onclick = () => { const cx = (wrap.scrollLeft + wrap.clientWidth / 2) / px, cy = (wrap.scrollTop + wrap.clientHeight / 2) / px; px = Math.min(16, px + 2); sizeCanvases(); centerOn(cx, cy); };
 $('zoomOut').onclick = () => { const cx = (wrap.scrollLeft + wrap.clientWidth / 2) / px, cy = (wrap.scrollTop + wrap.clientHeight / 2) / px; px = Math.max(3, px - 2); sizeCanvases(); centerOn(cx, cy); };
-$('toCamp').onclick = () => centerOn(s.camp.x, s.camp.y, true);
+let campIdx = 0;
+$('toCamp').onclick = () => { const bs = s.bands.filter(b => !b.ended); if (!bs.length) return; const b = bs[campIdx++ % bs.length]; centerOn(b.camp.x, b.camp.y, true); };
 $('follow').onclick = () => { if (selected === null) selected = s.people.find(p => p.alive && p.body.age >= 18)?.id ?? null; follow = !follow; ui(true); };
 
 function record() {
@@ -148,5 +150,5 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 sizeCanvases(); drawLand(); ui();
-requestAnimationFrame(() => { centerOn(s.camp.x, s.camp.y); requestAnimationFrame(frame); });
+requestAnimationFrame(() => { centerOn(s.bands[0].camp.x, s.bands[0].camp.y); requestAnimationFrame(frame); });
 window.__world = { s, setSpeed: v => { speed = v; }, select: id => { selected = id; ui(true); } };

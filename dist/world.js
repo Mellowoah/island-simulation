@@ -29,7 +29,11 @@ import * as T from './terrain.js';
 
 export const WORLD_VERSION = 1;
 export const WORLD_DEFAULTS = {
-  families: 6,              // a camp of about 30 people (Hadza camps average about 30; Marlowe 2010)
+  bands: 3,                 // neighbouring bands on the island, so there are others to marry and to join (foragers live in regional networks)
+  families: 4,              // families per band at the start: about 20 people a camp (Hadza camps average about 30; Marlowe 2010)
+  fissionSize: 50,          // a band this large may split (group sizes nest by about x3: families ~5, bands ~15-50, communities ~150; Hamilton et al. 2007)
+  fusionSize: 8,            // a band this small may join another
+  householdMove: 0.03,      // chance a month that a family moves to another band where it has kin (camp membership is fluid among foragers; approx.)
   clockMinutes: 60,
   density: 0.24,            // people per km² the land feeds in an ordinary year (Hadza, Marlowe)
   choiceTemperature: 0.05,  // bounded rationality: how often a person picks something other than the best-looking option
@@ -44,7 +48,7 @@ export const WORLD_DEFAULTS = {
 };
 
 const K = STREAMS.world[0];
-const SALT = { setup: K, choice: K + 10, explore: K + 11, conceive: K + 13, pairMate: K + 14, newborn: K + 15, illness: K + 21, injury: K + 22, birth: K + 23, pairing: K + 24, talk: K + 25 };
+const SALT = { setup: K, choice: K + 10, explore: K + 11, conceive: K + 13, pairMate: K + 14, newborn: K + 15, illness: K + 21, injury: K + 22, birth: K + 23, pairing: K + 24, talk: K + 25, share: K + 26, band: K + 27, adopt: K + 28, move: K + 29 };
 const draw = (s, id, salt, t = s.tick) => noise2(seedKey(s.seed), t, id, salt);
 const gauss = (s, id, salt, t) => { let z = 0; for (let i = 0; i < 4; i++) z += draw(s, id, salt + 0, t * 4 + i + 1); return (z - 2) * Math.sqrt(3); }; // approx. N(0,1)
 const SYL = ['ka', 'lo', 'mi', 'ne', 'ra', 'su', 'te', 'vi', 'ze', 'do', 'an', 'el', 'or', 'ul', 'ya', 'be', 'ha', 'ji', 'mu', 'si'];
@@ -59,6 +63,10 @@ const LIVE = new WeakMap(), HOMES = new WeakMap();
 export const living = s => { let l = LIVE.get(s); if (!l) { l = s.people.filter(p => p.alive); LIVE.set(s, l); } return l; };
 const homes = s => { let h = HOMES.get(s); if (!h) { h = s.households.filter(x => x.members.some(i => s.people[i].alive)); HOMES.set(s, h); } return h; };
 const changed = s => { LIVE.delete(s); HOMES.delete(s); };
+// Bands: each family belongs to one; each band has its own camp.
+export const bandOf = (s, p) => s.bands[s.households[p.household]?.band ?? 0];
+const campOf = (s, p) => bandOf(s, p).camp;
+export const bandMembers = (s, b) => living(s).filter(p => (s.households[p.household]?.band ?? 0) === b.id);
 const W = T.TW, H = T.TH;
 
 // ---------- the land's food and water ----------
@@ -95,11 +103,13 @@ function look(s, p) {
   for (const q of s.patchIndex(p.x, p.y, r)) {
     const near = dist(q, p) <= 2, prev = p.places[q.id];
     if (!prev) note(s, p, `Found ${q.name.toLowerCase()} (${placeName(q)}).`);
-    p.places[q.id] = { exp: near ? q.stock : (prev ? prev.exp : q.stock * 0.5), t: s.tick };
+    if (near) observe(s, p, q, q.stock);                                  // a close look
+    else if (!prev) p.places[q.id] = { exp: q.stock * 0.5, t: s.tick, u: 0, n: 0 }; // seen from afar: it is there, how much is a guess
   }
   for (const w of s.waters) if (dist(w, p) <= r) {
     if (!p.waters[w.id]) note(s, p, `Found water: ${w.name.toLowerCase()}.`);
-    p.waters[w.id] = { active: w.active, t: s.tick };
+    const was = p.waters[w.id];
+    p.waters[w.id] = { active: w.active, t: s.tick, dryOk: (was?.dryOk ?? false) || (w.active && realFrac(s) >= 7 / 12) }; // seen with water in the dry season: it lasts
   }
 }
 const placeName = q => `${Math.round(q.x * T.TILE_KM)} km east, ${Math.round(q.y * T.TILE_KM)} km south`;
@@ -117,6 +127,8 @@ function setBody(s, p) {
     kmh: EN.speedKmH(m) * f.speed, sleepH: a >= 18 ? f.sleep : st.sleepHours, waterAt: B.thirstAtShare * m * 1000, waterDeath: B.dehydrationDeathShare * m * 1000,
     carryKcal: Math.max(0, 4000 * Math.min(1, m / 46)) };
   if (p.reserve === undefined) p.reserve = p.body.fatMax * 0.8;
+  // a growing or ageing body whose fat store gets smaller burns the difference (booked as burned)
+  if (p.reserve > p.body.fatMax) { const ex = p.reserve - p.body.fatMax; p.reserve = p.body.fatMax; (s.energyLedger ??= { eaten: 0, burned: 0, heat: 0, unabsorbed: 0 }).burned += ex; }
 }
 const loseWater = (s, p, kcal) => { p.deficit += kcal * body(s).waterMlPerKcal; p.thirst = Math.min(100, p.deficit / p.body.waterAt * 100); };
 const drink = p => { p.deficit = 0; p.thirst = 0; };
@@ -158,7 +170,7 @@ function newPerson(s, { sex, born, mother = null, father = null, household = nul
   const id = s.people.length;
   const gen = mother === null ? 0 : 1 + Math.max(s.people[mother]?.gen ?? 0, s.people[father]?.gen ?? 0);
   const p = { id, name: nameOf(s, id), gen, sex, born, mother, father, partner: null, household, alive: true, death: null,
-    x: s.camp.x, y: s.camp.y, hunger: 20, reserve: undefined, energy: 80, health: 100, deficit: 0, thirst: 0,
+    x: 0, y: 0, hunger: 20, reserve: undefined, energy: 80, health: 100, deficit: 0, thirst: 0,
     f, mind, skills: {}, places: {}, waters: {}, seen: new Uint8Array(W * H), plan: [], step: null, carry: 0,
     times: { sleep: 0, rest: 0, walk: 0, gather: 0, explore: 0, camp: 0, drink: 0 }, tiles: 0,
     pregnant: null, births: [], young: [], memories: [] };
@@ -185,15 +197,22 @@ export function createWorld2(seed = 41, opts = {}) {
   s.waters = T.waterSites().map(w => ({ ...w, active: true }));
   s.seenAt = new Int32Array(W * H).fill(-1); s.seenBy = new Int32Array(W * H).fill(-1); // person ids pass 32,767 in long runs
   attachIndex(s);
-  // The first camp: at the lake if there is one (it never dries), on its shore.
-  const lake = s.waters.filter(w => w.kind === 'lake'), pick = lake.length ? lake : s.waters.filter(w => w.kind === 'spring');
-  const cw = pick[Math.floor(draw(s, 0, SALT.setup + 4, 0) * pick.length)];
-  s.camp = { x: cw.x, y: cw.y, water: cw.id, since: 0 };
+  // The camps: the first at the lake if there is one (it never dries); the others at lasting water as far as can be
+  // from the camps already chosen (each band has its own country, as among foragers).
+  const lasting = s.waters.filter(w => w.kind === 'lake' || w.kind === 'spring');
+  s.bands = [];
+  for (let bi = 0; bi < cfg.bands; bi++) {
+    let w;
+    if (!bi) { const lake = lasting.filter(x => x.kind === 'lake'), pick = lake.length ? lake : lasting; w = pick[Math.floor(draw(s, 0, SALT.setup + 4, 0) * pick.length)]; }
+    else w = lasting.map(x => ({ x, d: Math.min(...s.bands.map(b => Math.abs(b.camp.x - x.x) + Math.abs(b.camp.y - x.y))) + draw(s, bi, SALT.setup + 4, x.x * 999 + x.y) * 4 })).sort((a2, b2) => b2.d - a2.d)[0].x;
+    s.bands.push({ id: bi, camp: { x: w.x, y: w.y, water: w.id, since: 0 } });
+  }
   // Families: a couple each (mother 18-40, father 0-8 years older), with the children she would have had at about
   // 3.4-year spacing from about 19, each surviving with the real odds to their age; some have a grandparent.
   const year = C.year; let gid = 1000;
-  for (let h = 0; h < cfg.families; h++) {
-    const hh = { id: s.households.length, members: [], pool: 0 }; s.households.push(hh);
+  for (let bi = 0; bi < cfg.bands; bi++) for (let f = 0; f < cfg.families; f++) {
+    const h = bi * cfg.families + f;
+    const hh = { id: s.households.length, members: [], pool: 0, band: bi }; s.households.push(hh);
     const u = k => draw(s, h, SALT.setup + 5, k);
     const ma = 18 + 22 * u(1), fa = ma + 8 * u(2);
     const mom = newPerson(s, { sex: 'F', born: -ma * year, household: hh.id, ...drawFactors(s, gid++) });
@@ -207,16 +226,16 @@ export function createWorld2(seed = 41, opts = {}) {
     }
     if (u(70) < 0.35) newPerson(s, { sex: u(71) < 0.6 ? 'F' : 'M', born: -(ma + 22 + 8 * u(72)) * year, household: hh.id, ...drawFactors(s, gid++) });
   }
-  // Everyone knows the land and the places within a few km of camp; nobody knows beyond.
+  // Each band knows the land and the places within a few km of its own camp, and that its camp's water lasts.
   const kr = cfg.campRadiusKm / T.TILE_KM;
   for (const p of s.people) {
-    p.x = s.camp.x; p.y = s.camp.y;
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (Math.hypot(x - s.camp.x, y - s.camp.y) <= kr) { const i = y * W + x; p.seen[i] = 1; if (s.seenAt[i] < 0) { s.seenAt[i] = 0; s.seenBy[i] = -1; s.discovered++; } }
-    for (const q of s.patches) if (Math.hypot(q.x - s.camp.x, q.y - s.camp.y) <= kr) p.places[q.id] = { exp: q.stock, t: 0 };
-    for (const w of s.waters) if (Math.hypot(w.x - s.camp.x, w.y - s.camp.y) <= kr) p.waters[w.id] = { active: w.active, t: 0 };
+    const c = campOf(s, p); p.x = c.x; p.y = c.y;
+    for (let y = Math.max(0, Math.floor(c.y - kr)); y <= Math.min(H - 1, Math.ceil(c.y + kr)); y++) for (let x = Math.max(0, Math.floor(c.x - kr)); x <= Math.min(W - 1, Math.ceil(c.x + kr)); x++) if (Math.hypot(x - c.x, y - c.y) <= kr) { const i = y * W + x; p.seen[i] = 1; if (s.seenAt[i] < 0) { s.seenAt[i] = 0; s.seenBy[i] = -1; s.discovered++; } }
+    for (const q of s.patches) if (Math.hypot(q.x - c.x, q.y - c.y) <= kr) p.places[q.id] = { exp: q.stock, t: 0, u: q.stock, n: 1 };
+    for (const w of s.waters) if (Math.hypot(w.x - c.x, w.y - c.y) <= kr) p.waters[w.id] = { active: w.active, t: 0, dryOk: w.id === c.water };
   }
   refreshCarers(s);
-  event(s, `The island begins. ${s.people.length} people in ${cfg.families} families camp by ${s.waters.find(w => w.id === s.camp.water).name.toLowerCase()}. Everything beyond a few km is unknown to them.`);
+  event(s, `The island begins. ${s.people.length} people in ${cfg.bands} bands of ${cfg.families} families, each camped at its own water. Everything beyond a few km of each camp is unknown.`);
   return s;
 }
 // Spatial index of food patches (not saved).
@@ -241,7 +260,29 @@ const silerCum = (S, x) => S.a1 / S.b1 * (1 - Math.exp(-S.b1 * x)) + S.a2 * x + 
 // What a person expects to find at a place: what they last saw, recovering toward its usual level since then at the
 // rate such food comes back (people learn how fast things regrow by living with them).
 // The usual level follows the season of that food (people know when baobab or berries are in).
-function expected(s, q, k) { const F = FOODS[q.food], usual = q.capacity * 0.6 * F.season(realFrac(s)) * F.norm, f = Math.exp(-q.decay * (s.tick - k.t)); return Math.max(0, usual - (usual - k.exp) * f); }
+// People do not know a place's true size, season or regrowth. They hold beliefs built from what they have seen:
+//   u      the place's usual stock: the average of what they found there on close looks
+//   n      how many close looks (their certainty)
+//   tau    for each kind of food, how many days it takes to come back, learned from going back to the same place
+//          (prior 60 days, weight 1, updated in log space), and
+//   month  for each kind, how full places of that kind were in each month compared with their usual (prior 1).
+const MONTH = s => Math.floor(realFrac(s) * 12);
+function beliefOf(p, food) { return (p.foodBelief ??= {})[food] ??= { tau: 60, w: 1, month: Array(12).fill(1) }; }
+function observe(s, p, q, stock) {
+  const k = p.places[q.id], b = beliefOf(p, q.food), C = clockOf(s);
+  if (k && k.n > 0 && k.u > 0) {
+    // regrowth: what was left, what is there now, against the usual level -> an implied recovery time
+    const days = (s.tick - k.t) * C.hours / 24, f = (k.u - stock) / (k.u - k.exp);
+    if (days > 1 && k.u > k.exp && f > 0.05 && f < 0.95) { const tauObs = Math.min(2000, Math.max(1, days / -Math.log(f))), lw = Math.log(b.tau) * b.w + Math.log(tauObs); b.w = Math.min(20, b.w + 1); b.tau = Math.exp(lw / b.w); }
+    const m = MONTH(s); b.month[m] += (stock / Math.max(1e-9, k.u) - b.month[m]) * 0.2;
+  }
+  const n = (k?.n ?? 0) + 1, u = k?.u ? k.u + (stock - k.u) / Math.min(n, 10) : stock;
+  p.places[q.id] = { exp: stock, t: s.tick, u, n };
+}
+function expected(s, p, q, k) {
+  const b = beliefOf(p, q.food), usual = (k.u ?? k.exp) * b.month[MONTH(s)], days = (s.tick - k.t) * clockOf(s).hours / 24;
+  return Math.max(0, usual - (usual - k.exp) * Math.exp(-days / b.tau));
+}
 
 // ---------- choosing ----------
 // What the household is short of, in kcal: each member's empty short-term store and half a day ahead, less food at camp.
@@ -256,15 +297,15 @@ function householdShort(s, p) {
   return Math.max(0, k - h.pool - coming);
 }
 const householdDay = (s, p) => { const h = s.households[p.household]; return h ? h.members.reduce((n, i) => n + (s.people[i].alive ? s.people[i].body.base : 0), 0) : p.body.base; };
-const atCamp = (s, p) => Math.abs(p.x - s.camp.x) + Math.abs(p.y - s.camp.y) <= 1;
+const atCamp = (s, p) => { const c = campOf(s, p); return Math.abs(p.x - c.x) + Math.abs(p.y - c.y) <= 1; };
 const maxTripKm = a => a < 5 ? 0 : a < 10 ? 2 : a < 14 ? 5 : 15; // how far children range from camp (Hadza children forage near camp)
 const hoursTo = (s, p, x, y) => { const d = fieldDist(p.x, p.y, x, y, false, mapOf(s)); return d < 0 ? Infinity : d / p.body.tilesTick * clockOf(s).hours; };
 
 function options(s, p) {
   const C = clockOf(s), a = p.body.age, hour = hourOf(C, s.tick), night = sleepTime(C, s.tick), opts = [];
   const young = youngOf(s, p), thirst = young.reduce((m, k) => Math.max(m, k.thirst), p.thirst) / 100;
-  const tired = (100 - p.energy) / 100, home = atCamp(s, p);
-  const homeH = home ? 0 : hoursTo(s, p, s.camp.x, s.camp.y);
+  const tired = (100 - p.energy) / 100, home = atCamp(s, p), camp = campOf(s, p), band = bandOf(s, p);
+  const homeH = home ? 0 : hoursTo(s, p, camp.x, camp.y);
   // sleep
   if (night) opts.push({ k: 'sleep', u: 2.5 + tired, why: 'night' });
   else opts.push({ k: 'rest', u: tired * tired * 3 - 0.2, why: `tired ${Math.round(tired * 100)}` });
@@ -278,12 +319,19 @@ function options(s, p) {
     const short = a < 14 ? p.hunger / p.body.hpk : householdShort(s, p), day = a < 14 ? p.body.base : householdDay(s, p);
     const urgency = Math.min(2, short / Math.max(1, day)) + 0.12; // foragers go out most days even when not short
     const range = maxTripKm(a) / T.TILE_KM;
-    for (const id in p.places) {
-      const k0 = p.places[id], q = s.patchById.get(id);
-      if (Math.abs(q.x - s.camp.x) + Math.abs(q.y - s.camp.y) > range * 1.05 && Math.abs(q.x - p.x) + Math.abs(q.y - p.y) > range) continue; // cheap bound first
-      const k = { exp: expected(s, q, k0) };
+    // the places worth thinking about today: refreshed once a day or when camp moves (people do not weigh every
+    // place they have ever heard of before each step)
+    const dayNo = Math.floor(s.tick / clockOf(s).day);
+    if (!p.cand || p.cand.day !== dayNo || p.cand.camp !== camp.water) {
+      const list = [];
+      for (const id in p.places) { const q = s.patchById.get(id), md = Math.abs(q.x - camp.x) + Math.abs(q.y - camp.y); if (md > range * 1.05) continue; const e = expected(s, p, q, p.places[id]); if (e * 500 >= 1000) list.push({ id, v: e / (1 + md) }); }
+      list.sort((x, y) => y.v - x.v); p.cand = { day: dayNo, camp: camp.water, ids: list.slice(0, 15).map(x => x.id) };
+    }
+    for (const id of p.cand.ids) {
+      const k0 = p.places[id], q = s.patchById.get(id); if (!k0) continue;
+      const k = { exp: expected(s, p, q, k0) };
       if (k.exp * 500 < 1000) continue; // exp is in food units (500 kcal)
-      const out = hoursTo(s, p, q.x, q.y), back = fieldDist(q.x, q.y, s.camp.x, s.camp.y, false, mapOf(s)) / p.body.tilesTick * C.hours;
+      const out = hoursTo(s, p, q.x, q.y), back = fieldDist(q.x, q.y, camp.x, camp.y, false, mapOf(s)) / p.body.tilesTick * C.hours;
       if (!isFinite(out) || (out + back) * p.body.kmh / 2 > maxTripKm(a)) continue;
       // central-place foraging: an adult who goes out brings back a full load if the patch has it (load-size theory,
       // Orians and Pearson 1979); a child gathers for itself
@@ -298,12 +346,12 @@ function options(s, p) {
     const bestFood = opts.filter(o => o.k === 'forage').reduce((m, o) => Math.max(m, o.u), 0);
     // worth more when what they know is poor or far: long days of walking, or little worth going for
     // (how far the food trips have to go, not how far people walk in all, or exploring would feed on itself)
-    const far = Math.min(1, Math.max(0, ((s.tripKm ?? 3) - 4) / 4));
+    const far = Math.min(1, Math.max(0, ((band.tripKm ?? 3) - 4) / 4));
     opts.push({ k: 'explore', u: p.mind.curiosity * (p.energy / 100) * (0.3 + 0.4 * Math.max(0, 0.5 - bestFood) + 0.6 * far), why: `curiosity ${Math.round(p.mind.curiosity * 100)}${far > 0.2 ? ', the known places are far' : ''}` });
   }
   // camp: being with others, caring for the young, going home in the evening
   if (home) opts.push({ k: 'camp', u: 0.25 + 0.25 * p.mind.social + (young.length ? 0.15 * p.mind.care : 0), why: 'at camp with the others' });
-  else { const cw = s.waterById.get(s.camp.water), water = cw.active ? 3 * thirst ** 1.5 : 0; // camp has water: thirst draws people home too
+  else { const cw = s.waterById.get(camp.water), water = cw.active ? 3 * thirst ** 1.5 : 0; // camp has water: thirst draws people home too
     opts.push({ k: 'home', u: (hour >= 17 ? 1.5 : 0.2) + (p.carry > 0 ? 0.6 : 0) + water - homeH * 0.05, why: `camp ${homeH.toFixed(1)} h away${water > 0.5 ? ', and there is water there' : ''}` }); }
   return opts;
 }
@@ -314,12 +362,12 @@ function decide(s, p) {
   let r = draw(s, p.id, SALT.choice) * tot, o = opts[opts.length - 1];
   for (let i = 0; i < opts.length; i++) { r -= w[i]; if (r <= 0) { o = opts[i]; break; } }
   p.decision = { t: s.tick, chose: o.k, why: o.why, options: opts.map(x => ({ k: x.k, u: Math.round(x.u * 100) / 100, why: x.why })).sort((a, b) => b.u - a.u).slice(0, 6) };
-  const C = clockOf(s), camp = [s.camp.x, s.camp.y];
+  const C = clockOf(s), cp = campOf(s, p), camp = [cp.x, cp.y], band = bandOf(s, p);
   if (o.k === 'sleep') { if (!atCamp(s, p) && hoursTo(s, p, ...camp) <= 1.5) p.plan = [{ k: 'walk', to: camp }, { k: 'sleep' }]; else p.plan = [{ k: 'sleep' }]; }
   else if (o.k === 'rest') p.plan = [{ k: 'rest', left: C.perHour }];
   else if (o.k === 'drink') p.plan = [{ k: 'walk', to: [o.w.x, o.w.y] }, { k: 'drink', w: o.w, left: 0.25 * C.perHour }];
   else if (o.k === 'forage') {
-    const d = fieldDist(o.q.x, o.q.y, s.camp.x, s.camp.y, false, mapOf(s)) * T.TILE_KM; if (d >= 0) s.tripKm = s.tripKm === undefined ? d : s.tripKm + (d - s.tripKm) / 30; // how far food trips go (a running average)
+    const d = fieldDist(o.q.x, o.q.y, cp.x, cp.y, false, mapOf(s)) * T.TILE_KM; if (d >= 0) band.tripKm = band.tripKm === undefined ? d : band.tripKm + (d - band.tripKm) / 30; // how far food trips go (a running average)
     p.plan = [{ k: 'walk', to: [o.q.x, o.q.y] }, { k: 'gather', q: o.q, want: o.want }, { k: 'walk', to: camp }, { k: 'unload' }];
   }
   else if (o.k === 'explore') { const t = exploreTarget(s, p); p.plan = t ? [{ k: 'walk', to: t, explore: true }, { k: 'walk', to: camp }] : [{ k: 'camp', left: C.perHour }]; }
@@ -332,7 +380,7 @@ function exploreTarget(s, p) {
   let best = null, bs = -Infinity;
   for (let i = 0; i < 16; i++) {
     const ang = draw(s, p.id, SALT.explore, s.tick * 16 + i) * Math.PI * 2, rr = reach * (0.4 + 0.6 * draw(s, p.id, SALT.explore + 1, s.tick * 16 + i));
-    const x = Math.round(s.camp.x + Math.cos(ang) * rr), y = Math.round(s.camp.y + Math.sin(ang) * rr);
+    const c = campOf(s, p), x = Math.round(c.x + Math.cos(ang) * rr), y = Math.round(c.y + Math.sin(ang) * rr);
     if (!T.isWalkable(x, y)) continue;
     let unseen = 0; for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) { const xx = x + dx, yy = y + dy; if (xx >= 0 && yy >= 0 && xx < W && yy < H && !p.seen[yy * W + xx]) unseen++; }
     if (unseen > bs) { bs = unseen; best = [x, y]; }
@@ -388,7 +436,7 @@ function gatherDone(s, p, st) {
   const own = Math.min(kcal, p.hunger / p.body.hpk); eatKcal(s, p, own); kcal -= own;
   p.carry += kcal;
   if (takeUnits > 0) practise(s, p, q.id, st.hours ?? 1);
-  p.places[q.id] = { exp: q.stock, t: s.tick };
+  observe(s, p, q, q.stock + takeUnits); p.places[q.id].exp = q.stock; // saw it before taking; left what remains
   note(s, p, takeUnits > 0.05 ? `Gathered ${Math.round(takeUnits * B.unitKcal)} kcal of ${q.name.toLowerCase()}.` : `Found the ${q.name.toLowerCase()} picked clean.`);
 }
 function unload(s, p) {
@@ -408,19 +456,33 @@ function feedFromPool(s, h) {
     const room = Math.max(0, q.body.fatMax - q.reserve) / B.fatStoreEff;
     const want = q.body.age < 14 ? q.hunger / q.body.hpk + room : q.hunger > 25 ? q.hunger / q.body.hpk + Math.min(room, q.body.base * 0.5) : 0;
     let g = Math.min(h.pool, want); if (g > 0) { eatKcal(s, q, g); h.pool -= g; }
-    // demand sharing (as among the Hadza): someone still hungry at camp asks other families, kin first; a family gives
-    // what it does not need to eat now itself
+    // demand sharing (as among the Hadza): someone still hungry at camp asks other families of the same camp, kin
+    // first. Each ask is a chance: a family gives what it does not need to eat now, more readily to kin, from a
+    // caring giver, to a family that gave to it before, and less readily when the giver is hungry itself.
     if (want - g > 50 && (q.hunger > 50 || q.body.age < 14)) {
-      const others = homes(s).filter(o => o !== h && o.pool > 0).map(o => ({ o, r: Math.max(0, ...o.members.filter(i => s.people[i].alive).map(i => related(s, q, s.people[i]))) })).sort((a, b) => b.r - a.r);
+      const b = h.band, others = homes(s).filter(o => o !== h && o.band === b && o.pool > 0).map(o => ({ o, r: kinTo(s, q, o) })).sort((a, b2) => b2.r - a.r);
       let left = want - g;
-      for (const { o } of others) {
+      for (const { o, r } of others) {
         const keep = o.members.reduce((n, i) => { const m = s.people[i]; return n + (m.alive ? m.hunger / m.body.hpk : 0); }, 0), spare = Math.max(0, o.pool - keep);
-        const take = Math.min(spare, left); if (take <= 0) continue;
-        eatKcal(s, q, take); o.pool -= take; left -= take; s.shared = (s.shared ?? 0) + take; if (left <= 50) break;
+        if (spare <= 0) continue;
+        if (draw(s, q.id * 31 + o.id, SALT.share) > giveChance(s, o, h, r)) { note(s, q, `Asked ${familyName(s, o)} for food and was refused.`); continue; }
+        const take = Math.min(spare, left);
+        eatKcal(s, q, take); o.pool -= take; left -= take; s.shared = (s.shared ?? 0) + take; gave(s, o, h, take); if (left <= 50) break;
       }
     }
   }
 }
+// Who gives: kinship (Hamilton's rule), the giver family's care, whether it has been given to by the asker's family
+// (reciprocity), and how hungry the giver is. A chance between 2% and 98%.
+const kinTo = (s, q, o) => Math.max(0, ...o.members.filter(i => s.people[i].alive).map(i => related(s, q, s.people[i])));
+const familyName = (s, o) => { const a = o.members.map(i => s.people[i]).find(m => m.alive && m.body.age >= 16); return a ? `${a.name}'s family` : 'another family'; };
+function giveChance(s, giverH, takerH, r) {
+  const ad = giverH.members.map(i => s.people[i]).filter(m => m.alive && m.body.age >= 14);
+  const care = ad.length ? ad.reduce((n, m) => n + m.mind.care, 0) / ad.length : 0.5, hunger = ad.length ? ad.reduce((n, m) => n + m.hunger, 0) / ad.length / 100 : 0;
+  const R = s.recip ??= {}, got = R[`${takerH.id}>${giverH.id}`] ?? 0, given = R[`${giverH.id}>${takerH.id}`] ?? 0, recip = Math.min(1, got / (given + 2000));
+  return Math.min(0.98, Math.max(0.02, 0.15 + 0.6 * r + 0.3 * care + 0.3 * recip - 0.5 * hunger));
+}
+const gave = (s, from, to, kcal) => { const R = s.recip ??= {}; R[`${from.id}>${to.id}`] = (R[`${from.id}>${to.id}`] ?? 0) + kcal; };
 
 // ---------- the evening at camp: sharing food and news ----------
 // Relatedness r through recorded parents (two generations): parent-child and full siblings 1/2, grandparent and
@@ -443,23 +505,29 @@ function share(s) {
   for (const g of hs) {
     let spare = g.pool - keep(g); if (spare <= 0) continue;
     const giver = s.people[g.members.find(i => s.people[i].alive)];
-    const takers = hs.filter(h => h !== g).map(h => { const sh = Math.max(0, short(h) - h.pool), r = Math.max(...h.members.filter(i => s.people[i].alive).map(i => related(s, giver, s.people[i])), 0); return { h, sh, w: sh * Math.max(0.25, r) }; }).filter(x => x.sh > 0).sort((a, b) => b.w - a.w);
-    for (const t of takers) { if (spare <= 0) break; const gv = Math.min(spare, t.sh); t.h.pool += gv; g.pool -= gv; spare -= gv; s.shared = (s.shared ?? 0) + gv; }
+    const takers = hs.filter(h => h !== g && h.band === g.band).map(h => { const sh = Math.max(0, short(h) - h.pool), r = kinTo(s, giver, h); return { h, sh, r, w: sh * Math.max(0.25, r) }; }).filter(x => x.sh > 0).sort((a, b) => b.w - a.w);
+    for (const t2 of takers) {
+      if (spare <= 0) break;
+      if (draw(s, g.id * 977 + t2.h.id, SALT.share + 1) > giveChance(s, g, t2.h, t2.r)) continue; // offered or not: a chance
+      const gv = Math.min(spare, t2.sh); t2.h.pool += gv; g.pool -= gv; spare -= gv; s.shared = (s.shared ?? 0) + gv; gave(s, g, t2.h, gv);
+    }
   }
 }
 function evening(s) {
   const hs = homes(s);
   share(s);
-  // news: people at camp tell what they know. Household members hear everything; others as sociable as the teller.
-  // Everyone talks with their own household, and with up to three others around the fire, more if sociable.
+  // news: people at the same camp tell what they know. A household member hears it more often than not (70% plus
+  // the teller's sociability, a chance); up to three others hear it as often as the teller is sociable.
   const here = living(s).filter(p => atCamp(s, p) && p.body.age >= 5);
   const tell = (a, b) => {
-    for (const id in a.places) { const k = a.places[id], kb = b.places[id]; if (!kb || kb.t < k.t) { if (!kb) note(s, b, `Heard from ${a.name} about ${s.patchById.get(id).name.toLowerCase()}.`); b.places[id] = { exp: k.exp, t: k.t }; } }
-    for (const id in a.waters) { const k = a.waters[id], kb = b.waters[id]; if (!kb || kb.t < k.t) b.waters[id] = { active: k.active, t: k.t }; }
+    for (const id in a.places) { const k = a.places[id], kb = b.places[id]; if (!kb || kb.t < k.t) { if (!kb) note(s, b, `Heard from ${a.name} about ${s.patchById.get(id).name.toLowerCase()}.`); b.places[id] = { exp: k.exp, t: k.t, u: kb?.u || k.u, n: kb?.n ?? 0 }; } } // news, not their own looks
+    for (const id in a.waters) { const k = a.waters[id], kb = b.waters[id]; if (!kb || kb.t < k.t) b.waters[id] = { active: k.active, t: k.t, dryOk: (kb?.dryOk ?? false) || !!k.dryOk }; }
   };
   for (const a of here) {
-    for (const b of here) if (b !== a && b.household === a.household) tell(a, b);
-    for (let i = 0; i < 3; i++) { if (draw(s, a.id, SALT.talk, s.tick * 3 + i) > a.mind.social) continue; const b = here[Math.floor(draw(s, a.id + 7919, SALT.talk, s.tick * 3 + i) * here.length)]; if (b && b !== a) tell(a, b); }
+    const b0 = bandOf(s, a);
+    for (const b of here) if (b !== a && b.household === a.household && draw(s, a.id * 7 + b.id, SALT.talk + 1) < 0.7 + 0.3 * a.mind.social) tell(a, b);
+    const mates = here.filter(b => bandOf(s, b) === b0);
+    for (let i = 0; i < 3; i++) { if (draw(s, a.id, SALT.talk, s.tick * 3 + i) > a.mind.social) continue; const b = mates[Math.floor(draw(s, a.id + 7919, SALT.talk, s.tick * 3 + i) * mates.length)]; if (b && b !== a) tell(a, b); }
   }
   for (const h of hs) { const keep = h.pool * Math.exp(-Math.LN2 / s.config.poolHalfLifeDays); s.ledger.poolSpoiled += h.pool - keep; h.pool = keep; } // camp food spoils (booked, kcal)
 }
@@ -473,27 +541,79 @@ function campValue(s, w, knowledge) {
   for (const [id, exp] of knowledge) { const q = s.patchById.get(id), d = fieldDist(q.x, q.y, w.x, w.y, false, mapOf(s)); if (d >= 0 && d * T.TILE_KM <= 8) v += exp / (1 + d * T.TILE_KM / 3); }
   return v;
 }
-// The band is going hungry when a quarter of its grown members are getting thin.
-const bandThin = s => { const a = living(s).filter(p => p.body.age >= 14); return a.length && a.filter(p => p.reserve / p.body.fatMax < 0.4).length >= a.length / 4; };
-function maybeMoveCamp(s, urgent = false) {
-  const alive = living(s).filter(p => p.body.age >= 14); if (!alive.length) return;
-  const know = new Map(), waters = new Set();
-  for (const p of alive) { for (const [id, k] of Object.entries(p.places)) know.set(id, Math.max(know.get(id) ?? 0, expected(s, s.patchById.get(id), k))); for (const [id, w] of Object.entries(p.waters)) if (w.active) waters.add(id); }
-  const lasting = w => w.kind === 'lake' || w.kind === 'spring'; // only water that does not fail in the dry season
-  const here = s.waterById.get(s.camp.water), now = here.active ? campValue(s, here, know) : -1; // a camp whose water has failed must move
-  let best = null, bv = now * (urgent ? 1.05 : 1.3); // a hungry band moves for less
-  for (const id of waters) { const w = s.waterById.get(id); if (!lasting(w) || id === here.id) continue; const v = campValue(s, w, know); if (v > bv) { bv = v; best = w; } }
+// A band is going hungry when a quarter of its grown members are getting thin.
+const bandThin = (s, b) => { const a = bandMembers(s, b).filter(p => p.body.age >= 14); return a.length && a.filter(p => p.reserve / p.body.fatMax < 0.4).length >= a.length / 4; };
+// Water the band can count on: someone has seen it with water in the dry season, or it is where they live now.
+function maybeMoveCamp(s, b, urgent = false) {
+  const alive = bandMembers(s, b).filter(p => p.body.age >= 14); if (!alive.length) return;
+  const know = new Map(), waters = new Map();
+  for (const p of alive) { for (const [id, k] of Object.entries(p.places)) know.set(id, Math.max(know.get(id) ?? 0, expected(s, p, s.patchById.get(id), k))); for (const [id, w] of Object.entries(p.waters)) if (w.active) waters.set(id, (waters.get(id) ?? false) || !!w.dryOk); }
+  const here = s.waterById.get(b.camp.water), now = here.active ? campValue(s, here, know) : -1; // a camp whose water has failed must move
+  const others = s.bands.filter(o => o !== b && !o.ended).map(o => o.camp);
+  let best = null, bv = Math.max(0, now);
+  for (const [id, lasts] of waters) {
+    const w = s.waterById.get(id); if (!lasts || id === here.id) continue;
+    if (others.some(c => Math.abs(c.x - w.x) + Math.abs(c.y - w.y) < 6)) continue; // not on top of another band
+    const v = campValue(s, w, know); if (v > bv) { bv = v; best = w; }
+  }
   if (!best) return;
-  s.camp = { x: best.x, y: best.y, water: best.id, since: s.tick };
-  for (const p of living(s)) p.waters[best.id] = { active: best.active, t: s.tick }; // the band moves together: everyone knows where the new camp is
-  for (const p of living(s)) if (!s.carer.get(p.id)) { p.plan = []; p.step = null; }
-  event(s, `The band moved camp to ${best.name.toLowerCase()}, where more food is known nearby.`);
+  // the band talks it over: the clearer the gain, the likelier it goes (a chance, not a rule)
+  const gain = now > 0 ? bv / now - 1 : 1, P = 1 - Math.exp(-gain / (urgent ? 0.1 : 0.3));
+  if (draw(s, b.id, SALT.move) > P) return;
+  b.camp = { x: best.x, y: best.y, water: best.id, since: s.tick };
+  for (const p of bandMembers(s, b)) { p.waters[best.id] = { ...(p.waters[best.id] ?? {}), active: best.active, t: s.tick, dryOk: true }; if (!s.carer.get(p.id)) { p.plan = []; p.step = null; } }
+  event(s, `${bandName(s, b)} moved camp to ${best.name.toLowerCase()}, where more food is known nearby.`);
+}
+export const bandName = (s, b) => `Band ${b.id + 1}`;
+// Bands split when they grow large and join others when they dwindle; families drift between bands where they have kin.
+function bandLife(s) {
+  const cfg = s.config;
+  for (const b of s.bands) {
+    if (b.ended) continue;
+    const mem = bandMembers(s, b);
+    if (!mem.length) { b.ended = s.tick; event(s, `${bandName(s, b)} is gone: no one is left.`); continue; }
+    if (mem.length > cfg.fissionSize && draw(s, b.id, SALT.band) < 0.3) split(s, b);
+    else if (mem.length < cfg.fusionSize && draw(s, b.id, SALT.band + 1) < 0.5) {
+      const others = s.bands.filter(o => o !== b && !o.ended && bandMembers(s, o).length); if (!others.length) continue;
+      const to = others.sort((x, y) => (Math.abs(x.camp.x - b.camp.x) + Math.abs(x.camp.y - b.camp.y)) - (Math.abs(y.camp.x - b.camp.x) + Math.abs(y.camp.y - b.camp.y)))[0];
+      joinBand(s, homes(s).filter(h => h.band === b.id), to); b.ended = s.tick; event(s, `${bandName(s, b)}, down to ${mem.length}, joined ${bandName(s, to)}.`);
+    }
+  }
+  for (const h of homes(s)) {
+    const r0 = draw(s, h.id, SALT.band + 2); if (r0 > cfg.householdMove) continue;
+    const others = s.bands.filter(o => o.id !== h.band && !o.ended && bandMembers(s, o).length); if (!others.length) continue;
+    const lead = h.members.map(i => s.people[i]).find(m => m.alive); if (!lead) continue;
+    const kin = others.map(o => ({ o, r: Math.max(0, ...bandMembers(s, o).map(m => related(s, lead, m))) })).sort((a, b2) => b2.r - a.r)[0];
+    if (kin.r < 0.125 && r0 > cfg.householdMove * 0.2) continue; // mostly to where they have close kin; to strangers a fifth as often
+    joinBand(s, [h], kin.o); event(s, `${familyName(s, h)} went to live with ${bandName(s, kin.o)}.`);
+  }
+}
+function joinBand(s, hs, b) {
+  for (const h of hs) { h.band = b.id; for (const i of h.members) { const p = s.people[i]; if (!p.alive) continue; p.waters[b.camp.water] = { ...(p.waters[b.camp.water] ?? {}), active: true, t: s.tick, dryOk: true }; if (!s.carer.get(p.id)) { p.plan = []; p.step = null; } } }
+  changed(s);
+}
+function split(s, b) {
+  const hs = homes(s).filter(h => h.band === b.id); if (hs.length < 4) return;
+  // the families closest in kin to one family go with it, about half the band
+  const seed = hs[Math.floor(draw(s, b.id, SALT.band + 3) * hs.length)], lead = s.people[seed.members.find(i => s.people[i].alive)];
+  const go = hs.map(h => ({ h, r: h === seed ? 9 : kinTo(s, lead, h) })).sort((a, b2) => b2.r - a.r).slice(0, Math.floor(hs.length / 2)).map(x => x.h);
+  const goers = go.flatMap(h => h.members.map(i => s.people[i]).filter(p => p.alive && p.body.age >= 14));
+  // a new camp at lasting water they know, at least 8 km away from every other camp
+  const waters = new Map(); for (const p of goers) for (const [id, w] of Object.entries(p.waters)) if (w.active && w.dryOk) waters.set(id, true);
+  const know = new Map(); for (const p of goers) for (const [id, k] of Object.entries(p.places)) know.set(id, Math.max(know.get(id) ?? 0, expected(s, p, s.patchById.get(id), k)));
+  let best = null, bv = 0;
+  for (const id of waters.keys()) { const w = s.waterById.get(id); if (s.bands.some(o => !o.ended && Math.abs(o.camp.x - w.x) + Math.abs(o.camp.y - w.y) < 8 / T.TILE_KM)) continue; const v = campValue(s, w, know); if (v > bv) { bv = v; best = w; } }
+  if (!best) return; // nowhere they know to go: they stay together for now
+  const nb = { id: s.bands.length, camp: { x: best.x, y: best.y, water: best.id, since: s.tick } };
+  s.bands.push(nb); joinBand(s, go, nb);
+  event(s, `${bandName(s, b)} split: ${go.length} families left to camp at ${best.name.toLowerCase()} as ${bandName(s, nb)}.`);
 }
 
 // ---------- once a month: pairing, conceiving, illness and old age ----------
 function monthly(s) {
   const C = clockOf(s), cfg = s.config, alive = [...living(s)];
-  maybeMoveCamp(s);
+  for (const b of s.bands) if (!b.ended) maybeMoveCamp(s, b);
+  bandLife(s);
   // pairing: unpartnered adults pair with an unrelated unpartnered adult of the other sex, closest in age
   for (const p of alive) {
     if (p.partner !== null && s.people[p.partner]?.alive) continue;
@@ -503,7 +623,9 @@ function monthly(s) {
       .sort((a, b) => Math.abs(a.body.age - p.body.age - 4) - Math.abs(b.body.age - p.body.age - 4))[0];
     if (!m) continue;
     p.partner = m.id; m.partner = p.id;
-    const hh = { id: s.households.length, members: [], pool: 0 }; s.households.push(hh);
+    // they live with her band more often than his (approx.; Hadza couples often begin near the wife's mother)
+    const band = draw(s, p.id, SALT.pairing + 1) < 0.6 ? (s.households[p.household]?.band ?? 0) : (s.households[m.household]?.band ?? 0);
+    const hh = { id: s.households.length, members: [], pool: 0, band }; s.households.push(hh);
     for (const q of [p, m]) { const old = s.households[q.household]; if (old) old.members = old.members.filter(i => i !== q.id); q.household = hh.id; hh.members.push(q.id); }
     for (const k of p.young.map(i => s.people[i]).filter(k => k.alive && k.body.age < 14 && k.household !== hh.id)) { const old = s.households[k.household]; if (old) old.members = old.members.filter(i => i !== k.id); k.household = hh.id; hh.members.push(k.id); }
     changed(s); event(s, `${p.name} and ${m.name} made a home together.`);
@@ -538,6 +660,7 @@ function births(s) {
 function die(s, p, cause) {
   if (!p.alive) return;
   p.alive = false; p.death = { t: s.tick, cause, age: p.body.age }; s.deaths[cause] = (s.deaths[cause] ?? 0) + 1; changed(s);
+  if (p.carry > 0) { s.lostCarry = (s.lostCarry ?? 0) + p.carry; p.carry = 0; } // food on a body that dies is lost (booked)
   p.seenCount = p.seen.reduce((n, v) => n + v, 0); p.seen = null; p.places = {}; p.waters = {}; p.plan = []; p.step = null; // the dead keep their story, not their maps (memory in long runs)
   event(s, `${p.name} died (${cause.toLowerCase()}, age ${Math.floor(p.body.age)}).`);
   adoptOrphans(s);
@@ -553,6 +676,9 @@ function adoptOrphans(s) {
       const fams = homes(s).filter(o => o !== h && o.members.some(i => s.people[i].alive && s.people[i].body.age >= 16));
       if (!fams.length) break;
       const best = fams.map(o => ({ o, r: Math.max(0, ...o.members.filter(i => s.people[i].alive).map(i => related(s, k, s.people[i]))) })).sort((a, b) => b.r - a.r || a.o.id - b.o.id)[0].o;
+      // taken in as a chance each day: likelier from a caring family and close kin (an orphan may wait, or not be taken)
+      const ad = best.members.map(i => s.people[i]).filter(m => m.alive && m.body.age >= 16), care = ad.reduce((n, m) => n + m.mind.care, 0) / ad.length;
+      if (draw(s, k.id, SALT.adopt) > 0.2 + 0.5 * care + 0.5 * kinTo(s, k, best)) continue;
       h.members = h.members.filter(i => i !== k.id); best.members.push(k.id); k.household = best.id;
       note(s, k, `Taken in by ${s.people[best.members.find(i => s.people[i].alive && s.people[i].body.age >= 16)].name}'s family.`);
     }
@@ -580,7 +706,7 @@ export function stepWorld(s, n = 1) {
       if (sleepTime(C, s.tick) && p.step && !['sleep', 'walk', 'unload'].includes(p.step.k)) { p.plan = []; p.step = null; }
       act(s, p);
       if (atCamp(s, p)) { if (p.carry > 0) unload(s, p); const h = s.households[p.household]; if (h?.pool > 0 && (p.hunger > 25 || young.length)) feedFromPool(s, h); }
-      const w = s.waterById.get(s.camp.water); if (atCamp(s, p) && w.active && p.thirst > 15) { drink(p); for (const k of young) drink(k); }
+      const w = s.waterById.get(campOf(s, p).water); if (atCamp(s, p) && w.active && p.thirst > 15) { drink(p); for (const k of young) drink(k); }
     }
     for (const p of alive) {
       if (!p.alive) continue;
@@ -591,16 +717,53 @@ export function stepWorld(s, n = 1) {
     { const hr = hourOf(C, s.tick); if (hr === 19) evening(s); else if (hr === 10 || hr === 13 || hr === 16) share(s); }
     if (s.tick % day === 0) {
       // how far grown people have had to walk lately (a ten-day average): long days mean the food near camp is used up
-      const ad = living(s).filter(p => p.body.age >= 18);
-      const km = ad.reduce((n, p) => n + p.tiles - (p.tilesAtDay ?? p.tiles), 0) / Math.max(1, ad.length) * T.TILE_KM; // each person's own walking since yesterday
+      for (const b of s.bands) {
+        if (b.ended) continue;
+        const ad = bandMembers(s, b).filter(p => p.body.age >= 18);
+        const km = ad.reduce((n, p) => n + p.tiles - (p.tilesAtDay ?? p.tiles), 0) / Math.max(1, ad.length) * T.TILE_KM; // each person's own walking since yesterday
+        b.dayKm = b.dayKm === undefined ? km : b.dayKm + (km - b.dayKm) / 10;
+        if (!s.waterById.get(b.camp.water).active || (s.tick % (7 * day) === 0 && (bandThin(s, b) || (b.tripKm ?? 0) > 6))) maybeMoveCamp(s, b, true);
+      }
+      sanity(s);
       for (const p of living(s)) p.tilesAtDay = p.tiles;
-      s.dayKm = s.dayKm === undefined ? km : s.dayKm + (km - s.dayKm) / 10;
-      if (!s.waterById.get(s.camp.water).active || (s.tick % (7 * day) === 0 && (bandThin(s) || (s.tripKm ?? 0) > 6))) maybeMoveCamp(s, true);
+      adoptOrphans(s);
     }
     if (s.tick % month === 0) monthly(s);
     births(s);
   }
   return s;
+}
+
+// ---------- alarms: things that must never happen ----------
+// Checked once a day. A tripped alarm is recorded (it never changes the world); tests require none.
+function sanity(s) {
+  const A = s.alarms ??= [], add = what => { if (A.length < 200) A.push({ t: s.tick, what }); };
+  for (const p of living(s)) {
+    for (const k of ['hunger', 'thirst', 'energy', 'health']) if (!(p[k] >= -1e-9 && p[k] <= 100 + 1e-9)) add(`${p.name}: ${k} ${p[k]}`);
+    if (!(p.reserve >= -1e-6) || p.reserve > p.body.fatMax * 1.01 + 1) add(`${p.name}: body fat ${p.reserve}`);
+    // over 60 km in a day is impossible on foot with a family (an alarm); over 40 is rare but real (counted as unusual)
+    const km = (p.tiles - (p.tilesAtDay ?? p.tiles)) * T.TILE_KM; if (km > 60) add(`${p.name} walked ${km.toFixed(0)} km in a day`); else if (km > 40) s.unusual = (s.unusual ?? 0) + 1;
+  }
+  for (const q of s.patches) if (!(q.stock >= -1e-9)) add(`${q.name}: stock ${q.stock}`);
+  const L = s.ledger, left = s.patches.reduce((n, q) => n + q.stock, 0);
+  if (Math.abs(L.initial + L.regenerated - L.consumed - L.decayed - left) > 1e-6 * (L.initial + L.regenerated)) add('food ledger does not balance');
+  const held = living(s).reduce((n, p) => n + p.carry, 0) + s.households.reduce((n, h) => n + h.pool, 0) + (s.lostCarry ?? 0);
+  const err = L.consumed * 500 - ((s.energyLedger?.eaten ?? 0) - (L.milkKcal ?? 0)) - held - L.poolSpoiled;
+  if (Math.abs(err) > 1e-6 * Math.max(1, L.consumed * 500)) add(`kcal ledger off by ${err.toFixed(1)}`);
+}
+// Deaths by age against the measured hunter-gatherer pattern: person-years lived and deaths in each age band, from
+// everyone who ever lived (a period life table). Competing risks: the sim's own causes (starving, thirst, injury and
+// illness from deprivation, childbirth) plus the background rate for causes it does not model must add up to about
+// what was measured; if the total is well above it, the sim is killing people twice. Measure only.
+export function lifeTable(s, bands = [0, 1, 5, 10, 15, 20, 30, 40, 50, 60, 70, 80]) {
+  const C = clockOf(s), rows = bands.slice(0, -1).map((a, i) => ({ from: a, to: bands[i + 1], years: 0, deaths: 0, modelled: 0 }));
+  for (const p of s.people) {
+    const start = Math.max(0, (0 - p.born) / C.year), end = ((p.alive ? s.tick : p.death.t) - p.born) / C.year;
+    for (const r of rows) { const a = Math.max(r.from, start), b = Math.min(r.to, end); if (b > a) r.years += b - a; }
+    if (!p.alive && p.death.age >= start) { const r = rows.find(r => p.death.age >= r.from && p.death.age < r.to); if (r) { r.deaths++; if (!['Illness', 'Old age'].includes(p.death.cause)) r.modelled++; } }
+  }
+  for (const r of rows) { r.rate = r.years ? r.deaths / r.years : null; const mid = (r.from + r.to) / 2; r.siler = siler(s.config.siler, mid); }
+  return rows;
 }
 
 // ---------- measures (never change the world) ----------
@@ -611,5 +774,5 @@ export function worldMetrics(s) {
     births: s.births, deaths: { ...s.deaths }, households: homes(s).length, generations: alive.reduce((m, p) => Math.max(m, p.gen ?? 0), 0), everLived: s.people.length, capReached: s.capReached ?? 0,
     discoveredKm2: seenLand * T.TILE_KM ** 2, landKm2: T.LAND_KM2, discoveredShare: seenLand / landTiles,
     meanFat: adults.length ? adults.reduce((n, p) => n + p.reserve / p.body.fatMax, 0) / adults.length : 0,
-    food: s.patches.reduce((n, q) => n + q.stock, 0), shared: s.shared ?? 0, camp: { ...s.camp } };
+    food: s.patches.reduce((n, q) => n + q.stock, 0), shared: s.shared ?? 0, bands: s.bands.filter(b => !b.ended && bandMembers(s, b).length).map(b => ({ id: b.id, n: bandMembers(s, b).length, camp: { ...b.camp } })), alarms: (s.alarms ?? []).length };
 }

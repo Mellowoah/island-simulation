@@ -16,7 +16,8 @@ test('Y1 the island: about 850 km² of one main island with islets, an inland la
 
 test('Y2 people start as families of mixed ages, each a little different', () => {
   const s = createWorld2(41);
-  assert.ok(s.people.length >= 18 && s.people.length <= 40, `${s.people.length} people`);
+  assert.ok(s.people.length >= 35 && s.people.length <= 90, `${s.people.length} people`);
+  assert.equal(s.bands.length, 3); assert.ok(s.households.every(h => h.band >= 0 && h.band < 3));
   const ages = s.people.map(p => p.body.age);
   assert.ok(Math.min(...ages) < 5 && Math.max(...ages) > 35, 'children and older adults');
   const kids = s.people.filter(p => p.mother !== null);
@@ -27,7 +28,7 @@ test('Y2 people start as families of mixed ages, each a little different', () =>
 
 test('Y3 fog: only the land around the first camp is known; more is found as people move; each knows only their own', () => {
   const s = createWorld2(42), m0 = worldMetrics(s);
-  assert.ok(m0.discoveredShare < 0.1, `start ${(m0.discoveredShare * 100).toFixed(0)}% known`);
+  assert.ok(m0.discoveredShare < 0.25, `start ${(m0.discoveredShare * 100).toFixed(0)}% known`);
   stepWorld(s, 24 * 60);
   const m1 = worldMetrics(s);
   assert.ok(m1.discoveredKm2 > m0.discoveredKm2, 'land discovered');
@@ -52,7 +53,7 @@ test('Y4 a settled forager day: adults walk 5-15 km and gather 3-6 hours a day',
   assert.ok(r.all >= 5 && r.all <= 15, `${r.all.toFixed(1)} km a day`);
   assert.ok(r.gather >= 3 && r.gather <= 6, `${r.gather.toFixed(1)} h gathering a day`);
 });
-test('Y4b day range by sex like the Hadza (women ~6, men ~11 km)', { todo: 'women walk about 9 km, farther than Hadza women: there is no hunting yet, so no division of labour between men and women' }, () => {
+test('Y4b day range by sex like the Hadza (women ~6, men ~11 km)', { todo: 'men walk less than Hadza men (about 9 km against 11): there is no hunting yet, which is what takes Hadza men far' }, () => {
   const r = settled();
   assert.ok(r.F >= 4 && r.F <= 8 && r.M >= 9 && r.M <= 13, `women ${r.F.toFixed(1)}, men ${r.M.toFixed(1)} km`);
 });
@@ -70,4 +71,25 @@ test('Y6 the same seed gives the same history', () => {
   const a = createWorld2(44), b = createWorld2(44); stepWorld(a, 24 * 20); stepWorld(b, 24 * 20);
   const sig = s => s.people.map(p => [p.x, p.y, p.hunger.toFixed(6), p.alive]).join('|');
   assert.equal(sig(a), sig(b));
+});
+
+test('Y7 alarms: in a year on two islands nothing impossible happens (stats in range, books balance, no 60 km days)', () => {
+  for (const seed of [41, 45]) { const s = createWorld2(seed); stepWorld(s, 8760); assert.deepEqual((s.alarms ?? []).slice(0, 3), [], `seed ${seed}`); }
+});
+
+test('Y8 beliefs, not the truth: people expect food from what they saw and heard, so two people can expect different things', () => {
+  const s = createWorld2(42); stepWorld(s, 24 * 120);
+  const ad = s.people.filter(p => p.alive && p.body.age >= 18);
+  let differ = 0, pairs = 0;
+  for (const q of s.patches) { const ks = ad.map(p => p.places[q.id]).filter(Boolean); if (ks.length >= 2) { pairs++; if (new Set(ks.map(k => k.t)).size > 1) differ++; } }
+  assert.ok(pairs > 0 && differ > 0, `${differ} of ${pairs} places known differently`);
+  const b = ad.map(p => p.foodBelief?.tubers?.tau).filter(Boolean);
+  assert.ok(b.length && b.some(v => v !== 60), 'regrowth beliefs learned from experience');
+});
+
+test('Y9 bands: a large band can split into two camps, and families can move between bands', () => {
+  const s = createWorld2(42, { fissionSize: 12, householdMove: 0.2 }); stepWorld(s, 24 * 365);
+  const ev = s.events.map(e => e.text).join('\n');
+  assert.ok(/ split: /.test(ev) || s.bands.length > 3, 'a split happened');
+  assert.ok(/went to live with/.test(ev), 'a family moved band');
 });
