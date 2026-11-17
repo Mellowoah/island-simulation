@@ -34,6 +34,7 @@ export const STREAMS={
   leaveChoice:[342,342],   // eden restoration: a restored creature's own answer when a tempter whispers
   temperament:[343,349],   // being.js: one stream per temperament system (seeking reuses birthCuriosity / newborn). Read-only; changes no world.
   ageing:[350,350],        // eden lifeCourse: monthly draw for dying of age, after the fall only
+  climate:[351,351],       // savanna: yearly rain (lognormal) and the slow wet/dry swing; keyed by year, not by tick
 };
 const draw=(s,t,id,salt)=>s.rng===2?noise2(seedKey(s.seed),t,id,salt):noise(s.seed,t,id,salt);
 const cache=new Map();

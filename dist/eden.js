@@ -2,6 +2,7 @@
 // Phases: guided (Creator's warning at birth, Creator leads choices that fall outside what is best,
 // no death) -> released (first creature to eat from the tree; everyone released at once).
 import { W, DAY, clamp, land, path, createWorld, decide, event, noise2, seedKey, STREAMS, mapOf, onLand, mapW, mapH } from './sim.js';
+import { makePatches, makeWaters, landStep, gatherTicks, returnRate, CAMP } from './savanna.js';
 import { develop, DEV_EVERY, lifeStage, wakeDrain, healFactor, illnessFactor, ageHazard, pregnancyExtra } from './being.js';
 
 export const EDEN_VERSION = 2;
@@ -42,6 +43,8 @@ export const EDEN_DEFAULTS = {
   restHeal: 0.15, baseHeal: 0.01, healthRestWeight: 0.3, healthGuide: 30,
   urgentThirst: 60, urgentHunger: 70, // a released creature breaks off what it is doing when a need becomes urgent (if it knows where to go)
   // One of many worlds: the biblical reading of what follows the fall (all off by default = original behaviour).
+  god: true,                // false: the world without God, on the savanna. No Creator, no tree, no deceiver, no spirits; people start on their own (Robert, 17 Nov)
+  ground: 'natural',        // without God: 'natural' land, or 'cursed' (food grows at cursedRegen), a setting (Robert, 17 Nov)
   serpent: true,            // Island Lab setup input: the deceiver is present. Off: nobody is ever tempted (T3: never eating is acceptable). On = original.
   lifeCourse: false,        // being.js: food, rest, healing, illness and dying of age change with life stage; pregnancy costs food (off = the original single adult body)
   traitDevelopment: false,  // being.js: traits shaped through life by parents, others and what happens (off = traits fixed at birth, the original rule)
@@ -85,7 +88,27 @@ export function createEden(seed = 41, overrides = {}, edenOverrides = {}) {
     event(s, 'Warned by the Creator: do not eat from the tree.', c);
   }
   event(s, 'Eden begins. Each creature is warned not to eat from the tree. The Creator guides them.');
+  if (cfg.god === false) withoutGod(s, cfg);
   return s;
+}
+
+// The world without God: the savanna (savanna.js), no Creator, no word, no tree, no deceiver, no spirits.
+// The same bodies, minds and rules as Eden after release; people start on their own by the lake.
+function withoutGod(s, cfg) {
+  const E = s.eden, k = seedKey(s.seed);
+  Object.assign(cfg, { serpent: false, restoration: false, tempters: 0, guidanceRate: 0 });
+  s.map = { id: 'savanna' };
+  s.patches = makePatches(); s.ledger.initial = s.patches.reduce((n, p) => n + p.stock, 0);
+  E.springs = makeWaters(); E.tree = null; E.phase = 'released'; E.godless = true;
+  s.events = [];
+  for (const c of s.creatures) {
+    let x = CAMP.x - CAMP.r + Math.floor(noise2(k, 0, c.id, STREAMS.startPosition[0]) * (2 * CAMP.r + 1));
+    let y = CAMP.y - CAMP.r + Math.floor(noise2(k, 0, c.id, STREAMS.startPosition[0] + 1) * (2 * CAMP.r + 1));
+    while (!onLand(mapOf(s), x, y)) x++;
+    c.x = x; c.y = y; c.memories = []; c.skills = {};
+    c.eden.instruction = null; c.eden.warning = 0;
+  }
+  event(s, 'The island begins by the lake. No Creator speaks. 24 people, on their own.');
 }
 
 // The Creator's view: knows true stocks and every spring BY DESIGN (omniscient). Creatures never do. Returns a replacement action only when the creature's
@@ -183,6 +206,7 @@ function nearestWater(s, c, knownOnly) {
   let best = null;
   for (const w of s.eden.springs) {
     if (knownOnly && !c.eden.water[w.id]) continue;
+    if (w.active === false && c.eden.dry?.[w.id] !== undefined && s.tick - c.eden.dry[w.id] < YEAR / 4) continue; // it saw this one dry this season
     const r = path(c.x, c.y, w.x, w.y, s.bridge, mapOf(s));
     if (!r.length && (c.x !== w.x || c.y !== w.y)) continue;
     if (!best || r.length < best.r.length) best = { w, r };
@@ -204,8 +228,8 @@ function edenDecide(s, c) {
   if (rest && e.health < 100) { rest.score += (100 - e.health) * cfg.healthRestWeight; rest.reason += ` Health ${Math.round(e.health)}.`; }
   const water = nearestWater(s, c, true);
   if (water) opts.push({ type: 'drink', spring: water.w.id, score: (e.thirst - 8) * cfg.thirstWeight - water.r.length * 0.35 + (released ? e.bias.drink : 0), reason: `Thirst ${Math.round(e.thirst)} · ${water.w.name} ${water.r.length} tiles away` });
-  if (released) {
-    const here = !s.patches.some(p => p.x === c.x && p.y === c.y) && !(c.x === E.tree.x && c.y === E.tree.y);
+  if (released && !E.godless) {
+    const here = !s.patches.some(p => p.x === c.x && p.y === c.y) && !(E.tree && c.x === E.tree.x && c.y === E.tree.y);
     const ownsField = s.patches.some(p => p.field && p.owner === c.id);
     if (here && !ownsField && c.energy > 40) opts.push({ type: 'cultivate', score: cfg.cultivateWeight * scarcity(s, c) * (c.energy / 100) + e.bias.cultivate, reason: `Food I know of feels scarce (${Math.round(scarcity(s, c) * 100)}%). Till the ground here.` });
     if (!e.clothed) opts.push({ type: 'craft', item: 'clothing', score: cfg.clothingWeight * (1 - c.energy / 100) + 2 + e.bias.craft, reason: `Exposed: make clothing${e.work.clothing ? ` (${Math.round(100 * e.work.clothing / cfg.craftWork)}% done)` : ''}.` });
@@ -238,6 +262,10 @@ function edenDecide(s, c) {
       c.action = best.action;
     }
   } else d.own = true;
+  if (c.action?.type === 'gather' && !c.action.timed) {
+    const p = s.patches.find(q => q.id === c.action.patch);
+    if (p?.food) { c.action.left = gatherTicks(4, returnRate(p.food, age(s, c), c.skills[p.id] ?? 0)); c.action.timed = true; }
+  }
   c.action.start = { hunger: c.hunger, energy: c.energy, thirst: e.thirst, health: e.health };
 }
 
@@ -328,8 +356,9 @@ export function edenStep(s, n = 1) {
   for (let z = 0; z < n; z++) {
     s.tick++;
     const E = s.eden, cfg = E.config, released = () => E.phase === 'released';
+    if (s.map) landStep(s, cfg.ground === 'cursed' ? cfg.cursedRegen : 1);
     for (const p of s.patches) {
-      if (p.field && s.tick < p.readyTick) continue;
+      if (p.food || (p.field && s.tick < p.readyTick)) continue;
       const rate = p.regen * (released() && !p.gift && !p.field ? cfg.cursedRegen : 1);
       const add = Math.max(0, Math.min(rate, p.capacity - p.stock));
       p.stock += add; s.ledger.regenerated += add;
@@ -365,7 +394,9 @@ export function edenStep(s, n = 1) {
         if (!a.route.length && a.type === 'explore') { judge(s, c, 'explore'); c.action = null; }
       } else if (a.type === 'explore') { c.action = null; }
       else if (a.type === 'drink') {
-        if (--a.left <= 0) {
+        const wDry = s.eden.springs.find(w => w.id === a.spring);
+        if (wDry.active === false) { (c.eden.dry ??= {})[wDry.id] = s.tick; c.eden.water[wDry.id] = true; event(s, `Found ${wDry.name} dry.`, c); c.action = null; }
+        else if (--a.left <= 0) {
           c.eden.thirst = 0;
           for (const k of c.eden.children.map(i => s.creatures[i]).filter(k => k.alive && dependent(s, k))) k.eden.thirst = 0;
           const w = s.eden.springs.find(w => w.id === a.spring); c.eden.water[w.id] = true;

@@ -104,3 +104,8 @@ Robert, 17 Nov: "I wanna be able to turn the serpent off and then I wanna be abl
   5. "Consider decision points that would need to be made daily and how they would evolve … based on where they are in their lives." Choices open to a creature depend on its life stage.
   6. The unfallen garden with the deceiver off: families fill the earth (Gen 1:28) into the same savanna, still guided, no death, no curse. A third case beside the fallen world and the world without God.
   7. The lab brief's limits (no crafting, no technology) no longer bind this work (Robert, 17 Nov).
+
+## Savanna world, first build (17 Nov 2026, work in progress, not playable yet)
+- `dist/savanna.js`: 80×56 map (351 km² of land at 350 m a tile), lake, river, rocks, shore, woodland, grassland; seven foods with season curves, rain response and natural decay half-lives; 13 water points (lake and springs permanent; river, pools and pans seasonal); yearly rain lognormal (sd 0.4, mean normalised to 1) times a 40-year swing; severe droughts (rain < 60%) about one year in six. Food is set so the land feeds DENSITY × area = 84 people in an ordinary year (Hadza 0.24/km²). Stream `climate` 351.
+- Eden input `god: false` puts 24 people by the lake with no Creator, word, tree, deceiver or spirits; `ground` natural or cursed.
+- **First test failed on physics:** on seeds 61 and 62, 29–31 of 31–34 deaths were thirst. Cause: the body and walking rates were calibrated for Eden's compressed clock (about 60 m an hour of walking; weeks between drinks), which does not match a map with real distances and seasonal water. Proposed fix, awaiting Robert: run the savanna on a real clock (four 6-hour ticks a day, day and night) with walking, eating, drinking and sleep at real rates.
