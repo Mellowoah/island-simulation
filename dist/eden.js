@@ -1,7 +1,7 @@
 // Eden world: a separate scenario built on the island core. See docs/EDEN-DESIGN.md.
 // Phases: guided (Creator's warning at birth, Creator leads choices that fall outside what is best,
 // no death) -> released (first creature to eat from the tree; everyone released at once).
-import { W, DAY, clamp, land, path, createWorld, decide, event, noise2, seedKey, STREAMS } from './sim.js';
+import { W, DAY, clamp, land, path, createWorld, decide, event, noise2, seedKey, STREAMS, mapOf, onLand, mapW, mapH } from './sim.js';
 import { develop, DEV_EVERY, lifeStage, wakeDrain, healFactor, illnessFactor, ageHazard, pregnancyExtra } from './being.js';
 
 export const EDEN_VERSION = 2;
@@ -102,7 +102,7 @@ function creatorBest(s, c) {
     let best = null;
     for (const p of s.patches) {
       if (p.stock < 4) continue;
-      const r = path(c.x, c.y, p.x, p.y, s.bridge);
+      const r = path(c.x, c.y, p.x, p.y, s.bridge, mapOf(s));
       if (!r.length && (c.x !== p.x || c.y !== p.y)) continue;
       if (!best || r.length < best.r.length) best = { p, r };
     }
@@ -120,12 +120,12 @@ function creatorBest(s, c) {
       let goal = null, score = -Infinity;
       for (let i = 0; i <= STREAMS.guideX[1] - STREAMS.guideX[0]; i++) {
         const x = p.x + Math.round((draw(s, c.id, STREAMS.guideX[0] + i) * 2 - 1) * L), y = p.y + Math.round((draw(s, c.id, STREAMS.guideY[0] + i) * 2 - 1) * L);
-        if (!land(x, y, s.bridge) || Math.abs(x - p.x) + Math.abs(y - p.y) > L) continue;
+        if (!onLand(mapOf(s), x, y, s.bridge) || Math.abs(x - p.x) + Math.abs(y - p.y) > L) continue;
         const v = (c.visited[y * W + x] ? 0 : 30) - Math.abs(c.x - x) - Math.abs(c.y - y);
         if (v > score) { score = v; goal = [x, y]; }
       }
       if (!goal) return null;
-      return { type: 'explore', patch: null, action: { type: 'explore', route: path(c.x, c.y, goal[0], goal[1], s.bridge) },
+      return { type: 'explore', patch: null, action: { type: 'explore', route: path(c.x, c.y, goal[0], goal[1], s.bridge, mapOf(s)) },
         reason: `Curiosity was taking it ${near} tiles from any food: the Creator leads its exploring to ground within reach of ${p.name}.` };
     }
   }
@@ -183,7 +183,7 @@ function nearestWater(s, c, knownOnly) {
   let best = null;
   for (const w of s.eden.springs) {
     if (knownOnly && !c.eden.water[w.id]) continue;
-    const r = path(c.x, c.y, w.x, w.y, s.bridge);
+    const r = path(c.x, c.y, w.x, w.y, s.bridge, mapOf(s));
     if (!r.length && (c.x !== w.x || c.y !== w.y)) continue;
     if (!best || r.length < best.r.length) best = { w, r };
   }
@@ -220,10 +220,10 @@ function edenDecide(s, c) {
   else if (choice.type === 'rest') c.action = { type: 'rest', left: 28 };
   else if (choice.type === 'gather' && !(c.action?.type === 'gather' && c.action.patch === choice.patch)) {
     const p = s.patches.find(p => p.id === choice.patch);
-    c.action = { type: 'gather', patch: p.id, route: path(c.x, c.y, p.x, p.y, s.bridge), left: Math.max(4, Math.round(14 - 8 * (c.skills[p.id] ?? 0))) };
+    c.action = { type: 'gather', patch: p.id, route: path(c.x, c.y, p.x, p.y, s.bridge, mapOf(s)), left: Math.max(4, Math.round(14 - 8 * (c.skills[p.id] ?? 0))) };
   } else if (choice.type === 'explore' && c.action?.type !== 'explore') {
-    const x = 2 + Math.floor(draw(s, c.id, STREAMS.exploreTarget[0]) * 32), y = 2 + Math.floor(draw(s, c.id, STREAMS.exploreTarget[0] + 1) * 22);
-    c.action = { type: 'explore', route: land(x, y, s.bridge) ? path(c.x, c.y, x, y, s.bridge) : [] };
+    const m = mapOf(s), x = 2 + Math.floor(draw(s, c.id, STREAMS.exploreTarget[0]) * (mapW(m) - 4)), y = 2 + Math.floor(draw(s, c.id, STREAMS.exploreTarget[0] + 1) * (mapH(m) - 4));
+    c.action = { type: 'explore', route: onLand(mapOf(s), x, y, s.bridge) ? path(c.x, c.y, x, y, s.bridge, mapOf(s)) : [] };
   }
   if (released && e.covered) { // restored: the Creator leads again, as before the fall
     E.restored.choices++;

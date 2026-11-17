@@ -223,3 +223,16 @@ test('S2 the life record follows every creature without touching the world', () 
   assert.ok(founder.events.length > c0(s), 'keeps more of its story than the creature itself remembers');
   function c0(w) { return w.creatures[0].memories.length; }
 });
+
+import { registerMap, MAPS, path as findPath, onLand, mapOf } from '../dist/sim.js';
+
+test('M1 a world can name its own map; with none it is the original island, unchanged', () => {
+  const ring = registerMap({ id: 'test-ring', w: 12, h: 9, land: (x, y) => !(x >= 4 && x <= 7 && y >= 3 && y <= 5) }); // a lake in the middle
+  assert.equal(MAPS['test-ring'], ring);
+  assert.equal(onLand(ring, 5, 4), false); assert.equal(onLand(ring, 0, 0), true); assert.equal(onLand(ring, 12, 0), false, 'outside the map');
+  const r = findPath(1, 4, 10, 4, false, ring);
+  assert.ok(r.length >= 9 + 2, 'walks around the lake'); assert.deepEqual(r.at(-1), [10, 4]);
+  for (const [x, y] of r) assert.ok(onLand(ring, x, y));
+  const plain = createEden(41); assert.equal(mapOf(plain), null);
+  assert.ok(findPath(5, 10, 27, 15, false).length > 0, 'the original island still routes');
+});
