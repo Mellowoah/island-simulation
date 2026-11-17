@@ -141,7 +141,7 @@ test('K12 the real clock leaves legacy worlds alone, and appetite changes how so
 });
 
 // A check against the real world that the model does NOT pass yet. Kept visible as a to-do, not hidden.
-test('K13 day range: adults walk about as far as Hadza foragers (women ~6, men ~11 km a day)', { todo: 'fails today: about 20 km a day, because each person still forages alone and goes back to food and water often. The planned daily-decision stage (one trip that carries the day, sharing at camp) is meant to fix it.' }, () => {
+test('K13 day range: adults walk about as far as Hadza foragers (women ~6, men ~11 km a day)', { todo: 'fails in Eden on the real clock: about 20 km a day, because Eden still uses the old island decision rules. The small world (world.js) has camps, full loads and sharing, and passes a settled-day check (tests/world.test.mjs Y4).' }, () => {
   const s = createEden(41, {}, { clock: 'real', god: false });
   edenStep(s, 24 * 60);
   const ad = s.creatures.filter(c => c.alive && c.body.age >= 18), km = ad.reduce((n, c) => n + (c.tiles ?? 0), 0) / ad.length / 60 * 0.35;

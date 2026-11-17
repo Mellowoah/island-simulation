@@ -35,6 +35,7 @@ export const STREAMS={
   temperament:[343,349],   // being.js: one stream per temperament system (seeking reuses birthCuriosity / newborn). Read-only; changes no world.
   ageing:[350,350],        // eden lifeCourse: monthly draw for dying of age, after the fall only
   climate:[351,351],       // savanna: yearly rain (lognormal) and the slow wet/dry swing; keyed by year, not by tick
+  world:[360,399],        // world.js (the small world): setup 360-369, choice 370, explore 371-372, conception 373-374, newborn 375-380, illness 381, injury 382, birth risk 383, pairing 384, talk 385
 };
 const draw=(s,t,id,salt)=>s.rng===2?noise2(seedKey(s.seed),t,id,salt):noise(s.seed,t,id,salt);
 const cache=new Map();
@@ -42,7 +43,7 @@ export function path(x,y,tx,ty,bridge,m=null){const Wd=mapW(m),key=[x,y,tx,ty,+b
 // Real-clock worlds route by distance fields: one breadth-first search from each destination, kept, then any start
 // walks downhill to it (shortest, like path(); ties broken in a fixed order). Legacy worlds keep path() exactly.
 const fields=new Map();
-function fieldTo(tx,ty,bridge,m){const Wd=mapW(m),Hd=mapH(m),key=[tx,ty,+bridge,m?m.id:''].join(',');let f=fields.get(key);if(f)return f;f=new Int32Array(Wd*Hd).fill(-1);if(onLand(m,tx,ty,bridge)){f[ty*Wd+tx]=0;const q=[tx,ty];for(let i=0;i<q.length;i+=2){const a=q[i],b=q[i+1],d=f[b*Wd+a];for(const[nx,ny]of[[a+1,b],[a-1,b],[a,b+1],[a,b-1]])if(onLand(m,nx,ny,bridge)&&f[ny*Wd+nx]<0){f[ny*Wd+nx]=d+1;q.push(nx,ny);}}}if(fields.size>3000)fields.clear();fields.set(key,f);return f;}
+function fieldTo(tx,ty,bridge,m){const Wd=mapW(m),Hd=mapH(m),mk=m?m.id:'';let byMap=fields.get(mk);if(!byMap){byMap=new Map();fields.set(mk,byMap);}const key=(ty*Wd+tx)*2+(bridge?1:0);let f=byMap.get(key);if(f)return f;f=new Int32Array(Wd*Hd).fill(-1);if(onLand(m,tx,ty,bridge)){f[ty*Wd+tx]=0;const q=[tx,ty];for(let i=0;i<q.length;i+=2){const a=q[i],b=q[i+1],d=f[b*Wd+a];for(const[nx,ny]of[[a+1,b],[a-1,b],[a,b+1],[a,b-1]])if(onLand(m,nx,ny,bridge)&&f[ny*Wd+nx]<0){f[ny*Wd+nx]=d+1;q.push(nx,ny);}}}if(byMap.size>1500)byMap.delete(byMap.keys().next().value);byMap.set(key,f);return f;}
 export function fieldPath(x,y,tx,ty,bridge,m=null){const Wd=mapW(m),f=fieldTo(tx,ty,bridge,m);let d=f[y*Wd+x];const out=[];if(d<0)return out;let a=x,b=y;while(d>0){for(const[nx,ny]of[[a+1,b],[a-1,b],[a,b+1],[a,b-1]]){if(nx<0||ny<0||nx>=Wd||ny>=mapH(m))continue;if(f[ny*Wd+nx]===d-1){a=nx;b=ny;break;}}d--;out.push([a,b]);}return out;}
 export function fieldDist(x,y,tx,ty,bridge,m=null){return fieldTo(tx,ty,bridge,m)[y*mapW(m)+x];}
 export const routeFor=(s,x,y,tx,ty)=>s.clock?fieldPath(x,y,tx,ty,s.bridge,mapOf(s)):path(x,y,tx,ty,s.bridge,mapOf(s));

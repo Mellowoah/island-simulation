@@ -191,7 +191,7 @@ function landStepReal(s, groundFactor) {
     const { add, lost } = growPatch(p, grow);
     s.ledger.regenerated += add; s.ledger.decayed = (s.ledger.decayed ?? 0) + lost;
   }
-  if (s.tick % Math.round(C.day) === 0) { const season = realSeason(s); for (const w of s.eden.springs) w.active = waterActive(w.kind, season, rain); }
+  if (s.tick % Math.round(C.day) === 0) { const season = realSeason(s); for (const w of (s.waters ?? s.eden.springs)) w.active = waterActive(w.kind, season, rain); }
 }
 // How many ticks it takes to gather `units` of a food: units x kcal per unit / (return rate x hours per tick).
 // The return rate falls for the young on skill-intensive foods (Pretelli et al. 2022), and rises with practice.
