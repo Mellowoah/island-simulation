@@ -297,12 +297,14 @@ function options(s, p) {
   if (!night && a >= 12 && hour < 15) {
     const bestFood = opts.filter(o => o.k === 'forage').reduce((m, o) => Math.max(m, o.u), 0);
     // worth more when what they know is poor or far: long days of walking, or little worth going for
-    const far = Math.min(1, Math.max(0, ((s.dayKm ?? 8) - 7) / 6));
-    opts.push({ k: 'explore', u: p.mind.curiosity * (0.3 + 0.4 * Math.max(0, 0.5 - bestFood) + 0.6 * far), why: `curiosity ${Math.round(p.mind.curiosity * 100)}${far > 0.2 ? ', the known places are far' : ''}` });
+    // (how far the food trips have to go, not how far people walk in all, or exploring would feed on itself)
+    const far = Math.min(1, Math.max(0, ((s.tripKm ?? 3) - 4) / 4));
+    opts.push({ k: 'explore', u: p.mind.curiosity * (p.energy / 100) * (0.3 + 0.4 * Math.max(0, 0.5 - bestFood) + 0.6 * far), why: `curiosity ${Math.round(p.mind.curiosity * 100)}${far > 0.2 ? ', the known places are far' : ''}` });
   }
   // camp: being with others, caring for the young, going home in the evening
   if (home) opts.push({ k: 'camp', u: 0.25 + 0.25 * p.mind.social + (young.length ? 0.15 * p.mind.care : 0), why: 'at camp with the others' });
-  else opts.push({ k: 'home', u: (hour >= 17 ? 1.5 : 0.2) + (p.carry > 0 ? 0.6 : 0) - homeH * 0.05, why: `camp ${homeH.toFixed(1)} h away` });
+  else { const cw = s.waterById.get(s.camp.water), water = cw.active ? 3 * thirst ** 1.5 : 0; // camp has water: thirst draws people home too
+    opts.push({ k: 'home', u: (hour >= 17 ? 1.5 : 0.2) + (p.carry > 0 ? 0.6 : 0) + water - homeH * 0.05, why: `camp ${homeH.toFixed(1)} h away${water > 0.5 ? ', and there is water there' : ''}` }); }
   return opts;
 }
 
@@ -316,7 +318,10 @@ function decide(s, p) {
   if (o.k === 'sleep') { if (!atCamp(s, p) && hoursTo(s, p, ...camp) <= 1.5) p.plan = [{ k: 'walk', to: camp }, { k: 'sleep' }]; else p.plan = [{ k: 'sleep' }]; }
   else if (o.k === 'rest') p.plan = [{ k: 'rest', left: C.perHour }];
   else if (o.k === 'drink') p.plan = [{ k: 'walk', to: [o.w.x, o.w.y] }, { k: 'drink', w: o.w, left: 0.25 * C.perHour }];
-  else if (o.k === 'forage') p.plan = [{ k: 'walk', to: [o.q.x, o.q.y] }, { k: 'gather', q: o.q, want: o.want }, { k: 'walk', to: camp }, { k: 'unload' }];
+  else if (o.k === 'forage') {
+    const d = fieldDist(o.q.x, o.q.y, s.camp.x, s.camp.y, false, mapOf(s)) * T.TILE_KM; if (d >= 0) s.tripKm = s.tripKm === undefined ? d : s.tripKm + (d - s.tripKm) / 30; // how far food trips go (a running average)
+    p.plan = [{ k: 'walk', to: [o.q.x, o.q.y] }, { k: 'gather', q: o.q, want: o.want }, { k: 'walk', to: camp }, { k: 'unload' }];
+  }
   else if (o.k === 'explore') { const t = exploreTarget(s, p); p.plan = t ? [{ k: 'walk', to: t, explore: true }, { k: 'walk', to: camp }] : [{ k: 'camp', left: C.perHour }]; }
   else if (o.k === 'home') p.plan = [{ k: 'walk', to: camp }, { k: 'unload' }];
   else p.plan = [{ k: 'camp', left: 2 * C.perHour }];
@@ -402,7 +407,18 @@ function feedFromPool(s, h) {
     // in good times and lose it in lean ones)
     const room = Math.max(0, q.body.fatMax - q.reserve) / B.fatStoreEff;
     const want = q.body.age < 14 ? q.hunger / q.body.hpk + room : q.hunger > 25 ? q.hunger / q.body.hpk + Math.min(room, q.body.base * 0.5) : 0;
-    const g = Math.min(h.pool, want); if (g > 0) { eatKcal(s, q, g); h.pool -= g; }
+    let g = Math.min(h.pool, want); if (g > 0) { eatKcal(s, q, g); h.pool -= g; }
+    // demand sharing (as among the Hadza): someone still hungry at camp asks other families, kin first; a family gives
+    // what it does not need to eat now itself
+    if (want - g > 50 && (q.hunger > 50 || q.body.age < 14)) {
+      const others = homes(s).filter(o => o !== h && o.pool > 0).map(o => ({ o, r: Math.max(0, ...o.members.filter(i => s.people[i].alive).map(i => related(s, q, s.people[i]))) })).sort((a, b) => b.r - a.r);
+      let left = want - g;
+      for (const { o } of others) {
+        const keep = o.members.reduce((n, i) => { const m = s.people[i]; return n + (m.alive ? m.hunger / m.body.hpk : 0); }, 0), spare = Math.max(0, o.pool - keep);
+        const take = Math.min(spare, left); if (take <= 0) continue;
+        eatKcal(s, q, take); o.pool -= take; left -= take; s.shared = (s.shared ?? 0) + take; if (left <= 50) break;
+      }
+    }
   }
 }
 
@@ -469,6 +485,7 @@ function maybeMoveCamp(s, urgent = false) {
   for (const id of waters) { const w = s.waterById.get(id); if (!lasting(w) || id === here.id) continue; const v = campValue(s, w, know); if (v > bv) { bv = v; best = w; } }
   if (!best) return;
   s.camp = { x: best.x, y: best.y, water: best.id, since: s.tick };
+  for (const p of living(s)) p.waters[best.id] = { active: best.active, t: s.tick }; // the band moves together: everyone knows where the new camp is
   for (const p of living(s)) if (!s.carer.get(p.id)) { p.plan = []; p.step = null; }
   event(s, `The band moved camp to ${best.name.toLowerCase()}, where more food is known nearby.`);
 }
@@ -523,7 +540,24 @@ function die(s, p, cause) {
   p.alive = false; p.death = { t: s.tick, cause, age: p.body.age }; s.deaths[cause] = (s.deaths[cause] ?? 0) + 1; changed(s);
   p.seenCount = p.seen.reduce((n, v) => n + v, 0); p.seen = null; p.places = {}; p.waters = {}; p.plan = []; p.step = null; // the dead keep their story, not their maps (memory in long runs)
   event(s, `${p.name} died (${cause.toLowerCase()}, age ${Math.floor(p.body.age)}).`);
+  adoptOrphans(s);
   refreshCarers(s);
+}
+// Children left in a home with no grown-up go to their closest kin who has one (grandparents, aunts and uncles,
+// older siblings), or else to any family: among foragers orphans are taken in.
+function adoptOrphans(s) {
+  for (const h of homes(s)) {
+    const alive = h.members.map(i => s.people[i]).filter(q => q.alive);
+    if (alive.some(q => q.body.age >= 16)) continue;
+    for (const k of alive) {
+      const fams = homes(s).filter(o => o !== h && o.members.some(i => s.people[i].alive && s.people[i].body.age >= 16));
+      if (!fams.length) break;
+      const best = fams.map(o => ({ o, r: Math.max(0, ...o.members.filter(i => s.people[i].alive).map(i => related(s, k, s.people[i]))) })).sort((a, b) => b.r - a.r || a.o.id - b.o.id)[0].o;
+      h.members = h.members.filter(i => i !== k.id); best.members.push(k.id); k.household = best.id;
+      note(s, k, `Taken in by ${s.people[best.members.find(i => s.people[i].alive && s.people[i].body.age >= 16)].name}'s family.`);
+    }
+    changed(s);
+  }
 }
 
 // ---------- the step ----------
@@ -557,10 +591,11 @@ export function stepWorld(s, n = 1) {
     { const hr = hourOf(C, s.tick); if (hr === 19) evening(s); else if (hr === 10 || hr === 13 || hr === 16) share(s); }
     if (s.tick % day === 0) {
       // how far grown people have had to walk lately (a ten-day average): long days mean the food near camp is used up
-      const ad = living(s).filter(p => p.body.age >= 18), tiles = ad.reduce((n, p) => n + p.tiles, 0);
-      const km = s.lastTiles === undefined ? 0 : (tiles - s.lastTiles) / Math.max(1, ad.length) * T.TILE_KM; s.lastTiles = tiles;
+      const ad = living(s).filter(p => p.body.age >= 18);
+      const km = ad.reduce((n, p) => n + p.tiles - (p.tilesAtDay ?? p.tiles), 0) / Math.max(1, ad.length) * T.TILE_KM; // each person's own walking since yesterday
+      for (const p of living(s)) p.tilesAtDay = p.tiles;
       s.dayKm = s.dayKm === undefined ? km : s.dayKm + (km - s.dayKm) / 10;
-      if (!s.waterById.get(s.camp.water).active || (s.tick % (7 * day) === 0 && (bandThin(s) || s.dayKm > 12))) maybeMoveCamp(s, true);
+      if (!s.waterById.get(s.camp.water).active || (s.tick % (7 * day) === 0 && (bandThin(s) || (s.tripKm ?? 0) > 6))) maybeMoveCamp(s, true);
     }
     if (s.tick % month === 0) monthly(s);
     births(s);
