@@ -93,3 +93,14 @@ Robert, 17 Nov: "I wanna be able to turn the serpent off and then I wanna be abl
 - **`serpent` (Eden input, default on = original; test S1).** Off: the serpent never appears or speaks. No one is tempted, so no one deliberates at the tree and there is no fall; the garden stays guided and protected. This is T3 (never eating is acceptable) made testable, and it isolates T4 (the fall comes through the deceiver's doubt).
 - **Life record (measure only; test S2).** For every creature the run keeps a yearly snapshot (health, energy, hunger, thirst, belief in the claim, the word held, places known, skill, children, traits), its own memories as they happen (up to 150), and how it died. Kept on the run, never on the world; saved with the run.
 - **Characters panel.** Pick any creature, living or dead, from a list; see its family, each attribute from first record to now with its change and a small line over its life, its story, and its full attribute catalogue. A creature chosen from the list stays chosen after it dies.
+
+## Swappable map, and Robert's principles for the savanna world (17 Nov 2026, branch `claude/attributes`)
+- **Engine (test M1).** A world may name a registered map (`s.map = {id}`); every land check, path and explore target reads it. With no map named, the original 36×26 island is used exactly (all earlier tests unchanged). No change to Eden's rules.
+- **Robert's principles, 17 Nov, for everything that follows:**
+  1. "The tree … possesses … all knowledge … they have access to all knowledge, but it doesn't need to mean that they were born with it … built with the ability to understand, judge and apply it once they experience it." Knowledge comes only by experience, in every world.
+  2. "Discovery only, what makes sense in what we believe to be true of early humans." Fire and sharp stone are discovered from natural sources, not given; uses evolve with experience and are shared.
+  3. "Make sure that they make sense from a physics standpoint, a mathematical standpoint, so the ratios … you need scarcity because that's natural." One currency (calories), real return rates, real land area and needs; scarcity follows from the arithmetic, never from a tuning knob.
+  4. "All things should have a natural decay … influenced by their decisions, health and the risk." Food spoils, tools wear, fires die without fuel, unused skill fades, bodies age; half-lives from real rates where they exist.
+  5. "Consider decision points that would need to be made daily and how they would evolve … based on where they are in their lives." Choices open to a creature depend on its life stage.
+  6. The unfallen garden with the deceiver off: families fill the earth (Gen 1:28) into the same savanna, still guided, no death, no curse. A third case beside the fallen world and the world without God.
+  7. The lab brief's limits (no crafting, no technology) no longer bind this work (Robert, 17 Nov).
