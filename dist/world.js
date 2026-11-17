@@ -65,7 +65,7 @@ const homes = s => { let h = HOMES.get(s); if (!h) { h = s.households.filter(x =
 const changed = s => { LIVE.delete(s); HOMES.delete(s); };
 // Bands: each family belongs to one; each band has its own camp.
 export const bandOf = (s, p) => s.bands[s.households[p.household]?.band ?? 0];
-const campOf = (s, p) => bandOf(s, p).camp;
+export const campOf = (s, p) => bandOf(s, p).camp;
 export const bandMembers = (s, b) => living(s).filter(p => (s.households[p.household]?.band ?? 0) === b.id);
 const W = T.TW, H = T.TH;
 
@@ -140,7 +140,13 @@ function carerOf(s, p) {
   if (m?.alive) return m; if (f?.alive) return f;
   const h = s.households[p.household]; return h ? h.members.map(i => s.people[i]).find(q => q.alive && q.body.age >= 14) ?? null : null;
 }
-const youngOf = (s, p) => p.young.map(i => s.people[i]).filter(k => k.alive && s.carer.get(k.id) === p);
+// 0 while body fat is above 40% of its most, rising to 1 as it runs out (for oneself or a child in one's care)
+function survivalDrive(p, young = []) {
+  const d = q => Math.max(0, Math.min(1, (0.4 - (q.reserve ?? 0) / q.body.fatMax) / 0.4));
+  return young.reduce((m, k) => Math.max(m, d(k)), d(p));
+}
+// the young a person is looking after now: their own, or a child of kin whose parents have died
+const youngOf = (s, p) => (s.youngBy?.get(p.id) ?? []).filter(k => k.alive && s.carer.get(k.id) === p);
 
 function liveTick(s, p, mother) {
   const C = clockOf(s), B = body(s), b = p.body;
@@ -251,7 +257,7 @@ function attachIndex(s) {
   } });
   Object.defineProperty(s, 'carer', { enumerable: false, configurable: true, writable: true, value: new Map() });
 }
-function refreshCarers(s) { s.carer = new Map(); for (const p of living(s)) { const c = carerOf(s, p); if (c) s.carer.set(p.id, c); } }
+function refreshCarers(s) { s.carer = new Map(); s.youngBy = new Map(); for (const p of living(s)) { const c = carerOf(s, p); if (c) { s.carer.set(p.id, c); if (!s.youngBy.has(c.id)) s.youngBy.set(c.id, []); s.youngBy.get(c.id).push(p); } } }
 
 // Siler hazard (per year) and its integral from 0 to x.
 export const siler = (S, x) => S.a1 * Math.exp(-S.b1 * x) + S.a2 + S.a3 * Math.exp(S.b3 * x);
@@ -306,9 +312,12 @@ function options(s, p) {
   const young = youngOf(s, p), thirst = young.reduce((m, k) => Math.max(m, k.thirst), p.thirst) / 100;
   const tired = (100 - p.energy) / 100, home = atCamp(s, p), camp = campOf(s, p), band = bandOf(s, p);
   const homeH = home ? 0 : hoursTo(s, p, camp.x, camp.y);
+  // the drive to stay alive: as body fat runs low (one's own, or a child's one is looking after) getting food
+  // overrides tiredness and comfort, and people look further afield for it (survival before pleasure)
+  const drive = survivalDrive(p, young);
   // sleep
   if (night) opts.push({ k: 'sleep', u: 2.5 + tired, why: 'night' });
-  else opts.push({ k: 'rest', u: tired * tired * 3 - 0.2, why: `tired ${Math.round(tired * 100)}` });
+  else opts.push({ k: 'rest', u: tired * tired * 3 - 0.2 - (p.energy > 15 ? 1.5 * drive : 0), why: `tired ${Math.round(tired * 100)}` });
   // water
   let best = null, bm = Infinity;
   for (const id in p.waters) { if (!p.waters[id].active) continue; const wt = s.waterById.get(id), md = Math.abs(wt.x - p.x) + Math.abs(wt.y - p.y); if (md < bm) { bm = md; best = wt; } } // nearest by straight-line first
@@ -338,7 +347,7 @@ function options(s, p) {
       const rate = returnRate(q.food, a, p.skills[q.id] ?? 0), want = Math.min(a < 14 ? Math.max(500, short) : p.body.carryKcal, k.exp * 500);
       const hrs = out + want / rate + back, walk = (out + back) * p.body.tilesTick / C.hours * p.body.cotTile * p.body.mass;
       const net = (want - walk) / hrs, late = hour + hrs > 19 ? (hour + hrs - 19) * 0.25 : 0;
-      opts.push({ k: 'forage', q, want, u: urgency * net / 1000 - late - p.mind.caution * Math.max(0, out - 3) * 0.05, why: `${q.name.toLowerCase()} ${out.toFixed(1)} h away, about ${Math.round(net)} kcal an hour after walking` });
+      opts.push({ k: 'forage', q, want, u: urgency * net / 1000 + (net > 0 ? 2 * drive : 0) - late - p.mind.caution * Math.max(0, out - 3) * 0.05, why: `${q.name.toLowerCase()} ${out.toFixed(1)} h away, about ${Math.round(net)} kcal an hour after walking` });
     }
   }
   // explore: curiosity, more when what is known is poor
@@ -347,7 +356,8 @@ function options(s, p) {
     // worth more when what they know is poor or far: long days of walking, or little worth going for
     // (how far the food trips have to go, not how far people walk in all, or exploring would feed on itself)
     const far = Math.min(1, Math.max(0, ((band.tripKm ?? 3) - 4) / 4));
-    opts.push({ k: 'explore', u: p.mind.curiosity * (p.energy / 100) * (0.3 + 0.4 * Math.max(0, 0.5 - bestFood) + 0.6 * far), why: `curiosity ${Math.round(p.mind.curiosity * 100)}${far > 0.2 ? ', the known places are far' : ''}` });
+    const seek = bestFood < 0.5 ? 1.5 * drive : 0; // nothing worth going for nearby and going hungry: look for new sources
+    opts.push({ k: 'explore', u: p.mind.curiosity * (p.energy / 100) * (0.3 + 0.4 * Math.max(0, 0.5 - bestFood) + 0.6 * far) + seek, why: seek > 0.3 ? 'hungry, looking for new food' : `curiosity ${Math.round(p.mind.curiosity * 100)}${far > 0.2 ? ', the known places are far' : ''}` });
   }
   // camp: being with others, caring for the young, going home in the evening
   if (home) opts.push({ k: 'camp', u: 0.25 + 0.25 * p.mind.social + (young.length ? 0.15 * p.mind.care : 0), why: 'at camp with the others' });
@@ -407,13 +417,32 @@ function act(s, p) {
     if (st.left <= 1e-9) { if (st.k === 'gather') gatherDone(s, p, st); if (st.k === 'drink') { drink(p); for (const k of youngOf(s, p)) drink(k); note(s, p, `Drank at ${st.w.name.toLowerCase()}.`); } p.step = null; }
   }
 }
+// A route as the walker believes it: land they have seen is as it is; land they have not seen is assumed passable.
+// They head roughly straight into the unknown and find out on the way (no map of land nobody has seen).
+function believedPath(s, p, tx, ty) {
+  const N = W * H, prev = new Int32Array(N).fill(-2), q = new Int32Array(N), start = p.y * W + p.x, end = ty * W + tx;
+  const ok = i => { const x = i % W, y = (i / W) | 0; return p.seen[i] ? T.isWalkable(x, y) : true; };
+  let h = 0, n = 0; q[n++] = start; prev[start] = -1;
+  while (h < n) { const i = q[h++]; if (i === end) break; const x = i % W, y = (i / W) | 0;
+    // neighbours ordered toward the target so ties run straight at it
+    const nb = [[x + Math.sign(tx - x), y], [x, y + Math.sign(ty - y)], [x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]];
+    for (const [a, b] of nb) { if (a < 0 || b < 0 || a >= W || b >= H) continue; const j = b * W + a; if (prev[j] !== -2 || !ok(j)) continue; prev[j] = i; q[n++] = j; } }
+  if (prev[end] === -2) return null;
+  const out = []; for (let i = end; prev[i] !== -1; i = prev[i]) out.push([i % W, (i / W) | 0]); return out.reverse();
+}
 function walk(s, p, st, budget) {
   const m = mapOf(s);
-  if (!st.route) { st.route = st.explore ? path(p.x, p.y, st.to[0], st.to[1], false, m) : fieldPath(p.x, p.y, st.to[0], st.to[1], false, m); if (!st.route.length) { st.arrived = true; return budget; } }
+  if (!st.route) { st.route = st.explore ? path(p.x, p.y, st.to[0], st.to[1], false, m) : fieldPath(p.x, p.y, st.to[0], st.to[1], false, m); if (st.route.some(([x, y]) => !p.seen[y * W + x])) { st.route = believedPath(s, p, st.to[0], st.to[1]) ?? st.route; st.guess = true; } if (s.diag) { let u = 0; for (const [x, y] of st.route) if (!p.seen[y * W + x]) u++; s.diag.routes.push({ id: p.id, day: Math.floor(s.tick / clockOf(s).day), k: p.decision?.chose ?? st.k, explore: !!st.explore, len: st.route.length, unseen: u }); } if (!st.route.length) { st.arrived = true; return budget; } }
   const C = clockOf(s), B = body(s), v = p.body.tilesTick * (isNight(C, s.tick) ? B.nightPace : 1);
   const young = youngOf(s, p), load = young.filter(k => EN.carried(k.body.age)).reduce((n, k) => n + k.body.mass, 0) + p.carry / 2000, walkers = young.filter(k => !EN.carried(k.body.age));
   p.stride = (p.stride ?? 0) + v * budget; let moved = 0;
   while (p.stride >= 1 && st.route.length) {
+    if (st.guess && !T.isWalkable(st.route[0][0], st.route[0][1])) { // the way they guessed is blocked: they see it now and pick another way
+      st.replans = (st.replans ?? 0) + 1; p.seen[st.route[0][1] * W + st.route[0][0]] = 1;
+      st.route = (st.replans < 60 && believedPath(s, p, st.to[0], st.to[1])) || fieldPath(p.x, p.y, st.to[0], st.to[1], false, m);
+      if (st.replans === 1) note(s, p, 'The way was blocked; looked for another.');
+      if (!st.route.length) break; continue;
+    }
     p.stride -= 1; moved++; [p.x, p.y] = st.route.shift(); p.tiles++;
     const kc = p.body.cotTile * (p.body.mass + load); burnKcal(s, p, kc); loseWater(s, p, kc);
     for (const k of walkers) { const kk = k.body.cotTile * k.body.mass; burnKcal(s, k, kk); loseWater(s, k, kk); }
@@ -427,9 +456,16 @@ function walk(s, p, st, budget) {
   if (st.route.length) return 0;
   p.stride = 0; st.arrived = true; return budget - used;
 }
+// Gathering cut short (thirst, nightfall, the camp moving): what was gathered in the hours spent is kept.
+// Food comes in as the hours pass, not only at the end of a trip.
+function stopGather(s, p) {
+  const st = p.step; if (!st || st.k !== 'gather' || st.left === undefined || !(st.hours > 0)) return;
+  const done = 1 - Math.max(0, st.left) / (st.hours / clockOf(s).hours); if (done <= 0.01) return;
+  gatherDone(s, p, { ...st, want: st.want * Math.min(1, done), hours: st.hours * done });
+}
 function gatherDone(s, p, st) {
   const q = st.q, B = body(s), takeUnits = Math.min(q.stock, st.want / B.unitKcal);
-  q.stock -= takeUnits; s.ledger.consumed += takeUnits;
+  q.stock -= takeUnits; s.ledger.consumed += takeUnits; p.gotKcal = (p.gotKcal ?? 0) + takeUnits * B.unitKcal;
   let kcal = takeUnits * B.unitKcal;
   // eat what you are short of on the spot, feed the young with you, carry the rest home
   for (const k of youngOf(s, p)) { const g = Math.min(kcal, k.hunger / k.body.hpk + Math.max(0, k.body.fatMax - k.reserve) / B.fatStoreEff); if (g > 0) { eatKcal(s, k, g); kcal -= g; } }
@@ -450,7 +486,6 @@ function campTime(s, p) { const h = s.households[p.household]; if (h && h.pool >
 function feedFromPool(s, h) {
   const B = body(s), mem = h.members.map(i => s.people[i]).filter(q => q.alive && atCamp(s, q)).sort((a, b) => a.body.age - b.body.age);
   for (const q of mem) {
-    if (h.pool <= 0) break;
     // the young eat for growth too; adults eat when hungry and, when there is food, put fat back on (people fatten
     // in good times and lose it in lean ones)
     const room = Math.max(0, q.body.fatMax - q.reserve) / B.fatStoreEff;
@@ -459,13 +494,13 @@ function feedFromPool(s, h) {
     // demand sharing (as among the Hadza): someone still hungry at camp asks other families of the same camp, kin
     // first. Each ask is a chance: a family gives what it does not need to eat now, more readily to kin, from a
     // caring giver, to a family that gave to it before, and less readily when the giver is hungry itself.
-    if (want - g > 50 && (q.hunger > 50 || q.body.age < 14)) {
+    if (want - g > 50 && (q.hunger > 50 || q.body.age < 14 || survivalDrive(q) > 0)) {
       const b = h.band, others = homes(s).filter(o => o !== h && o.band === b && o.pool > 0).map(o => ({ o, r: kinTo(s, q, o) })).sort((a, b2) => b2.r - a.r);
       let left = want - g;
       for (const { o, r } of others) {
         const keep = o.members.reduce((n, i) => { const m = s.people[i]; return n + (m.alive ? m.hunger / m.body.hpk : 0); }, 0), spare = Math.max(0, o.pool - keep);
         if (spare <= 0) continue;
-        if (draw(s, q.id * 31 + o.id, SALT.share) > giveChance(s, o, h, r)) { note(s, q, `Asked ${familyName(s, o)} for food and was refused.`); continue; }
+        if (draw(s, q.id * 31 + o.id, SALT.share) > giveChance(s, o, h, r, survivalDrive(q))) { note(s, q, `Asked ${familyName(s, o)} for food and was refused.`); continue; }
         const take = Math.min(spare, left);
         eatKcal(s, q, take); o.pool -= take; left -= take; s.shared = (s.shared ?? 0) + take; gave(s, o, h, take); if (left <= 50) break;
       }
@@ -476,11 +511,11 @@ function feedFromPool(s, h) {
 // (reciprocity), and how hungry the giver is. A chance between 2% and 98%.
 const kinTo = (s, q, o) => Math.max(0, ...o.members.filter(i => s.people[i].alive).map(i => related(s, q, s.people[i])));
 const familyName = (s, o) => { const a = o.members.map(i => s.people[i]).find(m => m.alive && m.body.age >= 16); return a ? `${a.name}'s family` : 'another family'; };
-function giveChance(s, giverH, takerH, r) {
+function giveChance(s, giverH, takerH, r, starving = 0) {
   const ad = giverH.members.map(i => s.people[i]).filter(m => m.alive && m.body.age >= 14);
   const care = ad.length ? ad.reduce((n, m) => n + m.mind.care, 0) / ad.length : 0.5, hunger = ad.length ? ad.reduce((n, m) => n + m.hunger, 0) / ad.length / 100 : 0;
   const R = s.recip ??= {}, got = R[`${takerH.id}>${giverH.id}`] ?? 0, given = R[`${giverH.id}>${takerH.id}`] ?? 0, recip = Math.min(1, got / (given + 2000));
-  return Math.min(0.98, Math.max(0.02, 0.15 + 0.6 * r + 0.3 * care + 0.3 * recip - 0.5 * hunger));
+  return Math.min(0.98, Math.max(0.02, 0.15 + 0.6 * r + 0.3 * care + 0.3 * recip - 0.5 * hunger + 0.5 * starving)); // a visibly starving asker is rarely refused (weights approx.)
 }
 const gave = (s, from, to, kcal) => { const R = s.recip ??= {}; R[`${from.id}>${to.id}`] = (R[`${from.id}>${to.id}`] ?? 0) + kcal; };
 
@@ -561,7 +596,7 @@ function maybeMoveCamp(s, b, urgent = false) {
   const gain = now > 0 ? bv / now - 1 : 1, P = 1 - Math.exp(-gain / (urgent ? 0.1 : 0.3));
   if (draw(s, b.id, SALT.move) > P) return;
   b.camp = { x: best.x, y: best.y, water: best.id, since: s.tick };
-  for (const p of bandMembers(s, b)) { p.waters[best.id] = { ...(p.waters[best.id] ?? {}), active: best.active, t: s.tick, dryOk: true }; if (!s.carer.get(p.id)) { p.plan = []; p.step = null; } }
+  for (const p of bandMembers(s, b)) { p.waters[best.id] = { ...(p.waters[best.id] ?? {}), active: best.active, t: s.tick, dryOk: true }; if (!s.carer.get(p.id)) { stopGather(s, p); p.plan = []; p.step = null; } }
   event(s, `${bandName(s, b)} moved camp to ${best.name.toLowerCase()}, where more food is known nearby.`);
 }
 export const bandName = (s, b) => `Band ${b.id + 1}`;
@@ -589,7 +624,7 @@ function bandLife(s) {
   }
 }
 function joinBand(s, hs, b) {
-  for (const h of hs) { h.band = b.id; for (const i of h.members) { const p = s.people[i]; if (!p.alive) continue; p.waters[b.camp.water] = { ...(p.waters[b.camp.water] ?? {}), active: true, t: s.tick, dryOk: true }; if (!s.carer.get(p.id)) { p.plan = []; p.step = null; } } }
+  for (const h of hs) { h.band = b.id; for (const i of h.members) { const p = s.people[i]; if (!p.alive) continue; p.waters[b.camp.water] = { ...(p.waters[b.camp.water] ?? {}), active: true, t: s.tick, dryOk: true }; if (!s.carer.get(p.id)) { stopGather(s, p); p.plan = []; p.step = null; } } }
   changed(s);
 }
 function split(s, b) {
@@ -655,10 +690,15 @@ function births(s) {
     p.births.push(s.tick); p.young.push(kid.id); dad.young.push(kid.id); s.births++;
     event(s, `${p.name} gave birth to ${kid.name}.`); note(s, p, `Gave birth to ${kid.name}.`);
     if (draw(s, p.id, SALT.birth) < cfg.birthRisk) die(s, p, 'Childbirth');
+    refreshCarers(s);
   }
 }
 function die(s, p, cause) {
   if (!p.alive) return;
+  if (s.diag?.deaths) { const C = clockOf(s), h = s.households[p.household], cp = campOf(s, p), w = s.waterById.get(cp.water), bm = bandMembers(s, bandOf(s, p)), ad = bm.filter(q => q.body.age >= 16);
+    s.diag.deaths.push({ cause, age: p.body.age, month: dateOf(C, s.tick).month, year: Math.floor(s.tick / C.year), campWater: !!w?.active, distCamp: Math.hypot(p.x - cp.x, p.y - cp.y) * T.TILE_KM, pool: h?.pool ?? 0,
+      adultsHome: (h?.members ?? []).filter(i => s.people[i].alive && s.people[i].body.age >= 16 && i !== p.id).length, band: bm.length, bandFat: ad.reduce((n, q) => n + q.reserve / q.body.fatMax, 0) / Math.max(1, ad.length),
+      step: p.step?.k, chose: p.decision?.chose, young: youngOf(s, p).length, reserve: p.reserve / p.body.fatMax, thirst: p.thirst, hunger: p.hunger, mother: !!s.people[p.mother]?.alive, health: p.health, energy: p.energy, opts: p.decision?.options, sex: p.sex, pregnant: !!p.pregnant, ate: p.lastAte ?? null, tick: s.tick, carers: (p.carers ?? []).filter(i => s.people[i]?.alive).length, knownWaters: Object.keys(p.waters ?? {}).length, rain: s.rainNow ?? null }); }
   p.alive = false; p.death = { t: s.tick, cause, age: p.body.age }; s.deaths[cause] = (s.deaths[cause] ?? 0) + 1; changed(s);
   if (p.carry > 0) { s.lostCarry = (s.lostCarry ?? 0) + p.carry; p.carry = 0; } // food on a body that dies is lost (booked)
   p.seenCount = p.seen.reduce((n, v) => n + v, 0); p.seen = null; p.places = {}; p.waters = {}; p.plan = []; p.step = null; // the dead keep their story, not their maps (memory in long runs)
@@ -682,7 +722,7 @@ function adoptOrphans(s) {
       h.members = h.members.filter(i => i !== k.id); best.members.push(k.id); k.household = best.id;
       note(s, k, `Taken in by ${s.people[best.members.find(i => s.people[i].alive && s.people[i].body.age >= 16)].name}'s family.`);
     }
-    changed(s);
+    changed(s); refreshCarers(s);
   }
 }
 
@@ -702,10 +742,10 @@ export function stepWorld(s, n = 1) {
       if (carer) { p.x = carer.x; p.y = carer.y; p.step = null; p.plan = []; continue; }
       // interruptions: thirst that has become urgent, or night falling far from camp
       const young = youngOf(s, p), felt = young.reduce((m, k) => Math.max(m, k.thirst), p.thirst);
-      if (felt >= 70 && p.step?.k !== 'drink' && !p.plan.some(x => x.k === 'drink')) { p.plan = []; p.step = null; }
-      if (sleepTime(C, s.tick) && p.step && !['sleep', 'walk', 'unload'].includes(p.step.k)) { p.plan = []; p.step = null; }
+      if (felt >= 70 && p.step?.k !== 'drink' && !p.plan.some(x => x.k === 'drink')) { stopGather(s, p); p.plan = []; p.step = null; }
+      if (sleepTime(C, s.tick) && p.step && !['sleep', 'walk', 'unload'].includes(p.step.k)) { stopGather(s, p); p.plan = []; p.step = null; }
       act(s, p);
-      if (atCamp(s, p)) { if (p.carry > 0) unload(s, p); const h = s.households[p.household]; if (h?.pool > 0 && (p.hunger > 25 || young.length)) feedFromPool(s, h); }
+      if (atCamp(s, p)) { if (p.carry > 0) unload(s, p); const h = s.households[p.household]; if (h && (p.hunger > 25 || young.length)) feedFromPool(s, h); }
       const w = s.waterById.get(campOf(s, p).water); if (atCamp(s, p) && w.active && p.thirst > 15) { drink(p); for (const k of young) drink(k); }
     }
     for (const p of alive) {
@@ -726,6 +766,7 @@ export function stepWorld(s, n = 1) {
       }
       sanity(s);
       for (const p of living(s)) p.tilesAtDay = p.tiles;
+      if (s.diag?.track) for (const p of living(s)) { const tr = (s.diag.track[p.id] ??= []); tr.push({ r: +(p.reserve / p.body.fatMax).toFixed(2), got: Math.round(p.gotKcal ?? 0), g: +p.times.gather.toFixed(1), c: +p.times.camp.toFixed(1), w: +p.times.walk.toFixed(1), h: Math.round(p.health), y: youngOf(s, p).length, ch: p.decision?.chose, pool: Math.round(s.households[p.household]?.pool ?? 0), hh: (s.households[p.household]?.members ?? []).filter(i => s.people[i].alive).map(i => Math.round(s.people[i].body.age)).join("/") }); if (tr.length > 40) tr.shift(); }
       adoptOrphans(s);
     }
     if (s.tick % month === 0) monthly(s);
@@ -742,7 +783,7 @@ function sanity(s) {
     for (const k of ['hunger', 'thirst', 'energy', 'health']) if (!(p[k] >= -1e-9 && p[k] <= 100 + 1e-9)) add(`${p.name}: ${k} ${p[k]}`);
     if (!(p.reserve >= -1e-6) || p.reserve > p.body.fatMax * 1.01 + 1) add(`${p.name}: body fat ${p.reserve}`);
     // over 60 km in a day is impossible on foot with a family (an alarm); over 40 is rare but real (counted as unusual)
-    const km = (p.tiles - (p.tilesAtDay ?? p.tiles)) * T.TILE_KM; if (km > 60) add(`${p.name} walked ${km.toFixed(0)} km in a day`); else if (km > 40) s.unusual = (s.unusual ?? 0) + 1;
+    const km = (p.tiles - (p.tilesAtDay ?? p.tiles)) * T.TILE_KM; if (km > 60) add(`${p.name} walked ${km.toFixed(0)} km in a day`); else if (km > 40) { s.unusual = (s.unusual ?? 0) + 1; if (s.diag) s.diag.long.push({ id: p.id, day: Math.floor(s.tick / clockOf(s).day), km, age: p.body.age, sex: p.sex }); }
   }
   for (const q of s.patches) if (!(q.stock >= -1e-9)) add(`${q.name}: stock ${q.stock}`);
   const L = s.ledger, left = s.patches.reduce((n, q) => n + q.stock, 0);

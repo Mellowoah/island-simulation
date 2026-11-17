@@ -153,3 +153,15 @@ Robert, 17 Nov: "We need to elongate the simulation. It looks like it's confined
 - Daily alarms for impossible states; tests require none.
 - Odds over 8 islands × 30 years (tools/odds.mjs): no island died out, but people fell to a median of 18; starvation 29% and thirst 25% of deaths against a small share in real foragers; ages 1–5 and 20–50 die 6–10× the Hadza rate. Open failure: fix by causes before adding anything new.
 - Still-known leaks: routes and trip times use land nobody has seen.
+
+## Causes of hunger and thirst found and fixed (17 Nov 2026)
+
+Every death on 4 islands × 20 years was logged with its context (tools/diag-deaths.mjs, tools/diag-walks.mjs). Fixes are to causes, not rates:
+
+- **Routes over unseen land.** People planned perfect routes through land they had never seen (55% unseen on long-walk days). Now they route over known land as it is and assume unseen land is passable, heading roughly straight; when they meet a lake, sea or river they see it and find another way. Long days rose from 10 to 17 in 8 years (about 2 a year, one-offs): the cost of guessing.
+- **Gathering paid only at the end.** Food was credited only when a gathering bout finished; any interruption (a child's thirst, nightfall, a camp move) lost all of it. A lone father gathered 7–9 hours a day for weeks and got nothing. Now the hours spent yield their share.
+- **Carers who were not parents.** When a toddler's parents died, a relative became its carer but only parents could feed and water their own young, so the child died of thirst beside water. Now a carer looks after whoever is in their care.
+- **Families with no food never asked.** Demand sharing stopped before asking when a family's own store was empty. Now a hungry or starving person asks the other families of the camp, and a visibly starving asker is rarely refused (weight approx.).
+- **No drive to stay alive.** Tiredness could outweigh hunger to the death. Now, as body fat falls below 40% of its most (one's own or a child's in one's care), getting food overrides rest and comfort, and with nothing worth going for nearby people go looking for new food.
+
+Result on 4 islands × 20 years: hunger and thirst fell from 57% to 43% of deaths; illness is now the largest cause. What remains comes mainly in drought years and in large bands (35+), i.e. scarcity and crowding.
