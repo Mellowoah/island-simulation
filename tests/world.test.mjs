@@ -269,3 +269,11 @@ test('Y24 inheritance (fixes A8): child-on-midparent slope is h2, additive varia
   }
   assert.ok(means[1] - means[0] > 0.02, 'selection on breeding value moves the mean'); assert.ok(Math.abs(means[4] - means[1]) < 0.012, 'and it does not drift back');
 });
+
+test('Y25 wiring: heat raises water loss in the world (not only in Eden), and the page loads every module it imports', async () => {
+  const { loseWater } = await import('../dist/w-people.js'); const { execFileSync } = await import('node:child_process');
+  const s = createWorld2(59), p = s.people.find(q => q.alive && q.body.age >= 18);
+  const cool = { ...s, weather: { ...s.weather, tmax: 25 } }, hot = { ...s, weather: { ...s.weather, tmax: 38 } };
+  const a = { ...p, deficit: 0 }, b = { ...p, deficit: 0 }; loseWater(cool, a, 1000); loseWater(hot, b, 1000); assert.ok(b.deficit > a.deficit * 1.1, `${a.deficit} ${b.deficit}`);
+  assert.doesNotMatch(execFileSync('node', ['tools/page-files.mjs'], { encoding: 'utf8' }), /MISSING/);
+});

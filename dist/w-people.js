@@ -8,6 +8,7 @@ import { lifeStage } from './being.js';
 import * as T from './terrain.js';
 import * as N from './nature.js';
 import { SALTS } from './streams.js';
+import { heatFactor } from './weather.js';
 import { H, SALT, W, ageOf, bandMembers, bandOf, campOf, changed, clamp, draw, event, gauss, homes, living, nameOf, note } from './w-core.js';
 import { walk } from './w-move.js';
 import { bandLife, gave, kinTo, maybeMoveCamp, related, share } from './w-social.js';
@@ -26,7 +27,8 @@ export function setBody(s, p) {
   // a growing or ageing body whose fat store gets smaller burns the difference (booked as burned)
   if (p.reserve > p.body.fatMax) { const ex = p.reserve - p.body.fatMax; p.reserve = p.body.fatMax; (s.energyLedger ??= { eaten: 0, burned: 0, heat: 0, unabsorbed: 0 }).burned += ex; }
 }
-export const loseWater = (s, p, kcal) => { p.deficit += kcal * body(s).waterMlPerKcal; p.thirst = Math.min(100, p.deficit / p.body.waterAt * 100); };
+export const loseWater = (s, p, kcal) => { p.deficit += kcal * body(s).waterMlPerKcal * heatFactor(s); // more in the heat (weather.js)
+  p.thirst = Math.min(100, p.deficit / p.body.waterAt * 100); };
 export const drink = p => { p.deficit = 0; p.thirst = 0; };
 
 // The person a young child goes with: mother, else father, else an adult of its household.
