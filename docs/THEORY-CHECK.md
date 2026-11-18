@@ -251,3 +251,13 @@ A hunt is a gamble (usually nothing, sometimes a large haul). It is now valued a
 Found on checking: one alarm (61 km) on island 2: hunting grounds were not checked against the day's remaining walking, and on a day the camp moved overnight several hunters walked 20-28 km stalking and back. Hunting grounds now must fit there, the stalk and back; with none in reach, people stay at camp. After the fix: 0 alarms on two islands x 5 years; long-walk days on island 2 87 to 39.
 
 Score (paired seeds, 4 islands x 6 years): 2.29 to 2.44 nats per pattern, worse. Hunting is valued more cautiously, so men walk less (men's day range was already short, A5). Reported, not tuned. 144 tests pass, no drift.
+
+## Idea 7 — choice noise fitted by cross-entropy (18 Nov 2026)
+Choice is McFadden random utility: Gumbel noise of scale T gives softmax with temperature T. T was a hand-set 0.05; it is now a register entry (choiceTemperature) fitted on the 10 calibration patterns only (held-out patterns untouched), 4 islands x 5 years, paired seeds:
+
+| T | 0.02 | 0.05 | 0.075 | 0.1 | 0.13 | 0.2 |
+|---|---|---|---|---|---|---|
+| nats | 2.95 | 2.47 | 2.17 | 2.23 | 2.55 | 3.83 |
+
+Parabola minimum 0.083 → 0.08 (range 0.06–0.11, within ~0.1 nat). Repeat with `node tools/fit.mjs choiceTemperature 0.02,0.05,0.075,0.1,0.13,0.2`.
+Check found: more choice noise brought out a rare path — one 64 km day (a man walking home after a long hunt). Fix: a hard day limit (dayKmHard 45 km, assumption) past which a walker sleeps out and goes on next morning, as Hadza hunters do. The 60 km alarm is kept as a check. After the fix: 3 islands x 5 years, no alarms, books balance; score 2.30 nats (4x5). Test Y20.

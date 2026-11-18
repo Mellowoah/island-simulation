@@ -219,3 +219,10 @@ test('Y19 risk by Kelly with a survival cliff: the comfortable are mildly cautio
   assert.ok(m.certaintyEquivalent(-6000, R0, out) > mean, 'bold when only the gamble can carry them over');
   [RATES.riskDeathJump.value, RATES.riskDeathSlope.value] = keep;
 });
+
+test('Y20 choice noise is a fitted number: choiceTemperature in the register says how it was fitted; worlds read it unless a run overrides it', async () => {
+  const { RATES } = await import('../dist/clock.js');
+  assert.match(RATES.choiceTemperature.src, /fitted .* cross-entropy/);
+  assert.ok(RATES.choiceTemperature.low < RATES.choiceTemperature.value && RATES.choiceTemperature.value < RATES.choiceTemperature.high);
+  assert.equal(createWorld2(49).config.choiceTemperature, undefined); assert.equal(createWorld2(49, { choiceTemperature: 0.2 }).config.choiceTemperature, 0.2);
+});

@@ -23,7 +23,6 @@ export const WORLD_DEFAULTS = {
   years: 0,                 // run length for the page (0 = until stopped)      // chance a month that a family moves to another band where it has kin (camp membership is fluid among foragers; approx.)
   clockMinutes: 60,
   density: 0.24,            // people per km² the land feeds in an ordinary year (Hadza, Marlowe)
-  choiceTemperature: 0.05,  // bounded rationality: how often a person picks something other than the best-looking option
   menarche: 16, firstPair: { F: 16, M: 18 }, menopause: 45, // forager menarche ~16, last births around 40 (Hadza)
   fecundability: 0.2, gestation: 0.75, maleRatio: 0.512, heritability: 0.4,
   birthRisk: 0.012,         // death of the mother per birth before modern medicine (Cambridge Group summary)

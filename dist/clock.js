@@ -148,6 +148,8 @@ export const RATES = {
   voiHorizonHours:{ value: 120, low: 40, high: 400, unit: 'hours', src: 'assumption: hours a newly found better place is used before the season changes (about a month of gathering)' },
   riskDeathJump: { value: 3, low: 1, high: 6, unit: 'log units', src: 'assumption: the drop in value at the point a household starts to starve (the survival cliff of the energy-budget rule, Stephens 1981)' },
   riskDeathSlope:{ value: 3, low: 1, high: 10, unit: 'per day of need', src: 'assumption: how fast value falls with each further day of shortfall' },
+  choiceTemperature:{ value: 0.08, low: 0.06, high: 0.11, unit: 'utility (Gumbel scale)', dist: 'uniform', src: 'fitted 18 Nov 2026 by cross-entropy on the calibration patterns (tools/score.mjs, 4 islands x 5 years, paired seeds): 0.02 2.95, 0.05 2.47, 0.075 2.17, 0.1 2.23, 0.13 2.55, 0.2 3.83 nats; parabola minimum 0.083; range = within about 0.1 nat. The scale of the Gumbel noise in random-utility choice (McFadden 1974): softmax with this temperature' },
+  dayKmHard:     { value: 45, low: 40, high: 55, unit: 'km/day', src: 'assumption: beyond this a walker stops and sleeps out, going on next morning (a long day on foot with loads; the 60 km alarm stays as a check)' },
   cookFindHour:  { value: 0.003, low: 0.0005, high: 0.01, unit: 'chance/hour', src: 'assumption: someone tending a fire notices food by it is softer (x curiosity)' },
 };
 export const R = k => RATES[k].value;

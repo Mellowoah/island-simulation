@@ -1,6 +1,6 @@
 // Island small world: move.js (split from world.js, build plan change 4; behaviour unchanged).
 import { noise2, seedKey, STREAMS, fieldPath, fieldDist, mapOf, path } from './sim.js';
-import { R, clockOf, body, eatKcal, burnKcal, storedKcal, hourOf, isNight, sleepTime, REAL_MINUTES, SLEEP_UNTIL, dateOf } from './clock.js';
+import { R, ticksUntilWake, clockOf, body, eatKcal, burnKcal, storedKcal, hourOf, isNight, sleepTime, REAL_MINUTES, SLEEP_UNTIL, dateOf } from './clock.js';
 import * as EN from './energy.js';
 import { FOODS, rainOf, waterActive, landStep, returnRate, realFrac } from './savanna.js';
 import { practise, forget } from './body.js';
@@ -51,6 +51,9 @@ export function believedPath(s, p, tx, ty) {
 }
 export function walk(s, p, st, budget) {
   const m = mapOf(s);
+  // past the hard limit of a day's walking, stop and sleep out; the walk goes on next morning (people on a long
+  // journey break it into days)
+  if ((p.tiles - (p.tilesAtDay ?? p.tiles)) * T.TILE_KM >= R('dayKmHard')) { p.plan.unshift(st); p.step = { k: 'rest', left: ticksUntilWake(clockOf(s), s.tick) }; if (!p.sleptOut || p.sleptOut < s.tick - 24) note(s, p, 'Too far to go on today: slept out and went on in the morning.'); p.sleptOut = s.tick; return budget; }
   if (!st.route) { st.route = st.explore ? path(p.x, p.y, st.to[0], st.to[1], false, m) : fieldPath(p.x, p.y, st.to[0], st.to[1], false, m); if (st.route.some(([x, y]) => !p.seen[y * W + x])) { st.route = believedPath(s, p, st.to[0], st.to[1]) ?? st.route; st.guess = true; } if (s.diag) { let u = 0; for (const [x, y] of st.route) if (!p.seen[y * W + x]) u++; s.diag.routes.push({ id: p.id, day: Math.floor(s.tick / clockOf(s).day), k: p.decision?.chose ?? st.k, explore: !!st.explore, len: st.route.length, unseen: u }); } if (!st.route.length) { st.arrived = true; return budget; } }
   const C = clockOf(s), B = body(s), v = p.body.tilesTick * (isNight(C, s.tick) ? B.nightPace : 1);
   const young = youngOf(s, p), load = young.filter(k => EN.carried(k.body.age)).reduce((n, k) => n + k.body.mass, 0) + p.carry / 2000, walkers = young.filter(k => !EN.carried(k.body.age));

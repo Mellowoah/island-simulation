@@ -139,7 +139,7 @@ export function innerVoice(s, p, o) {
   return out.join(' ');
 }
 export function decide(s, p) {
-  const opts = options(s, p), T0 = s.config.choiceTemperature, mx = Math.max(...opts.map(o => o.u));
+  const opts = options(s, p), T0 = s.config.choiceTemperature ?? R('choiceTemperature'), mx = Math.max(...opts.map(o => o.u));
   const w = opts.map(o => Math.exp((o.u - mx) / T0)), tot = w.reduce((a, b) => a + b, 0);
   let r = draw(s, p.id, SALT.choice) * tot, o = opts[opts.length - 1];
   for (let i = 0; i < opts.length; i++) { r -= w[i]; if (r <= 0) { o = opts[i]; break; } }
