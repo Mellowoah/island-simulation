@@ -146,6 +146,8 @@ export const RATES = {
   exploreHopeTiles:{ value: 200, low: 50, high: 1000, unit: 'tiles per place', src: 'assumption: before much is seen, how much land a person guesses holds one food place (divided by 0.5 + curiosity: the curious are more hopeful); replaced by experience as they look' },
   exploreGuessRate:{ value: 300, low: 100, high: 800, unit: 'kcal/h', src: 'assumption: what a food place is guessed to return when none is known yet' },
   voiHorizonHours:{ value: 120, low: 40, high: 400, unit: 'hours', src: 'assumption: hours a newly found better place is used before the season changes (about a month of gathering)' },
+  riskDeathJump: { value: 3, low: 1, high: 6, unit: 'log units', src: 'assumption: the drop in value at the point a household starts to starve (the survival cliff of the energy-budget rule, Stephens 1981)' },
+  riskDeathSlope:{ value: 3, low: 1, high: 10, unit: 'per day of need', src: 'assumption: how fast value falls with each further day of shortfall' },
   cookFindHour:  { value: 0.003, low: 0.0005, high: 0.01, unit: 'chance/hour', src: 'assumption: someone tending a fire notices food by it is softer (x curiosity)' },
 };
 export const R = k => RATES[k].value;

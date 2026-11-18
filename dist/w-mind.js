@@ -84,10 +84,14 @@ export function options(s, p) {
     const short = householdShort(s, p), day = householdDay(s, p), urgency = Math.min(2, short / Math.max(1, day)) + R('forageBase');
     const walkH = p.body.cotTile * p.body.mass * p.body.kmh * R('stalkPace') / T.TILE_KM; // kcal an hour stalking
     if (hour < 12 && kmLeft > 20) {
-      const rate = huntRate(p), net = rate - walkH;
+      // risk (idea 6): a hunt is a gamble (usually nothing, sometimes a large haul); it is valued at its certainty
+      // equivalent under the log value of household food with a survival cliff (riskValue), not at its mean
+      const hrs = R('huntHoursMax'), haul = 0.5 * meatCarry(p), q = Math.min(0.95, huntRate(p) * hrs / haul);
+      const W = householdStore(s, p), D = short + day, ce = certaintyEquivalent(W - D, day, [{ x: haul, p: q }, { x: 0, p: 1 - q }]);
+      const rate = ce / hrs, net = rate - walkH;
       // motives: survival (the drive), success (ambition: meat is shared and brings standing, as Hawkes argues for Hadza
       // men), and caution against the risk of the chase. Weights approx.; what hunting returns is learned, not given.
-      opts.push({ k: 'hunt', u: urgency * net / 1000 + (net > 0 ? R('wDrive') * drive : 0) + R('wAmbition') * p.mind.ambition - R('wCaution') * p.mind.caution, why: `hunting: I expect about ${Math.round(net)} kcal an hour${p.hunt.hours < 1 ? ' (never tried)' : ''}` });
+      opts.push({ k: 'hunt', u: urgency * net / 1000 + (net > 0 ? R('wDrive') * drive : 0) + R('wAmbition') * p.mind.ambition - R('wCaution') * p.mind.caution, why: `hunting: about a ${Math.round(q * 100)}% chance of meat; worth about ${Math.round(net)} kcal an hour to me as things stand${p.hunt.hours < 1 ? ' (never tried)' : ''}`, risk: { q, haul, ce, mean: q * haul } });
     }
     for (const id in p.carcasses) {
       const c = s.carcasses.find(k => k.id === +id); if (!c) continue;
@@ -150,12 +154,28 @@ export function decide(s, p) {
   }
   else if (o.k === 'explore') { const t = exploreTarget(s, p); p.plan = t ? [{ k: 'walk', to: t, explore: true }, { k: 'walk', to: camp }] : [{ k: 'camp', left: C.perHour }]; }
   else if (o.k === 'home') p.plan = [{ k: 'walk', to: camp }, { k: 'unload' }];
+  else if (o.k === 'hunt' && !huntTarget(s, p)) p.plan = [{ k: 'camp', left: C.perHour }]; // no hunting ground within what is left of the day
   else if (o.k === 'hunt') { const t = huntTarget(s, p); s.hunting.trips++; p.plan = [...(t ? [{ k: 'walk', to: t }] : []), { k: 'hunt', left: Math.min(R('huntHoursMax'), Math.max(1, 16 - hourOf(C, s.tick))) * C.perHour, kcal0: 0 }, { k: 'walk', to: camp }, { k: 'unload' }]; }
   else if (o.k === 'tinker') p.plan = [{ k: 'tinker', left: C.perHour }];
   else if (o.k === 'fetch') p.plan = [{ k: 'walk', to: [o.c.x, o.c.y] }, { k: 'butcher', c: o.c.id, left: 0.5 * C.perHour }, { k: 'walk', to: camp }, { k: 'unload' }];
   else p.plan = [{ k: 'camp', left: 2 * C.perHour }];
   p.step = null;
 }
+// ---------- risk: Kelly's log rule with a survival cliff (idea 6) ----------
+// The value of food to a household is the log of what it holds above what it needs (Kelly 1956: maximising the long-run
+// growth of a stock means maximising the expected log), measured in days of need. Below zero the household will be
+// starving: value falls by a jump (riskDeathJump) and then steeply (riskDeathSlope). The jump is what makes the starving
+// bold and the comfortable cautious (Stephens 1981, the energy-budget rule): a sure small gain that still leaves them
+// short is worth less than a long shot that could carry them over. A gamble's certainty equivalent is the sure amount
+// with the same expected value.
+export const riskValue = (y, R0) => y > 0 ? Math.log(1 + y / R0) : -R('riskDeathJump') + R('riskDeathSlope') * y / R0;
+const riskInverse = (v, R0) => v > 0 ? R0 * Math.expm1(v) : v > -R('riskDeathJump') ? 0 : (v + R('riskDeathJump')) * R0 / R('riskDeathSlope');
+export function certaintyEquivalent(y0, R0, outcomes) {
+  const ev = outcomes.reduce((n, o) => n + o.p * riskValue(y0 + o.x, Math.max(1, R0)), 0);
+  return riskInverse(ev, Math.max(1, R0)) - y0;
+}
+// What a household holds: the person's own body fat and their share of the camp store (kcal)
+const householdStore = (s, p) => { const h = s.households[p.household], n = h ? h.members.filter(i => s.people[i].alive).length : 1; return (p.reserve ?? 0) + (h?.pool ?? 0) / Math.max(1, n); };
 // The same urgency foraging uses (how short the household is), so exploring and foraging are weighed alike.
 const urgency0 = (s, p) => Math.min(2, householdShort(s, p) / Math.max(1, householdDay(s, p))) + R('forageBase');
 // Value of information for a day's exploring. What a person expects of unseen land comes from their own looks: places

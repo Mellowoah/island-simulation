@@ -206,3 +206,16 @@ test('Y18 curiosity as value of information: exploring is worth more with unseen
   p.seenN = keep.seenN;
   const places = p.places; p.places = {}; assert.ok(exploreValue(s, p).rate > base.rate, 'knowing nothing: exploring is worth more'); p.places = places;
 });
+
+test('Y19 risk by Kelly with a survival cliff: the comfortable are mildly cautious; caution grows near need; the register range allows the starving to turn bold (Stephens)', async () => {
+  const m = await import('../dist/w-mind.js');
+  const { RATES } = await import('../dist/clock.js');
+  const R0 = 2500, out = [{ x: 12000, p: 0.15 }, { x: 0, p: 0.85 }], mean = 1800;
+  const rich = m.certaintyEquivalent(60000, R0, out), near = m.certaintyEquivalent(2000, R0, out);
+  assert.ok(rich < mean && rich > 0.85 * mean, `rich ${rich}`); assert.ok(near < rich, `near ${near}`);
+  assert.ok(Math.abs(m.certaintyEquivalent(1e5, R0, [{ x: 500, p: 1 }]) - 500) < 1e-6, 'a sure thing is worth itself');
+  const keep = [RATES.riskDeathJump.value, RATES.riskDeathSlope.value];
+  RATES.riskDeathJump.value = RATES.riskDeathJump.high; RATES.riskDeathSlope.value = RATES.riskDeathSlope.low;
+  assert.ok(m.certaintyEquivalent(-6000, R0, out) > mean, 'bold when only the gamble can carry them over');
+  [RATES.riskDeathJump.value, RATES.riskDeathSlope.value] = keep;
+});

@@ -30,6 +30,9 @@ export function huntTarget(s, p) {
   for (let k = 0; k < 20; k++) {
     const x = camp.x + Math.round((draw(s, p.id, SALT.hunt, s.tick * 20 + k) * 2 - 1) * RR), y = camp.y + Math.round((draw(s, p.id + 1, SALT.hunt, s.tick * 20 + k) * 2 - 1) * RR);
     if (x < 0 || y < 0 || x >= W || y >= H || !p.seen[y * W + x] || !T.isWalkable(x, y)) continue;
+    // there, the stalk, and back to camp must fit what is left of the day's walking (as for exploring)
+    const kmLeft = R('dayKmMax') - (p.tiles - (p.tilesAtDay ?? p.tiles)) * T.TILE_KM, stalkKm = p.body.kmh * R('stalkPace') * R('huntHoursMax');
+    if ((Math.hypot(x - p.x, y - p.y) + Math.hypot(x - camp.x, y - camp.y)) * T.TILE_KM * 1.3 + stalkKm > kmLeft) continue;
     const r = T.regionAt(x, y); if (r === 'grass' || r === 'woodland' || r === 'river') return [x, y];
   }
   return null;
