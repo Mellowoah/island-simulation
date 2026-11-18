@@ -89,6 +89,22 @@ export function checkNews(s, p, k, stock) {
   const N = (s.news ??= { n: 0, sx: 0, sy: 0, sxx: 0, syy: 0, sxy: 0, right: 0, hops: 0 }), x = Math.log(Math.max(1, k.heard)), y = Math.log(Math.max(1, stock));
   N.n++; N.sx += x; N.sy += y; N.sxx += x * x; N.syy += y * y; N.sxy += x * y; N.right += right; N.hops += k.hops;
 }
+// Checking water news on arrival: right if the hole is as told. Kept apart from place news (s.waterNews).
+export function checkWaterNews(s, p, k, active) {
+  if (k?.from === undefined) return;
+  const t = ((p.trust ??= {})[k.from] ??= { r: 0, w: 0 }), right = k.heard === active; if (right) t.r++; else t.w++;
+  const N = (s.waterNews ??= { n: 0, right: 0, hops: 0, said1: 0, was1: 0, both1: 0 });
+  N.n++; N.right += right; N.hops += k.hops; N.said1 += k.heard; N.was1 += active; N.both1 += k.heard && active;
+}
+// Bits carried by water news: the mutual information between what was heard and what was there (binary).
+export function waterNewsBits(s) {
+  const N = s.waterNews; if (!N || N.n < 3) return null;
+  const p = (a, b) => { const n11 = N.both1, n10 = N.said1 - n11, n01 = N.was1 - n11, n00 = N.n - n11 - n10 - n01;
+    return [[n00, n01], [n10, n11]][a][b] / N.n; };
+  let I = 0; const ps = [1 - N.said1 / N.n, N.said1 / N.n], pw = [1 - N.was1 / N.n, N.was1 / N.n];
+  for (const a of [0, 1]) for (const b of [0, 1]) { const q = p(a, b); if (q > 0) I += q * Math.log2(q / (ps[a] * pw[b])); }
+  return { checks: N.n, bits: I, right: N.right / N.n, hops: N.hops / N.n };
+}
 // What news carries, in bits: for a Gaussian channel the information in the heard amount about the true one is
 // -0.5 log2(1 - r^2), with r the correlation of their logs (Shannon). Also the share right within a factor of two.
 export function newsBits(s) { const N = s.news; if (!N || N.n < 3) return null; const cxy = N.sxy / N.n - N.sx * N.sy / N.n ** 2, vx = N.sxx / N.n - (N.sx / N.n) ** 2, vy = N.syy / N.n - (N.sy / N.n) ** 2, r = cxy / Math.sqrt(vx * vy); return { checks: N.n, bits: -0.5 * Math.log2(Math.max(1e-9, 1 - r * r)), right: N.right / N.n, hops: N.hops / N.n }; }
@@ -110,7 +126,16 @@ export function evening(s) {
       const exp = kb ? kb.exp + tr * (heard - kb.exp) : heard; // a stranger's word on a place one knows moves belief only as far as one trusts it
       b.places[id] = { exp, t: k.t, u: kb?.u || k.u, n: kb?.n ?? 0, from: a.id, heard, hops: (k.hops ?? 0) + 1 };
     } } // news, not their own looks
-    for (const id in a.waters) { const k = a.waters[id], kb = b.waters[id]; if (!kb || kb.t < k.t) b.waters[id] = { active: k.active, t: k.t, dryOk: (kb?.dryOk ?? false) || !!k.dryOk }; }
+    // Water news is yes or no (has water or not): a binary channel. Each retelling gets it backwards with a small
+    // chance (newsFlipPerHop). A hearer who already knows the hole takes the news only if they trust the teller.
+    for (const id in a.waters) {
+      const k = a.waters[id], kb = b.waters[id]; if (kb && kb.t >= k.t) continue;
+      const key = (a.id * 131 + b.id) * 4096 + (s.waters.indexOf(s.waterById.get(id)) % 4096);
+      const flip = draw(s, key, SALT.newsFlip) < (s.config.newsFlipPerHop ?? R('newsFlipPerHop'));
+      const heard = flip ? !k.active : k.active;
+      if (kb && trustOf(b, a.id) < 0.5) continue; // not believed
+      b.waters[id] = { active: heard, t: k.t, dryOk: (kb?.dryOk ?? false) || !!k.dryOk, from: a.id, heard, hops: (k.hops ?? 0) + 1 };
+    }
     for (const id in a.carcasses) if (b.body.age >= 14 && !b.carcasses[id] && s.carcasses.some(c => c.id === +id)) b.carcasses[id] = 1; // where the meat is
     for (const k of [...knownRecipes(a), ...(a.skills.cook >= 0.03 ? ['cook'] : [])]) if (!((b.skills[k] ?? 0) >= 0.03) && b.body.age >= 5 && draw(s, a.id * 101 + b.id, SALT.showHow, s.tick) < R('showChance') + 0.2 * a.skills[k]) { practise(s, b, k, 1); note(s, b, `${a.name} showed how to ${k === 'cook' ? 'cook food by the fire' : recipeName(k)}.`); }
     if (a.hunt.hours > (b.huntHeard?.hours ?? 0)) b.huntHeard = { kcal: a.hunt.kcal, hours: a.hunt.hours }; // how hunting has gone for them

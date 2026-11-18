@@ -13,7 +13,7 @@ import { H, W, bandOf, dist, note, placeName } from './w-core.js';
 import { lightFire } from './w-craft.js';
 import { atCamp } from './w-mind.js';
 import { youngOf } from './w-people.js';
-import { checkNews } from './w-social.js';
+import { checkNews, checkWaterNews } from './w-social.js';
 
 // ---------- the land's food and water ----------
 export const FOOD_BY_REGION = { shore: ['shellfish', 'fish', 'berries'], river: ['fish', 'berries'], woodland: ['berries', 'nuts', 'honey', 'tubers', 'baobab'], grass: ['tubers', 'baobab'], rock: ['honey'] };
@@ -55,6 +55,7 @@ export function look(s, p) {
   for (const w of s.waters) if (dist(w, p) <= r) {
     if (!p.waters[w.id]) note(s, p, `Found water: ${w.name.toLowerCase()}.`);
     const was = p.waters[w.id];
+    checkWaterNews(s, p, was, w.active); // was what one heard right?
     p.waters[w.id] = { active: w.active, t: s.tick, dryOk: !w.active && realFrac(s) >= 7 / 12 ? false : (was?.dryOk ?? false) || (w.active && realFrac(s) >= 10 / 12) }; // a hole seen with water at the end of the dry season (Sep-Oct) lasts; one seen dry in the dry season does not (learned both ways)
   }
 }

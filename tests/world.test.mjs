@@ -288,3 +288,10 @@ test('Y26 moonlight: waxing moon lights the evening, full moon the whole night, 
   at(0, 18); const dark = W.nightPaceOf(s); s.weather.moon = 0.5; s.weather.light = 1;
   assert.equal(dark, R('nightPace')); assert.ok(W.nightPaceOf({ ...s, tick: s.tick + 18 }) > dark);
 });
+
+test('Y27 water news is a binary noisy channel: retold water news carries hops, is checked on arrival, and carries some information', async () => {
+  const { waterNewsBits } = await import('../dist/w-social.js');
+  const s = createWorld2(63); stepWorld(s, 24 * 150);
+  const heard = s.people.flatMap(q => Object.values(q.waters)).filter(k => k.hops > 0); assert.ok(heard.length > 0);
+  const b = waterNewsBits(s); assert.ok(b && b.checks > 10); assert.ok(b.right > 0.5 && b.right < 1, `right ${b.right}`); assert.ok(b.bits >= 0 && b.bits <= 1);
+});
