@@ -103,7 +103,7 @@ export function waterNewsBits(s) {
     return [[n00, n01], [n10, n11]][a][b] / N.n; };
   let I = 0; const ps = [1 - N.said1 / N.n, N.said1 / N.n], pw = [1 - N.was1 / N.n, N.was1 / N.n];
   for (const a of [0, 1]) for (const b of [0, 1]) { const q = p(a, b); if (q > 0) I += q * Math.log2(q / (ps[a] * pw[b])); }
-  return { checks: N.n, bits: I, right: N.right / N.n, hops: N.hops / N.n };
+  return { checks: N.n, bits: Math.max(0, I), right: N.right / N.n, hops: N.hops / N.n }; // max: rounding only (I >= 0)
 }
 // What news carries, in bits: for a Gaussian channel the information in the heard amount about the true one is
 // -0.5 log2(1 - r^2), with r the correlation of their logs (Shannon). Also the share right within a factor of two.
