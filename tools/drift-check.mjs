@@ -49,10 +49,10 @@ check('I2', 'Island: new worlds use decorrelated randomness', createWorld(41).rn
 // Small world: every chance key is named once (streams.js throws on a repeat) and no draw uses a bare offset
 // (SALT.x + 3), which is how two draws came to share a key before (build plan change 1).
 {
-  const { readFileSync } = await import('node:fs');
+  const { readFileSync, readdirSync } = await import('node:fs');
   let named = true, why = '';
   try { await import('../dist/streams.js'); } catch (e) { named = false; why = e.message; }
-  const bare = ['dist/world.js', 'dist/nature.js'].flatMap(f => (readFileSync(f, 'utf8').match(/SALT\.\w+\s*[+-]\s*\d/g) ?? []).map(m => `${f}: ${m}`));
+  const bare = ['dist/world.js', 'dist/nature.js', ...readdirSync('dist').filter(f => /^w-.*\.js$/.test(f)).map(f => 'dist/' + f)].flatMap(f => (readFileSync(f, 'utf8').match(/SALT\.\w+\s*[+-]\s*\d/g) ?? []).map(m => `${f}: ${m}`));
   check('R1', 'Small world: every chance key named once, inside its declared block', named, why);
   check('R2', 'Small world: no chance draw uses a bare offset on a key', !bare.length, bare.slice(0, 3).join('; '));
 }
