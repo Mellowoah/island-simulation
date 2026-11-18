@@ -1,0 +1,28 @@
+PASS  autonomous progression (clock advances with no input) — D1 · 00:01 → D1 · 00:25
+PASS  pause stops time — D1 · 00:28 / D1 · 00:28
+PASS  tap selects a creature while paused — tapped Tavi, inspector shows Tavi
+PASS  inspector shows recorded decision with selected option marked — selected explore
+FAIL  raw file input stays hidden
+PASS  lab cancel / return buttons hidden until needed
+FAIL  24 creatures have distinct portraits — 6 distinct of 24
+PASS  provide food on dry land (paused) — 219 → 259
+PASS  provide food on water is refused with a message — Choose dry land.
+PASS  open crossing (button then disabled)
+PASS  reveal to selected creature recorded in chronicle — D1 · 00:28 | Root garden revealed to Tavi only.
+PASS  speed toggles to 4×
+PASS  resume at 4× advances time — D1 · 00:40 → D1 · 01:54
+PASS  load restores saved world and pauses — D1 · 02:07 vs D1 · 02:07
+PASS  export produces a save file — Island-save.json
+PASS  malformed import rejected, world kept — Invalid JSON save
+FAIL  save with dead creature but no death record: rejected, app keeps running — toast "Cannot read properties of null (reading 'tick')"; clock D1 · 02:07 → D1 · 02:07; new page errors: Cannot read properties of null (reading 'tick')
+PASS  Eden opens as a script, pauses island, nobody has eaten — Paused before action. No one has eaten.
+FAIL  help text makes no access/privacy claim
+PASS  lab single-seed run completes — 10 branch rows; Completed 10 branch outcomes. Calculated from model v2. No winner assigned.
+PASS  inspect loads branch snapshot — Experiment: provision / berry-failure
+PASS  return restores own island — D1 · 00:01 vs D1 · 00:01
+PASS  lab 20-seed pilot completes in worker — Completed 200 branch outcomes. Calculated from model v2. No winner assigned. (62 s headless desktop CPU)
+PASS  hidden page pauses
+PASS  autosave written on hide
+PASS  reopens offline from service-worker cache (desktop Chrome)
+INFO  reopened page restores autosave — clock after reopen D1 · 00:00
+INFO  page errors during session — Cannot read properties of null (reading 'tick')

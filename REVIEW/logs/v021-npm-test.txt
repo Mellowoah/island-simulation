@@ -1,0 +1,242 @@
+
+> island@0.2.1 test
+> node --test tests/*.test.mjs
+
+TAP version 13
+# Subtest: E1 random streams of different seeds are uncorrelated (new worlds)
+ok 1 - E1 random streams of different seeds are uncorrelated (new worlds)
+  ---
+  duration_ms: 152.879175
+  type: 'test'
+  ...
+# Subtest: E1b saves without the rng field keep the legacy stream and continue identically
+ok 2 - E1b saves without the rng field keep the legacy stream and continue identically
+  ---
+  duration_ms: 234.903567
+  type: 'test'
+  ...
+# Subtest: E2 an intervention reaches other creatures only through the world, never through random draws
+ok 3 - E2 an intervention reaches other creatures only through the world, never through random draws
+  ---
+  duration_ms: 202.522617
+  type: 'test'
+  ...
+# Subtest: E3 withdrawal accounting: after provision stops, gifts stop, leftovers only shrink, ledger reconciles
+ok 4 - E3 withdrawal accounting: after provision stops, gifts stop, leftovers only shrink, ledger reconciles
+  ---
+  duration_ms: 824.802048
+  type: 'test'
+  ...
+# Subtest: E4 summaries can count the dead: medianHungerAll treats each death as 100
+ok 5 - E4 summaries can count the dead: medianHungerAll treats each death as 100
+  ---
+  duration_ms: 0.437221
+  type: 'test'
+  ...
+# Subtest: Births follow the demographic rules: sexes, ages 15-40, ~3-year spacing
+ok 6 - Births follow the demographic rules: sexes, ages 15-40, ~3-year spacing
+  ---
+  duration_ms: 1.233666
+  type: 'test'
+  ...
+# Subtest: Children born before the release are warned and guided; children born after are born released
+ok 7 - Children born before the release are warned and guided; children born after are born released
+  ---
+  duration_ms: 0.617322
+  type: 'test'
+  ...
+# Subtest: Young children stay with a carer and share food; the food ledger still reconciles
+ok 8 - Young children stay with a carer and share food; the food ledger still reconciles
+  ---
+  duration_ms: 1.628644
+  type: 'test'
+  ...
+# Subtest: The population cap stops conception (and is reported) rather than killing anyone
+ok 9 - The population cap stops conception (and is reported) rather than killing anyone
+  ---
+  duration_ms: 3198.73307
+  type: 'test'
+  ...
+# Subtest: Every creature is born warned; the serpent's claim is never stored as knowledge
+ok 10 - Every creature is born warned; the serpent's claim is never stored as knowledge
+  ---
+  duration_ms: 11.5574
+  type: 'test'
+  ...
+# Subtest: While guided no one dies; every override records the creature's own intention and a reason
+ok 11 - While guided no one dies; every override records the creature's own intention and a reason
+  ---
+  duration_ms: 1287.156781
+  type: 'test'
+  ...
+# Subtest: Eating is never predetermined: it comes from each creature's own state and draw, and varies by seed
+ok 12 - Eating is never predetermined: it comes from each creature's own state and draw, and varies by seed
+  ---
+  duration_ms: 5192.897295
+  type: 'test'
+  ...
+# Subtest: The first to eat releases everyone at once: no more guidance, death possible, own judgement
+ok 13 - The first to eat releases everyone at once: no more guidance, death possible, own judgement
+  ---
+  duration_ms: 1444.539088
+  type: 'test'
+  ...
+# Subtest: After release, creatures can produce what they need; food accounting still reconciles
+ok 14 - After release, creatures can produce what they need; food accounting still reconciles
+  ---
+  duration_ms: 1083.437504
+  type: 'test'
+  ...
+# Subtest: D6 version-2 saves convert to version 3 with default values and continue identically
+ok 15 - D6 version-2 saves convert to version 3 with default values and continue identically
+  ---
+  duration_ms: 140.067838
+  type: 'test'
+  ...
+# Subtest: D6 unsupported versions and out-of-range values are rejected
+ok 16 - D6 unsupported versions and out-of-range values are rejected
+  ---
+  duration_ms: 1.04952
+  type: 'test'
+  ...
+# Subtest: D6 expectation rate and reveal prior come from configuration
+ok 17 - D6 expectation rate and reveal prior come from configuration
+  ---
+  duration_ms: 0.77675
+  type: 'test'
+  ...
+# Subtest: D3 recovery is only defined for disturbed runs and is judged against the matched control
+ok 18 - D3 recovery is only defined for disturbed runs and is judged against the matched control
+  ---
+  duration_ms: 5372.837508
+  type: 'test'
+  ...
+# Subtest: D4 gifted food left on the ground is reported, not removed
+ok 19 - D4 gifted food left on the ground is reported, not removed
+  ---
+  duration_ms: 5088.144658
+  type: 'test'
+  ...
+# Subtest: Learning fixture: experience changes later gathering outcomes, and disabling learning removes that
+ok 20 - Learning fixture: experience changes later gathering outcomes, and disabling learning removes that
+  ---
+  duration_ms: 989.623119
+  type: 'test'
+  ...
+# Subtest: R1 saves that would crash the inspector are rejected
+ok 21 - R1 saves that would crash the inspector are rejected
+  ---
+  duration_ms: 4.053755
+  type: 'test'
+  ...
+# Subtest: R1b genuine saves with deaths and recorded decisions still load
+ok 22 - R1b genuine saves with deaths and recorded decisions still load
+  ---
+  duration_ms: 237.898645
+  type: 'test'
+  ...
+# Subtest: R2 opening the crossing does not cancel gathering already under way
+ok 23 - R2 opening the crossing does not cancel gathering already under way
+  ---
+  duration_ms: 0.746032
+  type: 'test'
+  ...
+# Subtest: R3 revealing a location the creature already knows does not overwrite its estimate
+ok 24 - R3 revealing a location the creature already knows does not overwrite its estimate
+  ---
+  duration_ms: 9.276959
+  type: 'test'
+  ...
+# Subtest: R4 experiment interventions come from the recorded PLAN
+ok 25 - R4 experiment interventions come from the recorded PLAN
+  ---
+  duration_ms: 3.184746
+  type: 'test'
+  ...
+# Subtest: R4b default PLAN keeps experiment rows reproducible
+ok 26 - R4b default PLAN keeps experiment rows reproducible
+  ---
+  duration_ms: 10153.681112
+  type: 'test'
+  ...
+# Subtest: K1 hidden gifted food far away cannot affect decisions until observed
+ok 27 - K1 hidden gifted food far away cannot affect decisions until observed
+  ---
+  duration_ms: 18.418104
+  type: 'test'
+  ...
+# Subtest: repeatability and mid-action save restore
+ok 28 - repeatability and mid-action save restore
+  ---
+  duration_ms: 98.642509
+  type: 'test'
+  ...
+# Subtest: food accounting reconciles
+ok 29 - food accounting reconciles
+  ---
+  duration_ms: 376.738585
+  type: 'test'
+  ...
+# Subtest: unobserved food cannot affect decisions
+ok 30 - unobserved food cannot affect decisions
+  ---
+  duration_ms: 1.826215
+  type: 'test'
+  ...
+# Subtest: reveal gives one creature location but no actual stock
+ok 31 - reveal gives one creature location but no actual stock
+  ---
+  duration_ms: 0.296771
+  type: 'test'
+  ...
+# Subtest: crossing shortens a real route
+ok 32 - crossing shortens a real route
+  ---
+  duration_ms: 0.959973
+  type: 'test'
+  ...
+# Subtest: learning can be removed without removing gathering
+ok 33 - learning can be removed without removing gathering
+  ---
+  duration_ms: 67.812134
+  type: 'test'
+  ...
+# Subtest: deprivation causes death; losses remain recorded
+ok 34 - deprivation causes death; losses remain recorded
+  ---
+  duration_ms: 159.175142
+  type: 'test'
+  ...
+# Subtest: invalid saves fail without mutating current world
+ok 35 - invalid saves fail without mutating current world
+  ---
+  duration_ms: 1.026325
+  type: 'test'
+  ...
+# Subtest: gifts are accounted separately
+ok 36 - gifts are accounted separately
+  ---
+  duration_ms: 31.009853
+  type: 'test'
+  ...
+# Subtest: commands can replay exactly at original ticks
+ok 37 - commands can replay exactly at original ticks
+  ---
+  duration_ms: 27.293174
+  type: 'test'
+  ...
+# Subtest: invalid routes and unknown targets rejected
+ok 38 - invalid routes and unknown targets rejected
+  ---
+  duration_ms: 0.601914
+  type: 'test'
+  ...
+1..38
+# tests 38
+# suites 0
+# pass 38
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 40602.141866

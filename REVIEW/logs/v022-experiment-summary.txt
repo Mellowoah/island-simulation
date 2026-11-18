@@ -1,0 +1,35 @@
+
+## baseline (20 seeds) — alive at day 20, paired difference vs baseline branch, same condition
+  berry-failure: baseline 8.75 | provision +0.00±0.70 | provision-withdrawn +0.00±0.67 | access -0.60±0.52 | information -0.50±0.39 | ration -1.25±0.68
+  root-failure: baseline 10.50 | provision +0.20±0.73 | provision-withdrawn -0.65±0.54 | access -0.25±0.58 | information -0.75±0.72 | ration -0.80±0.69
+  deaths before disturbance (all branches): 0
+
+## no-learning (20 seeds) — alive at day 20, paired difference vs baseline branch, same condition
+  berry-failure: baseline 8.70 | provision +0.05±0.52 | provision-withdrawn -0.40±0.69 | access -0.45±0.58 | information -0.25±0.28 | ration -0.65±0.67
+  root-failure: baseline 9.90 | provision +0.00±0.57 | provision-withdrawn +0.15±0.66 | access +0.15±0.74 | information +0.15±0.26 | ration -0.30±0.57
+  deaths before disturbance (all branches): 0
+
+## low-exploration (20 seeds) — alive at day 20, paired difference vs baseline branch, same condition
+  berry-failure: baseline 7.65 | provision -0.10±0.65 | provision-withdrawn -0.10±0.83 | access -0.05±0.98 | information -0.10±0.60 | ration -0.20±0.69
+  root-failure: baseline 8.60 | provision +0.70±0.89 | provision-withdrawn +0.40±1.03 | access +0.75±0.98 | information -0.15±0.76 | ration +0.25±0.89
+  deaths before disturbance (all branches): 0
+
+## high-exploration (20 seeds) — alive at day 20, paired difference vs baseline branch, same condition
+  berry-failure: baseline 8.15 | provision +0.05±1.02 | provision-withdrawn +0.55±0.61 | access +0.15±0.66 | information +0.40±0.44 | ration +0.20±0.68
+  root-failure: baseline 10.10 | provision +0.35±0.95 | provision-withdrawn -0.55±0.61 | access -0.15±0.57 | information -0.10±0.47 | ration -0.40±0.70
+  deaths before disturbance (all branches): 0
+
+## low-regeneration (20 seeds) — alive at day 20, paired difference vs baseline branch, same condition
+  berry-failure: baseline 5.95 | provision -0.15±0.64 | provision-withdrawn -0.30±0.59 | access -0.65±0.57 | information +0.10±0.37 | ration -0.25±0.55
+  root-failure: baseline 6.75 | provision +0.90±0.57 | provision-withdrawn +0.15±0.46 | access +0.70±0.51 | information +0.05±0.48 | ration +0.00±0.67
+  deaths before disturbance (all branches): 13
+
+## high-regeneration (20 seeds) — alive at day 20, paired difference vs baseline branch, same condition
+  berry-failure: baseline 10.85 | provision +1.70±0.79 | provision-withdrawn +0.40±0.63 | access +0.30±0.65 | information +0.15±0.33 | ration -0.10±0.62
+  root-failure: baseline 13.50 | provision +1.10±0.88 | provision-withdrawn -0.50±0.67 | access +0.10±0.80 | information -1.00±0.64 | ration -0.30±0.81
+  deaths before disturbance (all branches): 0
+
+## rule-policy (20 seeds) — alive at day 20, paired difference vs baseline branch, same condition
+  berry-failure: baseline 8.10 | provision +3.65±0.97 | provision-withdrawn +0.35±0.90 | access +0.55±1.11 | information -0.25±0.53 | ration -0.25±0.83
+  root-failure: baseline 9.10 | provision +0.60±1.01 | provision-withdrawn +0.85±1.37 | access +0.45±1.17 | information -0.10±0.63 | ration +0.05±0.89
+  deaths before disturbance (all branches): 0

@@ -1,0 +1,14 @@
+{
+  "name": "Island Lab",
+  "short_name": "Island Lab",
+  "description": "A living test of the theory. You set the conditions; the creatures choose.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#102248",
+  "theme_color": "#102248",
+  "icons": [
+    { "src": "art/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "art/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

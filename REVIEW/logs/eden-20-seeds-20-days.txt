@@ -1,0 +1,20 @@
+seed 41: fell day 3.0 by Sol | delib 50 P 0.006-0.014 | guided 46% | alive 16 | fields 24 clothed 16 tools 16 | ledgerErr 7.1e-9 | preFallDeaths 0
+seed 42: never fell | delib 231 P 0.005-0.033 | guided 84% | alive 24 | fields 0 clothed 0 tools 0 | ledgerErr 1.5e-10 | preFallDeaths 0
+seed 43: fell day 2.8 by Lio | delib 52 P 0.006-0.015 | guided 44% | alive 15 | fields 24 clothed 15 tools 15 | ledgerErr 2.5e-9 | preFallDeaths 0
+seed 44: fell day 6.3 by Teo | delib 90 P 0.006-0.018 | guided 74% | alive 15 | fields 24 clothed 15 tools 15 | ledgerErr 2.5e-9 | preFallDeaths 0
+seed 45: fell day 6.8 by Una | delib 95 P 0.006-0.022 | guided 75% | alive 15 | fields 24 clothed 15 tools 15 | ledgerErr 3.0e-9 | preFallDeaths 0
+seed 46: fell day 5.3 by Runa | delib 80 P 0.006-0.014 | guided 69% | alive 16 | fields 24 clothed 16 tools 16 | ledgerErr 1.6e-9 | preFallDeaths 0
+seed 47: fell day 4.1 by Nori | delib 67 P 0.006-0.014 | guided 61% | alive 17 | fields 24 clothed 17 tools 17 | ledgerErr 7.7e-9 | preFallDeaths 0
+seed 48: fell day 9.8 by Ivo | delib 132 P 0.006-0.025 | guided 80% | alive 15 | fields 24 clothed 15 tools 15 | ledgerErr 1.8e-9 | preFallDeaths 0
+seed 49: fell day 9.6 by Koa | delib 129 P 0.006-0.022 | guided 79% | alive 14 | fields 24 clothed 14 tools 14 | ledgerErr 3.0e-9 | preFallDeaths 0
+seed 50: fell day 0.0 by Tavi | delib 2 P 0.009-0.009 | guided 13% | alive 21 | fields 24 clothed 21 tools 21 | ledgerErr 2.8e-8 | preFallDeaths 0
+seed 51: fell day 3.4 by Runa | delib 57 P 0.006-0.012 | guided 50% | alive 14 | fields 24 clothed 14 tools 14 | ledgerErr 2.6e-9 | preFallDeaths 0
+seed 52: fell day 6.8 by Runa | delib 96 P 0.006-0.018 | guided 75% | alive 19 | fields 24 clothed 19 tools 19 | ledgerErr 5.9e-9 | preFallDeaths 0
+seed 53: fell day 9.9 by Runa | delib 131 P 0.006-0.026 | guided 80% | alive 17 | fields 24 clothed 17 tools 17 | ledgerErr 3.4e-9 | preFallDeaths 0
+seed 54: fell day 4.1 by Neri | delib 68 P 0.006-0.014 | guided 59% | alive 15 | fields 24 clothed 15 tools 15 | ledgerErr 9.1e-10 | preFallDeaths 0
+seed 55: fell day 6.8 by Koa | delib 101 P 0.006-0.018 | guided 75% | alive 16 | fields 24 clothed 16 tools 16 | ledgerErr 1.2e-9 | preFallDeaths 0
+seed 56: fell day 0.0 by Una | delib 2 P 0.008-0.009 | guided 17% | alive 22 | fields 24 clothed 22 tools 22 | ledgerErr 2.9e-8 | preFallDeaths 0
+seed 57: fell day 6.3 by Una | delib 99 P 0.006-0.018 | guided 72% | alive 19 | fields 24 clothed 19 tools 19 | ledgerErr 9.7e-9 | preFallDeaths 0
+seed 58: fell day 4.0 by Pip | delib 66 P 0.006-0.013 | guided 59% | alive 15 | fields 24 clothed 15 tools 15 | ledgerErr 2.2e-10 | preFallDeaths 0
+seed 59: fell day 4.8 by Omi | delib 76 P 0.006-0.014 | guided 66% | alive 17 | fields 24 clothed 17 tools 17 | ledgerErr 5.8e-9 | preFallDeaths 0
+seed 60: fell day 5.5 by Fia | delib 87 P 0.006-0.020 | guided 71% | alive 17 | fields 24 clothed 17 tools 17 | ledgerErr 3.6e-9 | preFallDeaths 0

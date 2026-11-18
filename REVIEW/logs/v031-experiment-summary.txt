@@ -1,0 +1,58 @@
+
+## baseline (20 seeds 41–60, plan v5) — alive at end, paired vs baseline branch (t interval; * excludes 0)
+  berry-failure: baseline 8.75 | provision +0.00 ± 0.74 | provision-withdrawn +0.00 ± 0.71 | access -0.60 ± 0.56 * | information -0.50 ± 0.42 * | ration -1.25 ± 0.73 *
+  root-failure: baseline 10.50 | provision +0.20 ± 0.78 | provision-withdrawn -0.65 ± 0.57 * | access -0.25 ± 0.62 | information -0.75 ± 0.77 | ration -0.80 ± 0.74 *
+  dependency (natural food eaten after help stops, vs baseline) provision, pile withdrawn: per survivor -0.15 ± 0.31; per creature, dead as 0: -0.15 ± 0.31
+  dependency (natural food eaten after help stops, vs baseline) ration: per survivor +0.65 ± 0.36 *; per creature, dead as 0: +0.65 ± 0.36 *
+  dependency (natural food eaten after help stops, vs baseline) access: per survivor -0.15 ± 0.25; per creature, dead as 0: -0.15 ± 0.25
+  dependency (natural food eaten after help stops, vs baseline) information: per survivor +0.01 ± 0.03; per creature, dead as 0: +0.01 ± 0.03
+
+## high-exploration (20 seeds 41–60, plan v5) — alive at end, paired vs baseline branch (t interval; * excludes 0)
+  berry-failure: baseline 8.15 | provision +0.05 ± 1.09 | provision-withdrawn +0.55 ± 0.65 | access +0.15 ± 0.70 | information +0.40 ± 0.47 | ration +0.20 ± 0.72
+  root-failure: baseline 10.10 | provision +0.35 ± 1.01 | provision-withdrawn -0.55 ± 0.65 | access -0.15 ± 0.61 | information -0.10 ± 0.50 | ration -0.40 ± 0.75
+  dependency (natural food eaten after help stops, vs baseline) provision, pile withdrawn: per survivor +0.01 ± 0.03; per creature, dead as 0: +0.01 ± 0.03
+  dependency (natural food eaten after help stops, vs baseline) ration: per survivor -0.02 ± 0.05; per creature, dead as 0: -0.02 ± 0.05
+  dependency (natural food eaten after help stops, vs baseline) access: per survivor +0.00 ± 0.03; per creature, dead as 0: +0.00 ± 0.03
+  dependency (natural food eaten after help stops, vs baseline) information: per survivor +0.00 ± 0.00; per creature, dead as 0: +0.00 ± 0.00
+
+## high-regeneration (20 seeds 41–60, plan v5) — alive at end, paired vs baseline branch (t interval; * excludes 0)
+  berry-failure: baseline 10.85 | provision +1.70 ± 0.85 * | provision-withdrawn +0.40 ± 0.67 | access +0.30 ± 0.70 | information +0.15 ± 0.35 | ration -0.10 ± 0.66
+  root-failure: baseline 13.50 | provision +1.10 ± 0.93 * | provision-withdrawn -0.50 ± 0.72 | access +0.10 ± 0.86 | information -1.00 ± 0.68 * | ration -0.30 ± 0.86
+  dependency (natural food eaten after help stops, vs baseline) provision, pile withdrawn: per survivor -0.17 ± 0.30; per creature, dead as 0: -0.17 ± 0.30
+  dependency (natural food eaten after help stops, vs baseline) ration: per survivor +0.65 ± 0.36 *; per creature, dead as 0: +0.65 ± 0.36 *
+  dependency (natural food eaten after help stops, vs baseline) access: per survivor -0.17 ± 0.25; per creature, dead as 0: -0.17 ± 0.25
+  dependency (natural food eaten after help stops, vs baseline) information: per survivor +0.01 ± 0.03; per creature, dead as 0: +0.01 ± 0.03
+
+## low-exploration (20 seeds 41–60, plan v5) — alive at end, paired vs baseline branch (t interval; * excludes 0)
+  berry-failure: baseline 7.65 | provision -0.10 ± 0.69 | provision-withdrawn -0.10 ± 0.88 | access -0.05 ± 1.05 | information -0.10 ± 0.64 | ration -0.20 ± 0.74
+  root-failure: baseline 8.60 | provision +0.70 ± 0.95 | provision-withdrawn +0.40 ± 1.10 | access +0.75 ± 1.05 | information -0.15 ± 0.81 | ration +0.25 ± 0.95
+  dependency (natural food eaten after help stops, vs baseline) provision, pile withdrawn: per survivor +0.23 ± 0.21 *; per creature, dead as 0: +0.23 ± 0.21 *
+  dependency (natural food eaten after help stops, vs baseline) ration: per survivor +0.46 ± 0.31 *; per creature, dead as 0: +0.46 ± 0.31 *
+  dependency (natural food eaten after help stops, vs baseline) access: per survivor +0.30 ± 0.17 *; per creature, dead as 0: +0.30 ± 0.17 *
+  dependency (natural food eaten after help stops, vs baseline) information: per survivor -0.03 ± 0.03; per creature, dead as 0: -0.03 ± 0.03
+
+## low-regeneration (20 seeds 41–60, plan v5) — alive at end, paired vs baseline branch (t interval; * excludes 0)
+  berry-failure: baseline 5.95 | provision -0.15 ± 0.68 | provision-withdrawn -0.30 ± 0.63 | access -0.65 ± 0.61 * | information +0.10 ± 0.40 | ration -0.25 ± 0.59
+  root-failure: baseline 6.75 | provision +0.90 ± 0.61 * | provision-withdrawn +0.15 ± 0.49 | access +0.70 ± 0.55 * | information +0.05 ± 0.51 | ration +0.00 ± 0.71
+  dependency (natural food eaten after help stops, vs baseline) provision, pile withdrawn: per survivor -21.85 ± 4.68 *; per creature, dead as 0: +7.69 ± 0.85 *
+  dependency (natural food eaten after help stops, vs baseline) ration: per survivor -24.11 ± 3.99 *; per creature, dead as 0: +8.75 ± 0.62 *
+  dependency (natural food eaten after help stops, vs baseline) access: per survivor +0.33 ± 4.78; per creature, dead as 0: -0.35 ± 1.28
+  dependency (natural food eaten after help stops, vs baseline) information: per survivor +1.03 ± 5.06; per creature, dead as 0: -0.26 ± 0.77
+
+## no-learning (20 seeds 41–60, plan v5) — alive at end, paired vs baseline branch (t interval; * excludes 0)
+  berry-failure: baseline 8.70 | provision +0.05 ± 0.56 | provision-withdrawn -0.40 ± 0.73 | access -0.45 ± 0.62 | information -0.25 ± 0.30 | ration -0.65 ± 0.72
+  root-failure: baseline 9.90 | provision +0.00 ± 0.61 | provision-withdrawn +0.15 ± 0.70 | access +0.15 ± 0.79 | information +0.15 ± 0.27 | ration -0.30 ± 0.61
+  dependency (natural food eaten after help stops, vs baseline) provision, pile withdrawn: per survivor -0.27 ± 0.27 *; per creature, dead as 0: -0.27 ± 0.27 *
+  dependency (natural food eaten after help stops, vs baseline) ration: per survivor +0.78 ± 0.26 *; per creature, dead as 0: +0.78 ± 0.26 *
+  dependency (natural food eaten after help stops, vs baseline) access: per survivor -0.10 ± 0.27; per creature, dead as 0: -0.10 ± 0.27
+  dependency (natural food eaten after help stops, vs baseline) information: per survivor +0.00 ± 0.03; per creature, dead as 0: +0.00 ± 0.03
+
+## rule-policy (20 seeds 41–60, plan v5) — alive at end, paired vs baseline branch (t interval; * excludes 0)
+  berry-failure: baseline 8.10 | provision +3.65 ± 1.03 * | provision-withdrawn +0.35 ± 0.96 | access +0.55 ± 1.19 | information -0.25 ± 0.57 | ration -0.25 ± 0.88
+  root-failure: baseline 9.10 | provision +0.60 ± 1.08 | provision-withdrawn +0.85 ± 1.47 | access +0.45 ± 1.25 | information -0.10 ± 0.68 | ration +0.05 ± 0.95
+  dependency (natural food eaten after help stops, vs baseline) provision, pile withdrawn: per survivor +0.03 ± 0.06; per creature, dead as 0: +0.03 ± 0.06
+  dependency (natural food eaten after help stops, vs baseline) ration: per survivor +0.00 ± 0.00; per creature, dead as 0: +0.00 ± 0.00
+  dependency (natural food eaten after help stops, vs baseline) access: per survivor -0.01 ± 0.02; per creature, dead as 0: -0.01 ± 0.02
+  dependency (natural food eaten after help stops, vs baseline) information: per survivor +0.00 ± 0.00; per creature, dead as 0: +0.00 ± 0.00
+
+70 survival intervals reported; 12 exclude 0. With this many comparisons about 3.5 would exclude 0 by chance alone, and the pre-registered rule was set after these runs. Treat every starred result as a hypothesis until re-run on fresh seeds.

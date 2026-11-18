@@ -1,0 +1,765 @@
+[
+  {
+    "name": "baseline",
+    "config": {},
+    "seeds": 20,
+    "summary": [
+      {
+        "key": "baseline / unchanged",
+        "runs": 20,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 12.000000000012996,
+        "knownMean": 2,
+        "giftedMean": 0
+      },
+      {
+        "key": "baseline / berry-failure",
+        "runs": 20,
+        "aliveMean": 9.35,
+        "aliveMin": 6,
+        "aliveMax": 12,
+        "hungerMean": 31.773499999997277,
+        "knownMean": 2,
+        "giftedMean": 0
+      },
+      {
+        "key": "provision / unchanged",
+        "runs": 20,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 12.000000000012559,
+        "knownMean": 2,
+        "giftedMean": 2400
+      },
+      {
+        "key": "provision / berry-failure",
+        "runs": 20,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 12.800000000012735,
+        "knownMean": 2,
+        "giftedMean": 2400
+      },
+      {
+        "key": "provision / continued-provision",
+        "runs": 20,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 12.000000000012559,
+        "knownMean": 2,
+        "giftedMean": 3600
+      },
+      {
+        "key": "provision / continued-provision+failure",
+        "runs": 20,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 12.000000000012673,
+        "knownMean": 2,
+        "giftedMean": 3600
+      },
+      {
+        "key": "access / unchanged",
+        "runs": 20,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 12.00000000001291,
+        "knownMean": 2,
+        "giftedMean": 0
+      },
+      {
+        "key": "access / berry-failure",
+        "runs": 20,
+        "aliveMean": 9.35,
+        "aliveMin": 7,
+        "aliveMax": 12,
+        "hungerMean": 34.940249999997185,
+        "knownMean": 2,
+        "giftedMean": 0
+      },
+      {
+        "key": "information / unchanged",
+        "runs": 20,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 12.000000000013,
+        "knownMean": 2,
+        "giftedMean": 0
+      },
+      {
+        "key": "information / berry-failure",
+        "runs": 20,
+        "aliveMean": 9.75,
+        "aliveMin": 7,
+        "aliveMax": 12,
+        "hungerMean": 33.19874999999737,
+        "knownMean": 2,
+        "giftedMean": 0
+      }
+    ]
+  },
+  {
+    "name": "no-learning",
+    "config": {
+      "learning": 0
+    },
+    "seeds": 5,
+    "summary": [
+      {
+        "key": "baseline / unchanged",
+        "runs": 5,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 12.00000000001315,
+        "knownMean": 2,
+        "giftedMean": 0
+      },
+      {
+        "key": "baseline / berry-failure",
+        "runs": 5,
+        "aliveMean": 9.8,
+        "aliveMin": 6,
+        "aliveMax": 12,
+        "hungerMean": 36.65799999999717,
+        "knownMean": 2,
+        "giftedMean": 0
+      },
+      {
+        "key": "provision / unchanged",
+        "runs": 5,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 12.000000000012625,
+        "knownMean": 2,
+        "giftedMean": 2400
+      },
+      {
+        "key": "provision / berry-failure",
+        "runs": 5,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 12.000000000012804,
+        "knownMean": 2,
+        "giftedMean": 2400
+      },
+      {
+        "key": "provision / continued-provision",
+        "runs": 5,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 12.000000000012625,
+        "knownMean": 2,
+        "giftedMean": 3600
+      },
+      {
+        "key": "provision / continued-provision+failure",
+        "runs": 5,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 12.00000000001274,
+        "knownMean": 2,
+        "giftedMean": 3600
+      },
+      {
+        "key": "access / unchanged",
+        "runs": 5,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 12.00000000001305,
+        "knownMean": 2,
+        "giftedMean": 0
+      },
+      {
+        "key": "access / berry-failure",
+        "runs": 5,
+        "aliveMean": 9.2,
+        "aliveMin": 7,
+        "aliveMax": 11,
+        "hungerMean": 34.85199999999643,
+        "knownMean": 2,
+        "giftedMean": 0
+      },
+      {
+        "key": "information / unchanged",
+        "runs": 5,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 12.00000000001317,
+        "knownMean": 2,
+        "giftedMean": 0
+      },
+      {
+        "key": "information / berry-failure",
+        "runs": 5,
+        "aliveMean": 10,
+        "aliveMin": 6,
+        "aliveMax": 12,
+        "hungerMean": 37.967999999998334,
+        "knownMean": 2,
+        "giftedMean": 0
+      }
+    ]
+  },
+  {
+    "name": "low-exploration",
+    "config": {
+      "exploration": 4
+    },
+    "seeds": 5,
+    "summary": [
+      {
+        "key": "baseline / unchanged",
+        "runs": 5,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 7.070000000000205,
+        "knownMean": 2,
+        "giftedMean": 0
+      },
+      {
+        "key": "baseline / berry-failure",
+        "runs": 5,
+        "aliveMean": 8,
+        "aliveMin": 6,
+        "aliveMax": 9,
+        "hungerMean": 11.966999999997071,
+        "knownMean": 2,
+        "giftedMean": 0
+      },
+      {
+        "key": "provision / unchanged",
+        "runs": 5,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 7.090000000000261,
+        "knownMean": 2,
+        "giftedMean": 2400
+      },
+      {
+        "key": "provision / berry-failure",
+        "runs": 5,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 11.865000000001007,
+        "knownMean": 2,
+        "giftedMean": 2400
+      },
+      {
+        "key": "provision / continued-provision",
+        "runs": 5,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 7.090000000000261,
+        "knownMean": 2,
+        "giftedMean": 3600
+      },
+      {
+        "key": "provision / continued-provision+failure",
+        "runs": 5,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 6.2850000000007835,
+        "knownMean": 2,
+        "giftedMean": 3600
+      },
+      {
+        "key": "access / unchanged",
+        "runs": 5,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 6.7200000000003275,
+        "knownMean": 2,
+        "giftedMean": 0
+      },
+      {
+        "key": "access / berry-failure",
+        "runs": 5,
+        "aliveMean": 8,
+        "aliveMin": 6,
+        "aliveMax": 9,
+        "hungerMean": 12.649999999995693,
+        "knownMean": 2,
+        "giftedMean": 0
+      },
+      {
+        "key": "information / unchanged",
+        "runs": 5,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 7.09000000000024,
+        "knownMean": 2,
+        "giftedMean": 0
+      },
+      {
+        "key": "information / berry-failure",
+        "runs": 5,
+        "aliveMean": 8,
+        "aliveMin": 7,
+        "aliveMax": 9,
+        "hungerMean": 10.870999999997903,
+        "knownMean": 2,
+        "giftedMean": 0
+      }
+    ]
+  },
+  {
+    "name": "high-exploration",
+    "config": {
+      "exploration": 12
+    },
+    "seeds": 5,
+    "summary": [
+      {
+        "key": "baseline / unchanged",
+        "runs": 5,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 12.000000000015008,
+        "knownMean": 2,
+        "giftedMean": 0
+      },
+      {
+        "key": "baseline / berry-failure",
+        "runs": 5,
+        "aliveMean": 8.8,
+        "aliveMin": 6,
+        "aliveMax": 11,
+        "hungerMean": 34.327999999998795,
+        "knownMean": 2,
+        "giftedMean": 0
+      },
+      {
+        "key": "provision / unchanged",
+        "runs": 5,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 12.000000000014914,
+        "knownMean": 2,
+        "giftedMean": 2400
+      },
+      {
+        "key": "provision / berry-failure",
+        "runs": 5,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 13.664000000016259,
+        "knownMean": 2,
+        "giftedMean": 2400
+      },
+      {
+        "key": "provision / continued-provision",
+        "runs": 5,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 12.000000000014914,
+        "knownMean": 2,
+        "giftedMean": 3600
+      },
+      {
+        "key": "provision / continued-provision+failure",
+        "runs": 5,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 12.00000000001495,
+        "knownMean": 2,
+        "giftedMean": 3600
+      },
+      {
+        "key": "access / unchanged",
+        "runs": 5,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 12.000000000014973,
+        "knownMean": 2,
+        "giftedMean": 0
+      },
+      {
+        "key": "access / berry-failure",
+        "runs": 5,
+        "aliveMean": 9.6,
+        "aliveMin": 8,
+        "aliveMax": 11,
+        "hungerMean": 36.00899999999668,
+        "knownMean": 2,
+        "giftedMean": 0
+      },
+      {
+        "key": "information / unchanged",
+        "runs": 5,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 12.000000000014994,
+        "knownMean": 2,
+        "giftedMean": 0
+      },
+      {
+        "key": "information / berry-failure",
+        "runs": 5,
+        "aliveMean": 9,
+        "aliveMin": 7,
+        "aliveMax": 11,
+        "hungerMean": 28.089999999998906,
+        "knownMean": 2,
+        "giftedMean": 0
+      }
+    ]
+  },
+  {
+    "name": "low-regeneration",
+    "config": {
+      "regenA": 0.144,
+      "regenB": 0.128
+    },
+    "seeds": 5,
+    "summary": [
+      {
+        "key": "baseline / unchanged",
+        "runs": 5,
+        "aliveMean": 20.8,
+        "aliveMin": 19,
+        "aliveMax": 22,
+        "hungerMean": 54.41879999997691,
+        "knownMean": 2,
+        "giftedMean": 0
+      },
+      {
+        "key": "baseline / berry-failure",
+        "runs": 5,
+        "aliveMean": 6.4,
+        "aliveMin": 5,
+        "aliveMax": 8,
+        "hungerMean": 15.129399999987337,
+        "knownMean": 2,
+        "giftedMean": 0
+      },
+      {
+        "key": "provision / unchanged",
+        "runs": 5,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 12.000000000012708,
+        "knownMean": 2,
+        "giftedMean": 2400
+      },
+      {
+        "key": "provision / berry-failure",
+        "runs": 5,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 19.955200000012617,
+        "knownMean": 2,
+        "giftedMean": 2400
+      },
+      {
+        "key": "provision / continued-provision",
+        "runs": 5,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 12.000000000012708,
+        "knownMean": 2,
+        "giftedMean": 3600
+      },
+      {
+        "key": "provision / continued-provision+failure",
+        "runs": 5,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 12.00000000001279,
+        "knownMean": 2,
+        "giftedMean": 3600
+      },
+      {
+        "key": "access / unchanged",
+        "runs": 5,
+        "aliveMean": 20.6,
+        "aliveMin": 20,
+        "aliveMax": 22,
+        "hungerMean": 47.91899999997509,
+        "knownMean": 2,
+        "giftedMean": 0
+      },
+      {
+        "key": "access / berry-failure",
+        "runs": 5,
+        "aliveMean": 6.4,
+        "aliveMin": 6,
+        "aliveMax": 7,
+        "hungerMean": 15.353599999986702,
+        "knownMean": 2,
+        "giftedMean": 0
+      },
+      {
+        "key": "information / unchanged",
+        "runs": 5,
+        "aliveMean": 20.2,
+        "aliveMin": 19,
+        "aliveMax": 21,
+        "hungerMean": 50.10599999997653,
+        "knownMean": 2,
+        "giftedMean": 0
+      },
+      {
+        "key": "information / berry-failure",
+        "runs": 5,
+        "aliveMean": 5.2,
+        "aliveMin": 4,
+        "aliveMax": 6,
+        "hungerMean": 16.11079999998661,
+        "knownMean": 2,
+        "giftedMean": 0
+      }
+    ]
+  },
+  {
+    "name": "high-regeneration",
+    "config": {
+      "regenA": 0.216,
+      "regenB": 0.192
+    },
+    "seeds": 5,
+    "summary": [
+      {
+        "key": "baseline / unchanged",
+        "runs": 5,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 12.000000000013017,
+        "knownMean": 2,
+        "giftedMean": 0
+      },
+      {
+        "key": "baseline / berry-failure",
+        "runs": 5,
+        "aliveMean": 14.2,
+        "aliveMin": 13,
+        "aliveMax": 16,
+        "hungerMean": 53.054999999998,
+        "knownMean": 2,
+        "giftedMean": 0
+      },
+      {
+        "key": "provision / unchanged",
+        "runs": 5,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 12.000000000012578,
+        "knownMean": 2,
+        "giftedMean": 2400
+      },
+      {
+        "key": "provision / berry-failure",
+        "runs": 5,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 12.995200000012755,
+        "knownMean": 2,
+        "giftedMean": 2400
+      },
+      {
+        "key": "provision / continued-provision",
+        "runs": 5,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 12.000000000012578,
+        "knownMean": 2,
+        "giftedMean": 3600
+      },
+      {
+        "key": "provision / continued-provision+failure",
+        "runs": 5,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 12.000000000012689,
+        "knownMean": 2,
+        "giftedMean": 3600
+      },
+      {
+        "key": "access / unchanged",
+        "runs": 5,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 12.000000000012943,
+        "knownMean": 2,
+        "giftedMean": 0
+      },
+      {
+        "key": "access / berry-failure",
+        "runs": 5,
+        "aliveMean": 14,
+        "aliveMin": 12,
+        "aliveMax": 16,
+        "hungerMean": 51.21479999999666,
+        "knownMean": 2,
+        "giftedMean": 0
+      },
+      {
+        "key": "information / unchanged",
+        "runs": 5,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 12.000000000013035,
+        "knownMean": 2,
+        "giftedMean": 0
+      },
+      {
+        "key": "information / berry-failure",
+        "runs": 5,
+        "aliveMean": 14.4,
+        "aliveMin": 13,
+        "aliveMax": 18,
+        "hungerMean": 58.26099999999708,
+        "knownMean": 2,
+        "giftedMean": 0
+      }
+    ]
+  },
+  {
+    "name": "rule-policy",
+    "config": {
+      "policy": "rule"
+    },
+    "seeds": 5,
+    "summary": [
+      {
+        "key": "baseline / unchanged",
+        "runs": 5,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 28.00000000001354,
+        "knownMean": 2,
+        "giftedMean": 0
+      },
+      {
+        "key": "baseline / berry-failure",
+        "runs": 5,
+        "aliveMean": 11.2,
+        "aliveMin": 10,
+        "aliveMax": 13,
+        "hungerMean": 34.038000000000075,
+        "knownMean": 2,
+        "giftedMean": 0
+      },
+      {
+        "key": "provision / unchanged",
+        "runs": 5,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 28.000000000013916,
+        "knownMean": 2,
+        "giftedMean": 2400
+      },
+      {
+        "key": "provision / berry-failure",
+        "runs": 5,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 28.00000000001386,
+        "knownMean": 2,
+        "giftedMean": 2400
+      },
+      {
+        "key": "provision / continued-provision",
+        "runs": 5,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 28.000000000013916,
+        "knownMean": 2,
+        "giftedMean": 3600
+      },
+      {
+        "key": "provision / continued-provision+failure",
+        "runs": 5,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 28.00000000001386,
+        "knownMean": 2,
+        "giftedMean": 3600
+      },
+      {
+        "key": "access / unchanged",
+        "runs": 5,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 28.000000000014,
+        "knownMean": 2,
+        "giftedMean": 0
+      },
+      {
+        "key": "access / berry-failure",
+        "runs": 5,
+        "aliveMean": 10.8,
+        "aliveMin": 5,
+        "aliveMax": 13,
+        "hungerMean": 37.640000000004015,
+        "knownMean": 2,
+        "giftedMean": 0
+      },
+      {
+        "key": "information / unchanged",
+        "runs": 5,
+        "aliveMean": 24,
+        "aliveMin": 24,
+        "aliveMax": 24,
+        "hungerMean": 28.00000000001354,
+        "knownMean": 2,
+        "giftedMean": 0
+      },
+      {
+        "key": "information / berry-failure",
+        "runs": 5,
+        "aliveMean": 11.2,
+        "aliveMin": 10,
+        "aliveMax": 13,
+        "hungerMean": 33.58200000000342,
+        "knownMean": 2,
+        "giftedMean": 0
+      }
+    ]
+  }
+]

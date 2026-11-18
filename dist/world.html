@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#102248">
+<title>Island: the small world</title>
+<link rel="stylesheet" href="lab16.css">
+<style>
+  .hud2{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font-weight:700}
+  .hud2 .mute{color:var(--mute);font-weight:400}
+  #mapWrap{position:relative;overflow:auto;-webkit-overflow-scrolling:touch;height:min(62vh,640px);border:3px solid var(--edge);border-radius:6px;box-shadow:0 0 0 3px #000;background:#000;touch-action:pan-x pan-y}
+  #mapWrap canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
+  #people{position:absolute;left:0;top:0;pointer-events:none}
+  .ctl{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:8px 3px}
+  .ctl button{min-height:44px;padding:6px 4px;font-size:13px}
+  .ctl button.on{background:linear-gradient(#3fa24f,#1f6a2c)}
+  .bars{display:grid;grid-template-columns:5.5em 1fr 3em;gap:4px 8px;align-items:center;font-size:13px}
+  .bar{height:10px;border:1px solid #6b7bb8;background:#0a1230}.bar i{display:block;height:100%}
+  #log li,#story li{margin:2px 0;font-size:12.5px}#log .t,#story .t{color:var(--mute);margin-right:6px}
+  .opts{font-size:12.5px;color:var(--mute)}.opts b{color:var(--ink)}
+  .legend{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--mute)}.legend span i{display:inline-block;width:10px;height:10px;margin-right:4px;vertical-align:-1px;border:1px solid #000}
+  .setgrid{display:grid;grid-template-columns:1fr;gap:8px;margin:8px 0}.setgrid label{display:flex;flex-direction:column;gap:3px;font-size:13px}.setgrid input,.setgrid select{box-sizing:border-box;width:100%;max-width:100%;min-height:40px;font-size:15px;background:#0a1230;color:var(--ink);border:2px solid var(--edge);padding:4px 6px}
+  .ctl a{display:flex;align-items:center;justify-content:center;min-height:44px;font-size:13px}
+</style>
+</head>
+<body>
+<main>
+  <header class="title"><p class="sub"><a href="lab.html">← Island Lab</a></p><h1>ISLAND</h1><p class="sub">A small world like ours. Bands of families on an island they have not explored. Nothing is scripted; you watch.</p></header>
+  <div class="box"><div id="hud" class="hud2"></div></div>
+  <div id="mapWrap"><canvas id="land"></canvas><canvas id="people"></canvas></div>
+  <div class="ctl">
+    <button id="pause">Pause</button><button data-speed="24">1 day/s</button><button data-speed="168">1 week/s</button><button data-speed="720">1 month/s</button>
+    <button id="zoomOut">− Zoom</button><button id="zoomIn">+ Zoom</button><button id="toCamp">Next camp</button><button id="follow">Follow</button>
+    <button data-skip="10">Skip 10 yrs</button><button data-skip="50">Skip 50 yrs</button><button data-skip="100">Skip 100 yrs</button><button id="stopSkip" disabled>Stop skip</button><button id="newWorld">New world</button>
+  </div>
+  <div class="box"><h2>The long view</h2><canvas id="long" width="720" height="260" style="width:100%;height:auto"></canvas><p class="note" id="longNote">One point a year: people alive (white), born that year (green), died that year (red), share of the island known (gold, 0-100%), generations (blue). Skipping runs the same world faster without drawing the map.</p></div>
+  <div class="box"><h2 id="whoTitle">Tap a person</h2><div id="who" class="note">Tap someone on the map (or press Follow) to see their body, what they are doing and why, and their life so far.</div></div>
+  <div class="box"><h2>The people</h2><div id="band" class="note"></div></div>
+  <div class="box"><h2>What has happened</h2><ul id="log"></ul></div>
+  <div class="box"><h2>Key</h2><div class="legend" id="legend"></div>
+    <p class="note">Black land is unknown: no one has seen it yet. Rates come from measured human data (see the project's docs/THEORY-CHECK.md); the same seed gives the same island history.</p></div>
+</main>
+<script type="module" src="world-app.js"></script>
+</body>
+</html>
