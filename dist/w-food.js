@@ -13,6 +13,7 @@ import { H, W, bandOf, dist, note, placeName } from './w-core.js';
 import { lightFire } from './w-craft.js';
 import { atCamp } from './w-mind.js';
 import { youngOf } from './w-people.js';
+import { checkNews } from './w-social.js';
 
 // ---------- the land's food and water ----------
 export const FOOD_BY_REGION = { shore: ['shellfish', 'fish', 'berries'], river: ['fish', 'berries'], woodland: ['berries', 'nuts', 'honey', 'tubers', 'baobab'], grass: ['tubers', 'baobab'], rock: ['honey'] };
@@ -68,6 +69,7 @@ export function observe(s, p, q, stock) {
     if (days > 1 && k.u > k.exp && f > 0.05 && f < 0.95) { const tauObs = Math.min(2000, Math.max(1, days / -Math.log(f))), L = deltaLog(b.tau, b.w, tauObs, LEARNERS.human.recoveryLooks); b.w = L.weight; b.tau = L.value; }
     const m = MONTH(s); b.month[m] = delta(b.month[m], stock / Math.max(1e-9, k.u), LEARNERS.human.seasonRate);
   }
+  checkNews(s, p, k, stock); // was what one heard right?
   const n = (k?.n ?? 0) + 1, u = k?.u ? deltaByCount(k.u, stock, Math.min(n, LEARNERS.human.memoryLooks)) : stock;
   p.places[q.id] = { exp: stock, t: s.tick, u, n };
 }

@@ -11,7 +11,7 @@ export const SALTS = {
   illness: K + 21, injury: K + 22, birth: K + 23, pairing: K + 24, talk: K + 25, share: K + 26, band: K + 27, adopt: K + 28, move: K + 29,
   hunt: K + 36, tryKill: K + 37, pickup: K + 38, tinker: K + 39,
   setupSpear: X, shareOffer: X + 1, bandJoin: X + 2, bandHousehold: X + 3, bandSplit: X + 4, talkHome: X + 5, pairBand: X + 6,
-  fireTend: X + 7, fireRain: X + 8, cookFind: X + 9, showHow: X + 10, wildBrand: X + 11, huntDirection: X + 12,
+  fireTend: X + 7, fireRain: X + 8, cookFind: X + 9, showHow: X + 10, wildBrand: X + 11, huntDirection: X + 12, newsBlur: X + 18, newsBlur2: X + 19,
   // nature.js (animals, materials, fire)
   animals: K + 30, encounter: K + 31, attempt: K + 32, fire: K + 33, material: K + 34, carcass: K + 35,
   attemptHit: X + 13, attemptDisable: X + 14, attemptHurt: X + 15, carcassX: X + 16, carcassY: X + 17,

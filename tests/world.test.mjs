@@ -235,3 +235,12 @@ test('Y21 active inference (idea 8): information gain is 0.5 ln((n+1)/n) and fal
   const a = createWorld2(51), b = createWorld2(51, { decision: 'activeInference', aifEpistemicWeight: 0 }); stepWorld(a, 24 * 20); stepWorld(b, 24 * 20);
   assert.deepEqual(a.people.map(p => [p.x, p.y, Math.round(p.reserve)]), b.people.map(p => [p.x, p.y, Math.round(p.reserve)]));
 });
+
+test('Y22 news is a noisy channel with trust (idea 9): retold amounts carry hops and blur; trust is learned from checks; news carries some but not all the information', async () => {
+  const { trustOf, newsBits } = await import('../dist/w-social.js'); const { R } = await import('../dist/clock.js');
+  const p = { trust: {} }; assert.equal(trustOf(p, 1), R('trustPriorRight') / (R('trustPriorRight') + R('trustPriorWrong')));
+  p.trust[1] = { r: 0, w: 5 }; assert.ok(trustOf(p, 1) < 0.3); p.trust[1] = { r: 50, w: 0 }; assert.ok(trustOf(p, 1) > 0.9);
+  const s = createWorld2(53); stepWorld(s, 24 * 120);
+  const heard = s.people.flatMap(q => Object.values(q.places)).filter(k => k.hops > 0); assert.ok(heard.length > 0); assert.ok(heard.every(k => k.heard > 0 || k.heard === 0));
+  const b = newsBits(s); assert.ok(b && b.checks > 10); assert.ok(b.bits > 0.3 && b.bits < 8, `bits ${b.bits}`); assert.ok(b.right > 0.5 && b.right < 1);
+});

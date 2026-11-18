@@ -81,14 +81,35 @@ export function share(s) {
     }
   }
 }
+// Trust in a teller: Beta(trustPriorRight, trustPriorWrong) updated by checks (Bayes for a coin: right / (right + wrong)).
+export const trustOf = (p, id) => { const t = p.trust?.[id]; return ((t?.r ?? 0) + R('trustPriorRight')) / ((t?.r ?? 0) + (t?.w ?? 0) + R('trustPriorRight') + R('trustPriorWrong')); };
+export function checkNews(s, p, k, stock) {
+  if (k?.from === undefined || !(k.heard > 0)) return;
+  const t = ((p.trust ??= {})[k.from] ??= { r: 0, w: 0 }), right = Math.abs(Math.log(Math.max(1, stock) / Math.max(1, k.heard))) < Math.LN2; if (right) t.r++; else t.w++;
+  const N = (s.news ??= { n: 0, sx: 0, sy: 0, sxx: 0, syy: 0, sxy: 0, right: 0, hops: 0 }), x = Math.log(Math.max(1, k.heard)), y = Math.log(Math.max(1, stock));
+  N.n++; N.sx += x; N.sy += y; N.sxx += x * x; N.syy += y * y; N.sxy += x * y; N.right += right; N.hops += k.hops;
+}
+// What news carries, in bits: for a Gaussian channel the information in the heard amount about the true one is
+// -0.5 log2(1 - r^2), with r the correlation of their logs (Shannon). Also the share right within a factor of two.
+export function newsBits(s) { const N = s.news; if (!N || N.n < 3) return null; const cxy = N.sxy / N.n - N.sx * N.sy / N.n ** 2, vx = N.sxx / N.n - (N.sx / N.n) ** 2, vy = N.syy / N.n - (N.sy / N.n) ** 2, r = cxy / Math.sqrt(vx * vy); return { checks: N.n, bits: -0.5 * Math.log2(Math.max(1e-9, 1 - r * r)), right: N.right / N.n, hops: N.hops / N.n }; }
 export function evening(s) {
   const hs = homes(s);
   share(s);
   // news: people at the same camp tell what they know. A household member hears it more often than not (70% plus
   // the teller's sociability, a chance); up to three others hear it as often as the teller is sociable.
   const here = living(s).filter(p => atCamp(s, p) && p.body.age >= 5);
+  // News is a noisy channel (idea 9; Shannon 1948). Each retelling blurs an amount by a log-normal error
+  // (newsBlurPerHop; serial reproduction, Bartlett 1932: stories drift as they pass along), so news from far down a
+  // chain is worth less. The hearer weighs it by how much they trust the teller (trustOf), learned from checking:
+  // when they next look at a place they heard of, they see whether the teller was right (within a factor of two).
   const tell = (a, b) => {
-    for (const id in a.places) { const k = a.places[id], kb = b.places[id]; if (!kb || kb.t < k.t) { if (!kb) note(s, b, `Heard from ${a.name} about ${s.patchById.get(id).name.toLowerCase()}.`); b.places[id] = { exp: k.exp, t: k.t, u: kb?.u || k.u, n: kb?.n ?? 0 }; } } // news, not their own looks
+    for (const id in a.places) { const k = a.places[id], kb = b.places[id]; if (!kb || kb.t < k.t) {
+      const q = s.patchById.get(id); if (!kb) note(s, b, `Heard from ${a.name} about ${q.name.toLowerCase()}.`);
+      const key = (a.id * 131 + b.id) * 4096 + ((q.x * 64 + q.y) % 4096), u1 = Math.max(1e-12, draw(s, key, SALT.newsBlur)), u2 = draw(s, key, SALT.newsBlur2);
+      const heard = k.exp * Math.exp((s.config.newsBlurPerHop ?? R('newsBlurPerHop')) * Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2)), tr = trustOf(b, a.id);
+      const exp = kb ? kb.exp + tr * (heard - kb.exp) : heard; // a stranger's word on a place one knows moves belief only as far as one trusts it
+      b.places[id] = { exp, t: k.t, u: kb?.u || k.u, n: kb?.n ?? 0, from: a.id, heard, hops: (k.hops ?? 0) + 1 };
+    } } // news, not their own looks
     for (const id in a.waters) { const k = a.waters[id], kb = b.waters[id]; if (!kb || kb.t < k.t) b.waters[id] = { active: k.active, t: k.t, dryOk: (kb?.dryOk ?? false) || !!k.dryOk }; }
     for (const id in a.carcasses) if (b.body.age >= 14 && !b.carcasses[id] && s.carcasses.some(c => c.id === +id)) b.carcasses[id] = 1; // where the meat is
     for (const k of [...knownRecipes(a), ...(a.skills.cook >= 0.03 ? ['cook'] : [])]) if (!((b.skills[k] ?? 0) >= 0.03) && b.body.age >= 5 && draw(s, a.id * 101 + b.id, SALT.showHow, s.tick) < R('showChance') + 0.2 * a.skills[k]) { practise(s, b, k, 1); note(s, b, `${a.name} showed how to ${k === 'cook' ? 'cook food by the fire' : recipeName(k)}.`); }
