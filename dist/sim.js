@@ -35,7 +35,7 @@ export const STREAMS={
   temperament:[343,349],   // being.js: one stream per temperament system (seeking reuses birthCuriosity / newborn). Read-only; changes no world.
   ageing:[350,350],        // eden lifeCourse: monthly draw for dying of age, after the fall only
   climate:[351,351],       // savanna: yearly rain (lognormal) and the slow wet/dry swing; keyed by year, not by tick
-  world:[360,399],worldMore:[400,439],        // world.js (the small world): setup 360-369, choice 370, explore 371-372, conception 373-374, newborn 375-380, illness 381, injury 382, birth risk 383, pairing 384, talk 385
+  world:[360,399],worldMore:[440,479],        // world.js (the small world): setup 360-369, choice 370, explore 371-372, conception 373-374, newborn 375-380, illness 381, injury 382, birth risk 383, pairing 384, talk 385
 };
 const draw=(s,t,id,salt)=>s.rng===2?noise2(seedKey(s.seed),t,id,salt):noise(s.seed,t,id,salt);
 const cache=new Map();

@@ -20,7 +20,7 @@
 // Nothing here is God, Eden or the deceiver. Those come later as layers on this same world.
 
 import { noise2, seedKey, STREAMS, fieldPath, fieldDist, mapOf, path } from './sim.js';
-import { clockOf, body, eatKcal, burnKcal, storedKcal, hourOf, isNight, sleepTime, REAL_MINUTES, SLEEP_UNTIL, dateOf } from './clock.js';
+import { R, clockOf, body, eatKcal, burnKcal, storedKcal, hourOf, isNight, sleepTime, REAL_MINUTES, SLEEP_UNTIL, dateOf } from './clock.js';
 import * as EN from './energy.js';
 import { FOODS, rainOf, waterActive, landStep, returnRate, realFrac } from './savanna.js';
 import { practise, forget } from './body.js';
@@ -146,7 +146,7 @@ function carerOf(s, p) {
 }
 // 0 while body fat is above 40% of its most, rising to 1 as it runs out (for oneself or a child in one's care)
 function survivalDrive(p, young = []) {
-  const d = q => Math.max(0, Math.min(1, (0.4 - (q.reserve ?? 0) / q.body.fatMax) / 0.4));
+  const F = R('survivalFat'), d = q => Math.max(0, Math.min(1, (F - (q.reserve ?? 0) / q.body.fatMax) / F));
   return young.reduce((m, k) => Math.max(m, d(k)), d(p));
 }
 // the young a person is looking after now: their own, or a child of kin whose parents have died
@@ -317,7 +317,6 @@ function householdShort(s, p) {
 }
 const householdDay = (s, p) => { const h = s.households[p.household]; return h ? h.members.reduce((n, i) => n + (s.people[i].alive ? s.people[i].body.base : 0), 0) : p.body.base; };
 const atCamp = (s, p) => { const c = campOf(s, p); return Math.abs(p.x - c.x) + Math.abs(p.y - c.y) <= 1; };
-const DAY_KM_MAX = 35; // km: a long forager day (approx.; Hadza day ranges average 6-11 km and rarely pass 30)
 const maxTripKm = a => a < 5 ? 0 : a < 10 ? 2 : a < 14 ? 5 : 15; // how far children range from camp (Hadza children forage near camp)
 const hoursTo = (s, p, x, y) => { const d = fieldDist(p.x, p.y, x, y, false, mapOf(s)); return d < 0 ? Infinity : d / p.body.tilesTick * clockOf(s).hours; };
 
@@ -331,10 +330,10 @@ function options(s, p) {
   const drive = survivalDrive(p, young);
   // how far one has already walked today: a new trip that would take the day past about 35 km is not set out on
   // (forager day ranges rarely pass 30 km; going home or to water is always possible)
-  const kmLeft = DAY_KM_MAX - (p.tiles - (p.tilesAtDay ?? p.tiles)) * T.TILE_KM;
+  const kmLeft = R('dayKmMax') - (p.tiles - (p.tilesAtDay ?? p.tiles)) * T.TILE_KM;
   // sleep
   if (night) opts.push({ k: 'sleep', u: 2.5 + tired, why: 'night' });
-  else opts.push({ k: 'rest', u: tired * tired * 3 - 0.2 - (p.energy > 15 ? 1.5 * drive : 0), why: `tired ${Math.round(tired * 100)}` });
+  else opts.push({ k: 'rest', u: tired * tired * 3 - 0.2 - (p.energy > 15 ? R('wRestDrive') * drive : 0), why: `tired ${Math.round(tired * 100)}` });
   // water
   let best = null, bm = Infinity;
   for (const id in p.waters) { if (!p.waters[id].active) continue; const wt = s.waterById.get(id), md = Math.abs(wt.x - p.x) + Math.abs(wt.y - p.y); if (md < bm) { bm = md; best = wt; } } // nearest by straight-line first
@@ -343,7 +342,7 @@ function options(s, p) {
   // food: net kcal per hour of the whole trip, against what the household is short of
   if (!night && a >= 5) {
     const short = a < 14 ? p.hunger / p.body.hpk : householdShort(s, p), day = a < 14 ? p.body.base : householdDay(s, p);
-    const urgency = Math.min(2, short / Math.max(1, day)) + 0.12; // foragers go out most days even when not short
+    const urgency = Math.min(2, short / Math.max(1, day)) + R('forageBase'); // foragers go out most days even when not short
     const range = maxTripKm(a) / T.TILE_KM;
     // the places worth thinking about today: refreshed once a day or when camp moves (people do not weigh every
     // place they have ever heard of before each step)
@@ -364,18 +363,18 @@ function options(s, p) {
       const rate = returnRate(q.food, a, p.skills[q.id] ?? 0), want = Math.min(a < 14 ? Math.max(500, short) : p.body.carryKcal, k.exp * 500);
       const hrs = out + want / rate + back, walk = (out + back) * p.body.tilesTick / C.hours * p.body.cotTile * p.body.mass;
       const net = (want - walk) / hrs, late = hour + hrs > 19 ? (hour + hrs - 19) * 0.25 : 0;
-      opts.push({ k: 'forage', q, want, u: urgency * net / 1000 + (net > 0 ? 2 * drive : 0) - late - p.mind.caution * Math.max(0, out - 3) * 0.05, why: `${q.name.toLowerCase()} ${out.toFixed(1)} h away, about ${Math.round(net)} kcal an hour after walking` });
+      opts.push({ k: 'forage', q, want, u: urgency * net / 1000 + (net > 0 ? R('wDrive') * drive : 0) - late - p.mind.caution * Math.max(0, out - 3) * 0.05, why: `${q.name.toLowerCase()} ${out.toFixed(1)} h away, about ${Math.round(net)} kcal an hour after walking` });
     }
   }
   // meat: going after animals, and carcasses one knows of (one's own kill, one seen from the vultures, or told)
   if (!night && a >= 14) {
-    const short = householdShort(s, p), day = householdDay(s, p), urgency = Math.min(2, short / Math.max(1, day)) + 0.12;
-    const walkH = p.body.cotTile * p.body.mass * p.body.kmh * 0.3 / T.TILE_KM; // kcal an hour stalking at 0.3 of walking pace
+    const short = householdShort(s, p), day = householdDay(s, p), urgency = Math.min(2, short / Math.max(1, day)) + R('forageBase');
+    const walkH = p.body.cotTile * p.body.mass * p.body.kmh * R('stalkPace') / T.TILE_KM; // kcal an hour stalking
     if (hour < 12 && kmLeft > 20) {
       const rate = huntRate(p), net = rate - walkH;
       // motives: survival (the drive), success (ambition: meat is shared and brings standing, as Hawkes argues for Hadza
       // men), and caution against the risk of the chase. Weights approx.; what hunting returns is learned, not given.
-      opts.push({ k: 'hunt', u: urgency * net / 1000 + (net > 0 ? 2 * drive : 0) + 0.3 * p.mind.ambition - 0.2 * p.mind.caution, why: `hunting: I expect about ${Math.round(net)} kcal an hour${p.hunt.hours < 1 ? ' (never tried)' : ''}` });
+      opts.push({ k: 'hunt', u: urgency * net / 1000 + (net > 0 ? R('wDrive') * drive : 0) + R('wAmbition') * p.mind.ambition - R('wCaution') * p.mind.caution, why: `hunting: I expect about ${Math.round(net)} kcal an hour${p.hunt.hours < 1 ? ' (never tried)' : ''}` });
     }
     for (const id in p.carcasses) {
       const c = s.carcasses.find(k => k.id === +id); if (!c) continue;
@@ -383,7 +382,7 @@ function options(s, p) {
       if (!isFinite(out) || s.tick + out * C.perHour > c.until || (out + back) * p.body.kmh / 2 > maxTripKm(a) || (out + back) * p.body.kmh > kmLeft) continue; // within a day's reach, before it rots
       const want = Math.min(meatAvail(p, c), meatCarry(p)); if (want < 300) continue;
       const hrs = out + 0.5 + back, net = (want - (out + back) * p.body.kmh / T.TILE_KM * p.body.cotTile * p.body.mass) / hrs;
-      opts.push({ k: 'fetch', c, u: urgency * net / 1000 + (net > 0 ? 2 * drive : 0) + 0.2 - 0.1 * p.mind.caution, why: `meat: a ${N.SPECIES[c.species].label} carcass ${out.toFixed(1)} h away` });
+      opts.push({ k: 'fetch', c, u: urgency * net / 1000 + (net > 0 ? R('wDrive') * drive : 0) + 0.2 - 0.5 * R('wCaution') * p.mind.caution, why: `meat: a ${N.SPECIES[c.species].label} carcass ${out.toFixed(1)} h away` });
     }
   }
   // explore: curiosity, more when what is known is poor
@@ -392,13 +391,13 @@ function options(s, p) {
     // worth more when what they know is poor or far: long days of walking, or little worth going for
     // (how far the food trips have to go, not how far people walk in all, or exploring would feed on itself)
     const far = Math.min(1, Math.max(0, ((band.tripKm ?? 3) - 4) / 4));
-    const seek = bestFood < 0.5 ? 1.5 * drive : 0; // nothing worth going for nearby and going hungry: look for new sources
+    const seek = bestFood < 0.5 ? R('wSeek') * drive : 0; // nothing worth going for nearby and going hungry: look for new sources
     opts.push({ k: 'explore', u: p.mind.curiosity * (p.energy / 100) * (0.3 + 0.4 * Math.max(0, 0.5 - bestFood) + 0.6 * far) + seek, why: seek > 0.3 ? 'hungry, looking for new food' : `curiosity ${Math.round(p.mind.curiosity * 100)}${far > 0.2 ? ', the known places are far' : ''}` });
   }
   // camp: being with others, caring for the young, going home in the evening
   // trying things with what one has picked up: curiosity, when well fed and with time on one's hands (a full belly
   // leaves room for play; hunger narrows the mind to food). What works is found by trying, by chance.
-  if (home && !night && a >= 8 && p.items.length) opts.push({ k: 'tinker', u: (0.15 + 0.5 * p.mind.curiosity) * (1 - drive) * (p.energy / 100) + (knownRecipes(p).some(k => !p.items.includes(productOf(k))) ? 0.2 : 0), why: knownRecipes(p).length ? `making things: I know how to ${knownRecipes(p).map(recipeName).join(', ')}` : 'trying things with what I have picked up' });
+  if (home && !night && a >= 8 && p.items.length) opts.push({ k: 'tinker', u: (R('tinkerBase') + R('tinkerCurious') * p.mind.curiosity) * (1 - drive) * (p.energy / 100) + (knownRecipes(p).some(k => !p.items.includes(productOf(k))) ? 0.2 : 0), why: knownRecipes(p).length ? `making things: I know how to ${knownRecipes(p).map(recipeName).join(', ')}` : 'trying things with what I have picked up' });
   if (home) opts.push({ k: 'camp', u: 0.25 + 0.25 * p.mind.social + (young.length ? 0.15 * p.mind.care : 0), why: 'at camp with the others' });
   else { const cw = s.waterById.get(camp.water), water = cw.active ? 3 * thirst ** 1.5 : 0; // camp has water: thirst draws people home too
     opts.push({ k: 'home', u: (hour >= 17 ? 1.5 : 0.2) + (p.carry > 0 ? 0.6 : 0) + water - homeH * 0.05, why: `camp ${homeH.toFixed(1)} h away${water > 0.5 ? ', and there is water there' : ''}` }); }
@@ -442,7 +441,7 @@ function decide(s, p) {
   }
   else if (o.k === 'explore') { const t = exploreTarget(s, p); p.plan = t ? [{ k: 'walk', to: t, explore: true }, { k: 'walk', to: camp }] : [{ k: 'camp', left: C.perHour }]; }
   else if (o.k === 'home') p.plan = [{ k: 'walk', to: camp }, { k: 'unload' }];
-  else if (o.k === 'hunt') { const t = huntTarget(s, p); s.hunting.trips++; p.plan = [...(t ? [{ k: 'walk', to: t }] : []), { k: 'hunt', left: Math.min(6, Math.max(1, 16 - hourOf(C, s.tick))) * C.perHour, kcal0: 0 }, { k: 'walk', to: camp }, { k: 'unload' }]; }
+  else if (o.k === 'hunt') { const t = huntTarget(s, p); s.hunting.trips++; p.plan = [...(t ? [{ k: 'walk', to: t }] : []), { k: 'hunt', left: Math.min(R('huntHoursMax'), Math.max(1, 16 - hourOf(C, s.tick))) * C.perHour, kcal0: 0 }, { k: 'walk', to: camp }, { k: 'unload' }]; }
   else if (o.k === 'tinker') p.plan = [{ k: 'tinker', left: C.perHour }];
   else if (o.k === 'fetch') p.plan = [{ k: 'walk', to: [o.c.x, o.c.y] }, { k: 'butcher', c: o.c.id, left: 0.5 * C.perHour }, { k: 'walk', to: camp }, { k: 'unload' }];
   else p.plan = [{ k: 'camp', left: 2 * C.perHour }];
@@ -486,17 +485,16 @@ function act(s, p) {
 // ---------- meat ----------
 // What a person expects hunting to return (kcal an hour): their own record, what they have heard, and a modest
 // guess for the untried (approx.). It is learned, so who hunts, and how much, comes from what happens.
-const HUNT_PRIOR = { kcal: 300, hours: 2 };
-const huntRate = p => { const h = p.hunt, hd = p.huntHeard ?? { kcal: 0, hours: 0 }; return (h.kcal + 0.3 * hd.kcal + HUNT_PRIOR.kcal) / (h.hours + 0.3 * hd.hours + HUNT_PRIOR.hours); };
-const meatCarry = p => Math.min(25, (p.body.age >= 14 ? 0.3 : 0.15) * p.body.mass) * N.MEAT.kcalPerKg; // a load of meat: up to about 25 kg
+const huntRate = p => { const h = p.hunt, hd = p.huntHeard ?? { kcal: 0, hours: 0 }; return (h.kcal + 0.3 * hd.kcal + R('huntPriorKcal')) / (h.hours + 0.3 * hd.hours + R('huntPriorHours')); };
+const meatCarry = p => Math.min(R('meatLoadKg'), (p.body.age >= 14 ? 0.3 : 0.15) * p.body.mass) * N.MEAT.kcalPerKg; // a load of meat: up to about 25 kg
 const hasEdge = p => p.items.some(i => i === 'flake' || i === 'chopper'), hasStone = p => p.items.some(i => i === 'cobble' || i === 'flint');
 const meatAvail = (p, c) => Math.max(0, Math.min(c.kcal, c.kcal0 * N.access(hasEdge(p), hasStone(p)) - c.taken));
 const weaponOf = p => p.items.includes('spear') ? 'spear' : p.items.includes('stick') ? 'stick' : hasStone(p) ? 'stone' : 'hands';
 // where to look for game: a place they have seen, in bush or grass, within half a day's walk (a chance pick)
 function huntTarget(s, p) {
-  const camp = campOf(s, p), R = Math.round(8 / T.TILE_KM);
+  const camp = campOf(s, p), RR = Math.round(8 / T.TILE_KM);
   for (let k = 0; k < 20; k++) {
-    const x = camp.x + Math.round((draw(s, p.id, SALT.hunt, s.tick * 20 + k) * 2 - 1) * R), y = camp.y + Math.round((draw(s, p.id + 1, SALT.hunt, s.tick * 20 + k) * 2 - 1) * R);
+    const x = camp.x + Math.round((draw(s, p.id, SALT.hunt, s.tick * 20 + k) * 2 - 1) * RR), y = camp.y + Math.round((draw(s, p.id + 1, SALT.hunt, s.tick * 20 + k) * 2 - 1) * RR);
     if (x < 0 || y < 0 || x >= W || y >= H || !p.seen[y * W + x] || !T.isWalkable(x, y)) continue;
     const r = T.regionAt(x, y); if (r === 'grass' || r === 'woodland' || r === 'river') return [x, y];
   }
@@ -506,7 +504,7 @@ function huntTarget(s, p) {
 // group of animals is seen, deciding whether to try for one (the chance of success they can judge, against the risk).
 function huntHour(s, p, st, u) {
   const C = clockOf(s), B = body(s), young = youngOf(s, p), load = young.filter(k => EN.carried(k.body.age)).reduce((n, k) => n + k.body.mass, 0) + p.carry / 2000;
-  const tiles = Math.max(1, Math.round(p.body.kmh * 0.3 * u * C.hours / T.TILE_KM)); // stalking: slow, with long pauses (approx. 1-1.5 km an hour)
+  const tiles = Math.max(1, Math.round(p.body.kmh * R('stalkPace') * u * C.hours / T.TILE_KM)); // stalking: slow, with long pauses (approx. 1-1.5 km an hour)
   const ang = draw(s, p.id, SALT.huntDirection, s.tick) * 2 * Math.PI; let moved = 0;
   for (let i = 0; i < tiles; i++) {
     const x = Math.round(p.x + Math.cos(ang)), y = Math.round(p.y + Math.sin(ang)); if (!T.isWalkable(x, y) || (x === p.x && y === p.y)) break;
@@ -539,7 +537,7 @@ function huntEnd(s, p, st) {
 }
 // ---------- things, know-how, fire ----------
 // Picking up what lies to hand: a stick, a stone, dry grass. A chance, more for the curious; at most four things.
-function pickUp(s, p, base = 0.05) {
+function pickUp(s, p, base = R('pickupBase')) {
   if (p.body.age < 5 || p.items.length >= 4) return;
   for (const m of N.materialsAt(p.x, p.y)) { if (p.items.includes(m)) continue; if (draw(s, p.id, SALT.pickup, s.tick) < base * (0.5 + p.mind.curiosity)) { p.items.push(m); note(s, p, `Picked up ${N.MATERIAL[m].label === 'dry grass' ? 'some dry grass' : 'a ' + N.MATERIAL[m].label}.`); } return; }
 }
@@ -580,23 +578,22 @@ function fireHour(s) {
   const C = clockOf(s);
   for (const b of s.bands) {
     if (b.ended || !(b.fire?.fuel > 0)) continue;
-    b.fire.fuel -= (sleepTime(C, s.tick) ? 0.15 : 1) * N.FIRE.burnKgH * C.hours; // banked at night it smoulders (approx.)
+    b.fire.fuel -= (sleepTime(C, s.tick) ? R('fireBanked') : 1) * R('fireBurnKgH') * C.hours; // banked at night it smoulders (approx.)
     b.fire.hours = (b.fire.hours ?? 0) + C.hours;
     const near = b.fire.near ??= (() => { for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) if (T.isWalkable(b.camp.x + dx, b.camp.y + dy) && N.materialsAt(b.camp.x + dx, b.camp.y + dy).includes('stick')) return true; return false; })(); // dead wood within about a kilometre
     const tenders = bandMembers(s, b).filter(q => q.body.age >= 8 && atCamp(s, q) && q.step?.k !== 'sleep');
-    for (const q of tenders) if (near && draw(s, q.id, SALT.fireTend, s.tick) < 0.3 * (0.5 + q.mind.care)) { b.fire.fuel += N.FIRE.fuelPerStick; if (b.fire.fuel > 4) break; }
+    for (const q of tenders) if (near && draw(s, q.id, SALT.fireTend, s.tick) < R('fireTend') * (0.5 + q.mind.care)) { b.fire.fuel += N.FIRE.fuelPerStick; if (b.fire.fuel > 4) break; }
     // finding out about cooking: food dropped by the fire comes out softer; someone may notice (a chance an hour)
-    for (const q of tenders) if (!(q.skills.cook >= 0.03) && draw(s, q.id, SALT.cookFind, s.tick) < 0.003 * q.mind.curiosity) { practise(s, q, 'cook', 1); if (!s.firsts.cook) { s.firsts.cook = { t: s.tick, by: q.name }; event(s, `${q.name} found that food put by the fire is softer and goes further.`); } }
-    if (N.moisture(s) > 0.15 && draw(s, b.id, SALT.fireRain, s.tick) < N.FIRE.rainOut) b.fire.fuel = 0;
+    for (const q of tenders) if (!(q.skills.cook >= 0.03) && draw(s, q.id, SALT.cookFind, s.tick) < R('cookFindHour') * q.mind.curiosity) { practise(s, q, 'cook', 1); if (!s.firsts.cook) { s.firsts.cook = { t: s.tick, by: q.name }; event(s, `${q.name} found that food put by the fire is softer and goes further.`); } }
+    if (N.moisture(s) > 0.15 && draw(s, b.id, SALT.fireRain, s.tick) < R('fireRainOut')) b.fire.fuel = 0;
     if (b.fire.fuel <= 0) { b.fire = null; event(s, `The fire at ${bandName(s, b)}'s camp went out.`); }
   }
 }
 // Food at camp with a fire: someone who knows to put it by the fire gets more from it (cooking; gain approx.).
-const COOK_GAIN = 0.15; // mixed food; Carmody et al. 2011 give the direction (tubers and meat gain), not this number
 function cooked(s, h, q, g) {
   const b = s.bands[h.band]; if (!(b?.fire?.fuel > 0) || g <= 0) return;
   if (!h.members.some(i => s.people[i].alive && (s.people[i].skills.cook ?? 0) >= 0.03)) return;
-  const extra = g * COOK_GAIN; eatKcal(s, q, extra); s.ledger.cookGain += extra;
+  const extra = g * R('cookGain'); eatKcal(s, q, extra); s.ledger.cookGain += extra;
 }
 // Cooks keep their skill by using it each day there is a fire at camp.
 function fireDay(s) {
@@ -722,10 +719,10 @@ const familyName = (s, o) => { const a = o.members.map(i => s.people[i]).find(m 
 function giveChance(s, giverH, takerH, r, starving = 0) {
   const ad = giverH.members.map(i => s.people[i]).filter(m => m.alive && m.body.age >= 14);
   const care = ad.length ? ad.reduce((n, m) => n + m.mind.care, 0) / ad.length : 0.5, hunger = ad.length ? ad.reduce((n, m) => n + m.hunger, 0) / ad.length / 100 : 0;
-  const R = s.recip ??= {}, got = R[`${takerH.id}>${giverH.id}`] ?? 0, given = R[`${giverH.id}>${takerH.id}`] ?? 0, recip = Math.min(1, got / (given + 2000));
-  return Math.min(0.98, Math.max(0.02, 0.15 + 0.6 * r + 0.3 * care + 0.3 * recip - 0.5 * hunger + 0.5 * starving)); // a visibly starving asker is rarely refused (weights approx.)
+  const RR = s.recip ??= {}, got = RR[`${takerH.id}>${giverH.id}`] ?? 0, given = RR[`${giverH.id}>${takerH.id}`] ?? 0, recip = Math.min(1, got / (given + 2000));
+  return Math.min(0.98, Math.max(0.02, R('give0') + R('giveKin') * r + R('giveCare') * care + R('giveRecip') * recip - R('giveHunger') * hunger + R('giveStarving') * starving)); // a visibly starving asker is rarely refused (weights approx.)
 }
-const gave = (s, from, to, kcal) => { const R = s.recip ??= {}; R[`${from.id}>${to.id}`] = (R[`${from.id}>${to.id}`] ?? 0) + kcal; };
+const gave = (s, from, to, kcal) => { const RR = s.recip ??= {}; RR[`${from.id}>${to.id}`] = (RR[`${from.id}>${to.id}`] ?? 0) + kcal; };
 
 // ---------- the evening at camp: sharing food and news ----------
 // Relatedness r through recorded parents (two generations): parent-child and full siblings 1/2, grandparent and
@@ -766,7 +763,7 @@ function evening(s) {
     for (const id in a.places) { const k = a.places[id], kb = b.places[id]; if (!kb || kb.t < k.t) { if (!kb) note(s, b, `Heard from ${a.name} about ${s.patchById.get(id).name.toLowerCase()}.`); b.places[id] = { exp: k.exp, t: k.t, u: kb?.u || k.u, n: kb?.n ?? 0 }; } } // news, not their own looks
     for (const id in a.waters) { const k = a.waters[id], kb = b.waters[id]; if (!kb || kb.t < k.t) b.waters[id] = { active: k.active, t: k.t, dryOk: (kb?.dryOk ?? false) || !!k.dryOk }; }
     for (const id in a.carcasses) if (b.body.age >= 14 && !b.carcasses[id] && s.carcasses.some(c => c.id === +id)) b.carcasses[id] = 1; // where the meat is
-    for (const k of [...knownRecipes(a), ...(a.skills.cook >= 0.03 ? ['cook'] : [])]) if (!((b.skills[k] ?? 0) >= 0.03) && b.body.age >= 5 && draw(s, a.id * 101 + b.id, SALT.showHow, s.tick) < 0.15 + 0.2 * a.skills[k]) { practise(s, b, k, 1); note(s, b, `${a.name} showed how to ${k === 'cook' ? 'cook food by the fire' : recipeName(k)}.`); }
+    for (const k of [...knownRecipes(a), ...(a.skills.cook >= 0.03 ? ['cook'] : [])]) if (!((b.skills[k] ?? 0) >= 0.03) && b.body.age >= 5 && draw(s, a.id * 101 + b.id, SALT.showHow, s.tick) < R('showChance') + 0.2 * a.skills[k]) { practise(s, b, k, 1); note(s, b, `${a.name} showed how to ${k === 'cook' ? 'cook food by the fire' : recipeName(k)}.`); }
     if (a.hunt.hours > (b.huntHeard?.hours ?? 0)) b.huntHeard = { kcal: a.hunt.kcal, hours: a.hunt.hours }; // how hunting has gone for them
   };
   for (const a of here) {

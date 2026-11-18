@@ -25,7 +25,7 @@
 
 import { noise2, seedKey, STREAMS } from './sim.js';
 import { SALTS } from './streams.js';
-import { clockOf, hourOf } from './clock.js';
+import { R, clockOf, hourOf } from './clock.js';
 import * as T from './terrain.js';
 
 const K = STREAMS.world[0];
@@ -44,7 +44,6 @@ export const SPECIES = {
   buffalo: { label: 'buffalo', mass: 500, density: 1, herd: 20, see: 0.3, flee: 50, speed: 15, danger: 0.12, habitat: { woodland: 0.8, river: 1, grass: 0.4 }, src: 'buffalo (assumption)' },
 };
 export const MEAT = { edible: 0.55, kcalPerKg: 1500 }; // share of live mass eaten; kcal per kg of wild carcass meat (approx.)
-export const CARCASS_FOUND = 0.05; // share of medium and large natural deaths that leave meat a person could reach (approx.; sweep)
 export const LARGE = 40; // kg: what counts as a large animal in the checks
 const rMax = m => 1.1 * m ** -0.26; // per year (Fenchel 1974 slope)
 const CELL = 8; export const CW = Math.ceil(T.TW / CELL), CH = Math.ceil(T.TH / CELL);
@@ -72,8 +71,8 @@ export function animalDay(s) {
       const n = N[c], births = r * n * dt, deaths = r * n * n / K * dt;
       N[c] = Math.max(0, n + births - deaths);
       // a carcass a person could find: most natural deaths are kills that lions and hyenas finish; a small share
-      // (CARCASS_FOUND, approx.) lies with meat on it for about a day
-      if (sp.mass >= 20 && draw(s, c * 7 + Object.keys(SPECIES).indexOf(id), SALT.carcass) < Math.min(1, deaths * CARCASS_FOUND)) {
+      // (register: carcassFound) lies with meat on it for about a day
+      if (sp.mass >= 20 && draw(s, c * 7 + Object.keys(SPECIES).indexOf(id), SALT.carcass) < Math.min(1, deaths * R('carcassFound'))) {
         const tiles = []; for (let k = 0; k < 6; k++) { const x = (c % CW) * CELL + Math.floor(draw(s, c, SALT.carcassX, s.tick * 6 + k) * CELL), y = Math.floor(c / CW) * CELL + Math.floor(draw(s, c, SALT.carcassY, s.tick * 6 + k) * CELL); if (T.isWalkable(x, y)) { tiles.push([x, y]); break; } }
         if (tiles.length) { const kcal = sp.mass * MEAT.edible * MEAT.kcalPerKg * 0.5; s.carcasses.push({ id: s.nextId++, species: id, x: tiles[0][0], y: tiles[0][1], kcal, kcal0: kcal, taken: 0, until: s.tick + C.day, natural: true, roasted: false }); book(s, 'made', kcal); }
       }
@@ -116,7 +115,7 @@ export const moisture = (s, tick = s.tick) => { const C = clockOf(s), f = (((tic
 // The chance that a first, unpractised try works (a blank slate: someone who has never seen it done). Approx.; to
 // sweep. A novice striking flint mostly crushes or misses it; a useful sharp flake on a first strike is uncommon;
 // a fire drill takes most people many failed tries before an ember (experimental archaeology, qualitative).
-export const FIRST = { flake: 0.05, chopper: 0.03, spear: 0.1, ember: 0.005 };
+export const FIRST = { get flake() { return R('firstFlake'); }, get chopper() { return R('firstChopper'); }, get spear() { return R('firstSpear'); }, get ember() { return R('firstEmber'); } }; // read from the register
 export const ITEM = {
   flake:   { label: 'sharp flake', sharp: 0.9, hard: 7, mass: 0.05 },
   chopper: { label: 'rough-edged stone', sharp: 0.4, hard: 6, mass: 0.6 },
