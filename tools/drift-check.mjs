@@ -46,6 +46,17 @@ const w = createWorld(41, { regenA: 0, regenB: 0 }); step(w, 12000); const m = m
 check('I1', 'Island: deaths stay visible (dead-inclusive metrics present)', 'medianHungerAll' in m && 'knownSourcesAll' in m && 'skillAll' in m && m.individuals.length === 24);
 check('I2', 'Island: new worlds use decorrelated randomness', createWorld(41).rng === 2);
 
+// Small world: every chance key is named once (streams.js throws on a repeat) and no draw uses a bare offset
+// (SALT.x + 3), which is how two draws came to share a key before (build plan change 1).
+{
+  const { readFileSync } = await import('node:fs');
+  let named = true, why = '';
+  try { await import('../dist/streams.js'); } catch (e) { named = false; why = e.message; }
+  const bare = ['dist/world.js', 'dist/nature.js'].flatMap(f => (readFileSync(f, 'utf8').match(/SALT\.\w+\s*[+-]\s*\d/g) ?? []).map(m => `${f}: ${m}`));
+  check('R1', 'Small world: every chance key named once, inside its declared block', named, why);
+  check('R2', 'Small world: no chance draw uses a bare offset on a key', !bare.length, bare.slice(0, 3).join('; '));
+}
+
 // Documentation freshness: Eden code must not change after THEORY-CHECK without the doc being updated.
 try {
   const last = f => Number(execSync(`git log -1 --format=%ct -- ${f}`, { encoding: 'utf8' }).trim() || 0);

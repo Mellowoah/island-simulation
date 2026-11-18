@@ -27,6 +27,7 @@ import { practise, forget } from './body.js';
 import { lifeStage } from './being.js';
 import * as T from './terrain.js';
 import * as N from './nature.js';
+import { SALTS } from './streams.js';
 
 export const WORLD_VERSION = 1;
 export const WORLD_DEFAULTS = {
@@ -51,11 +52,11 @@ export const WORLD_DEFAULTS = {
 };
 
 const K = STREAMS.world[0];
-const SALT = { setup: K, choice: K + 10, explore: K + 11, conceive: K + 13, pairMate: K + 14, newborn: K + 15, illness: K + 21, injury: K + 22, birth: K + 23, pairing: K + 24, talk: K + 25, share: K + 26, band: K + 27, adopt: K + 28, move: K + 29, hunt: K + 36, tryKill: K + 37, pickup: K + 38, tinker: K + 39 };
+const SALT = SALTS; // every chance key is named once in streams.js (checked when imported)
 const draw = (s, id, salt, t = s.tick) => noise2(seedKey(s.seed), t, id, salt);
 const gauss = (s, id, salt, t) => { let z = 0; for (let i = 0; i < 4; i++) z += draw(s, id, salt + 0, t * 4 + i + 1); return (z - 2) * Math.sqrt(3); }; // approx. N(0,1)
 const SYL = ['ka', 'lo', 'mi', 'ne', 'ra', 'su', 'te', 'vi', 'ze', 'do', 'an', 'el', 'or', 'ul', 'ya', 'be', 'ha', 'ji', 'mu', 'si'];
-const nameOf = (s, id) => { const r = i => SYL[Math.floor(draw(s, id, SALT.newborn + 5, 7 + i) * SYL.length)]; return (r(0) + r(1) + (draw(s, id, SALT.newborn + 5, 9) < 0.4 ? r(2) : '')).replace(/^./, x => x.toUpperCase()); };
+const nameOf = (s, id) => { const r = i => SYL[Math.floor(draw(s, id, SALT.newbornAlt, 7 + i) * SYL.length)]; return (r(0) + r(1) + (draw(s, id, SALT.newbornAlt, 9) < 0.4 ? r(2) : '')).replace(/^./, x => x.toUpperCase()); };
 const dist = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 
@@ -189,11 +190,11 @@ function newPerson(s, { sex, born, mother = null, father = null, household = nul
 }
 const MIND_KEYS = ['curiosity', 'caution', 'care', 'social', 'ambition']; // ambition: the wish to do well in others' eyes (success)
 function drawFactors(s, id, parents = null) {
-  const g = (k, sd) => gauss(s, id, SALT.setup + 1, k) * sd;
+  const g = (k, sd) => gauss(s, id, SALT.setupWho, k) * sd;
   const h = s.config.heritability, mix = (k, own) => parents ? 1 + h * ((parents[0].f[k] + parents[1].f[k]) / 2 - 1) + own * Math.sqrt(1 - h * h) : 1 + own;
-  const f = { mass: mix('mass', g(1, 0.08)), fat: mix('fat', g(2, 0.2)), bmr: mix('bmr', g(3, 0.05)), speed: mix('speed', g(4, 0.07)), sleep: 5.7 + 1.4 * draw(s, id, SALT.setup + 2, 5) };
+  const f = { mass: mix('mass', g(1, 0.08)), fat: mix('fat', g(2, 0.2)), bmr: mix('bmr', g(3, 0.05)), speed: mix('speed', g(4, 0.07)), sleep: 5.7 + 1.4 * draw(s, id, SALT.setupWhere, 5) };
   const mind = {};
-  MIND_KEYS.forEach((k, i) => { const own = 0.5 + 0.18 * gauss(s, id, SALT.setup + 3, 10 + i); mind[k] = clamp(parents ? 0.5 + h * ((parents[0].mind[k] + parents[1].mind[k]) / 2 - 0.5) + (own - 0.5) * Math.sqrt(1 - h * h) : own, 0.05, 0.95); });
+  MIND_KEYS.forEach((k, i) => { const own = 0.5 + 0.18 * gauss(s, id, SALT.setupMind, 10 + i); mind[k] = clamp(parents ? 0.5 + h * ((parents[0].mind[k] + parents[1].mind[k]) / 2 - 0.5) + (own - 0.5) * Math.sqrt(1 - h * h) : own, 0.05, 0.95); });
   return { f, mind };
 }
 
@@ -215,8 +216,8 @@ export function createWorld2(seed = 41, opts = {}) {
   s.bands = [];
   for (let bi = 0; bi < cfg.bands; bi++) {
     let w;
-    if (!bi) { const lake = lasting.filter(x => x.kind === 'lake'), pick = lake.length ? lake : lasting; w = pick[Math.floor(draw(s, 0, SALT.setup + 4, 0) * pick.length)]; }
-    else w = lasting.map(x => ({ x, d: Math.min(...s.bands.map(b => Math.abs(b.camp.x - x.x) + Math.abs(b.camp.y - x.y))) + draw(s, bi, SALT.setup + 4, x.x * 999 + x.y) * 4 })).sort((a2, b2) => b2.d - a2.d)[0].x;
+    if (!bi) { const lake = lasting.filter(x => x.kind === 'lake'), pick = lake.length ? lake : lasting; w = pick[Math.floor(draw(s, 0, SALT.setupCamp, 0) * pick.length)]; }
+    else w = lasting.map(x => ({ x, d: Math.min(...s.bands.map(b => Math.abs(b.camp.x - x.x) + Math.abs(b.camp.y - x.y))) + draw(s, bi, SALT.setupCamp, x.x * 999 + x.y) * 4 })).sort((a2, b2) => b2.d - a2.d)[0].x;
     s.bands.push({ id: bi, camp: { x: w.x, y: w.y, water: w.id, since: 0 } });
   }
   // Families: a couple each (mother 18-40, father 0-8 years older), with the children she would have had at about
@@ -225,7 +226,7 @@ export function createWorld2(seed = 41, opts = {}) {
   for (let bi = 0; bi < cfg.bands; bi++) for (let f = 0; f < cfg.families; f++) {
     const h = bi * cfg.families + f;
     const hh = { id: s.households.length, members: [], pool: 0, band: bi }; s.households.push(hh);
-    const u = k => draw(s, h, SALT.setup + 5, k);
+    const u = k => draw(s, h, SALT.setupKid, k);
     const ma = 18 + 22 * u(1), fa = ma + 8 * u(2);
     const mom = newPerson(s, { sex: 'F', born: -ma * year, household: hh.id, ...drawFactors(s, gid++) });
     const dad = newPerson(s, { sex: 'M', born: -fa * year, household: hh.id, ...drawFactors(s, gid++) });
@@ -248,9 +249,9 @@ export function createWorld2(seed = 41, opts = {}) {
   }
   // Arriving with know-how: about half the grown-ups of 25 and over know how to knap flint, point a stick, make fire
   // and cook (practised skill), and carry a flake, a stick and dry grass; some a spear. Children learn by being shown.
-  if (cfg.startKnowledge === 'basic') for (const p of s.people) if (p.body.age >= 25 && draw(s, p.id, SALT.setup + 9, 0) < 0.5) {
+  if (cfg.startKnowledge === 'basic') for (const p of s.people) if (p.body.age >= 25 && draw(s, p.id, SALT.setupKnow, 0) < 0.5) {
     for (const k of ['make:strike:cobble+flint', 'make:cut:flake+stick', 'make:rub:stick+stick', 'cook']) practise(s, p, k, 40);
-    p.items = ['flake', 'stick', 'tinder', ...(draw(s, p.id, SALT.setup + 10, 0) < 0.5 ? ['spear'] : [])];
+    p.items = ['flake', 'stick', 'tinder', ...(draw(s, p.id, SALT.setupSpear, 0) < 0.5 ? ['spear'] : [])];
   }
   refreshCarers(s);
   event(s, `The island begins. ${s.people.length} people in ${cfg.bands} bands of ${cfg.families} families, each camped at its own water. Everything beyond a few km of each camp is unknown.`);
@@ -451,7 +452,7 @@ function exploreTarget(s, p) {
   const C = clockOf(s), reach = Math.min(maxTripKm(p.body.age), 3 * EN.speedKmH(p.body.mass)) / T.TILE_KM / 2; // out and back within the day
   let best = null, bs = -Infinity;
   for (let i = 0; i < 16; i++) {
-    const ang = draw(s, p.id, SALT.explore, s.tick * 16 + i) * Math.PI * 2, rr = reach * (0.4 + 0.6 * draw(s, p.id, SALT.explore + 1, s.tick * 16 + i));
+    const ang = draw(s, p.id, SALT.explore, s.tick * 16 + i) * Math.PI * 2, rr = reach * (0.4 + 0.6 * draw(s, p.id, SALT.exploreAlt, s.tick * 16 + i));
     const c = campOf(s, p), x = Math.round(c.x + Math.cos(ang) * rr), y = Math.round(c.y + Math.sin(ang) * rr);
     if (!T.isWalkable(x, y)) continue;
     let unseen = 0; for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) { const xx = x + dx, yy = y + dy; if (xx >= 0 && yy >= 0 && xx < W && yy < H && !p.seen[yy * W + xx]) unseen++; }
@@ -506,7 +507,7 @@ function huntTarget(s, p) {
 function huntHour(s, p, st, u) {
   const C = clockOf(s), B = body(s), young = youngOf(s, p), load = young.filter(k => EN.carried(k.body.age)).reduce((n, k) => n + k.body.mass, 0) + p.carry / 2000;
   const tiles = Math.max(1, Math.round(p.body.kmh * 0.3 * u * C.hours / T.TILE_KM)); // stalking: slow, with long pauses (approx. 1-1.5 km an hour)
-  const ang = draw(s, p.id, SALT.hunt + 100, s.tick) * 2 * Math.PI; let moved = 0;
+  const ang = draw(s, p.id, SALT.huntDirection, s.tick) * 2 * Math.PI; let moved = 0;
   for (let i = 0; i < tiles; i++) {
     const x = Math.round(p.x + Math.cos(ang)), y = Math.round(p.y + Math.sin(ang)); if (!T.isWalkable(x, y) || (x === p.x && y === p.y)) break;
     p.x = x; p.y = y; p.tiles++; moved++; const kc = p.body.cotTile * (p.body.mass + load); burnKcal(s, p, kc); loseWater(s, p, kc); look(s, p);
@@ -551,7 +552,7 @@ const recipeName = k => { const [, v, ab] = k.split(':'); return `${v} ${ab.repl
 // An hour of trying: mostly the things one knows work, otherwise two things at random with a random action. The result
 // comes from the laws of the materials (nature.js), not from a list of inventions.
 function tinker(s, p) {
-  const r = i => draw(s, p.id, SALT.tinker + 0, s.tick * 8 + i), known = knownRecipes(p).filter(k => { const [, , ab] = k.split(':'); return ab.split('+').every(x => p.items.includes(x)); });
+  const r = i => draw(s, p.id, SALT.tinker, s.tick * 8 + i), known = knownRecipes(p).filter(k => { const [, , ab] = k.split(':'); return ab.split('+').every(x => p.items.includes(x)); });
   let verb, a, b;
   if (known.length && r(0) < 0.8) { const k = known[Math.floor(r(1) * known.length)], [, v, ab] = k.split(':'); verb = v; [a, b] = ab.split('+'); }
   else { if (p.items.length < 2) return; verb = N.VERBS[Math.floor(r(2) * N.VERBS.length)]; const i = Math.floor(r(3) * p.items.length); let j = Math.floor(r(4) * (p.items.length - 1)); if (j >= i) j++; a = p.items[i]; b = p.items[j]; }
@@ -583,10 +584,10 @@ function fireHour(s) {
     b.fire.hours = (b.fire.hours ?? 0) + C.hours;
     const near = b.fire.near ??= (() => { for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) if (T.isWalkable(b.camp.x + dx, b.camp.y + dy) && N.materialsAt(b.camp.x + dx, b.camp.y + dy).includes('stick')) return true; return false; })(); // dead wood within about a kilometre
     const tenders = bandMembers(s, b).filter(q => q.body.age >= 8 && atCamp(s, q) && q.step?.k !== 'sleep');
-    for (const q of tenders) if (near && draw(s, q.id, SALT.tinker + 1, s.tick) < 0.3 * (0.5 + q.mind.care)) { b.fire.fuel += N.FIRE.fuelPerStick; if (b.fire.fuel > 4) break; }
+    for (const q of tenders) if (near && draw(s, q.id, SALT.fireTend, s.tick) < 0.3 * (0.5 + q.mind.care)) { b.fire.fuel += N.FIRE.fuelPerStick; if (b.fire.fuel > 4) break; }
     // finding out about cooking: food dropped by the fire comes out softer; someone may notice (a chance an hour)
-    for (const q of tenders) if (!(q.skills.cook >= 0.03) && draw(s, q.id, SALT.tinker + 3, s.tick) < 0.003 * q.mind.curiosity) { practise(s, q, 'cook', 1); if (!s.firsts.cook) { s.firsts.cook = { t: s.tick, by: q.name }; event(s, `${q.name} found that food put by the fire is softer and goes further.`); } }
-    if (N.moisture(s) > 0.15 && draw(s, b.id, SALT.tinker + 2, s.tick) < N.FIRE.rainOut) b.fire.fuel = 0;
+    for (const q of tenders) if (!(q.skills.cook >= 0.03) && draw(s, q.id, SALT.cookFind, s.tick) < 0.003 * q.mind.curiosity) { practise(s, q, 'cook', 1); if (!s.firsts.cook) { s.firsts.cook = { t: s.tick, by: q.name }; event(s, `${q.name} found that food put by the fire is softer and goes further.`); } }
+    if (N.moisture(s) > 0.15 && draw(s, b.id, SALT.fireRain, s.tick) < N.FIRE.rainOut) b.fire.fuel = 0;
     if (b.fire.fuel <= 0) { b.fire = null; event(s, `The fire at ${bandName(s, b)}'s camp went out.`); }
   }
 }
@@ -617,7 +618,7 @@ function spotCarcasses(s, p) {
   if (p.body.age < 14) return;
   // a grass fire nearby: someone holding a stick may push it into the flames and carry it off burning (a chance:
   // the curious, the not too cautious). A smouldering brand lasts a few hours.
-  for (const w of s.wildfires) if (Math.abs(w.x - p.x) + Math.abs(w.y - p.y) <= 4 && p.items.includes('stick') && !p.brand && draw(s, p.id, SALT.tinker + 5, s.tick) < 0.3 * p.mind.curiosity * (1 - 0.5 * p.mind.caution)) {
+  for (const w of s.wildfires) if (Math.abs(w.x - p.x) + Math.abs(w.y - p.y) <= 4 && p.items.includes('stick') && !p.brand && draw(s, p.id, SALT.wildBrand, s.tick) < 0.3 * p.mind.curiosity * (1 - 0.5 * p.mind.caution)) {
     p.items.splice(p.items.indexOf('stick'), 1); p.brand = s.tick + 4 * clockOf(s).perHour; note(s, p, 'Lit a stick in the grass fire and carried it off burning.'); }
   if (p.brand && s.tick > p.brand) { p.brand = null; note(s, p, 'The burning stick went out.'); }
   for (const c of s.carcasses) if (!p.carcasses[c.id] && Math.abs(c.x - p.x) + Math.abs(c.y - p.y) <= 9) { p.carcasses[c.id] = 1; if (p.step?.k === 'walk' && !p.plan.some(x => x.k === 'butcher') && !sleepTime(clockOf(s), s.tick)) { p.plan = []; p.step = null; } }
@@ -750,7 +751,7 @@ function share(s) {
     const takers = hs.filter(h => h !== g && h.band === g.band).map(h => { const sh = Math.max(0, short(h) - h.pool), r = kinTo(s, giver, h); return { h, sh, r, w: sh * Math.max(0.25, r) }; }).filter(x => x.sh > 0).sort((a, b) => b.w - a.w);
     for (const t2 of takers) {
       if (spare <= 0) break;
-      if (draw(s, g.id * 977 + t2.h.id, SALT.share + 1) > giveChance(s, g, t2.h, t2.r)) continue; // offered or not: a chance
+      if (draw(s, g.id * 977 + t2.h.id, SALT.shareOffer) > giveChance(s, g, t2.h, t2.r)) continue; // offered or not: a chance
       const gv = Math.min(spare, t2.sh); t2.h.pool += gv; g.pool -= gv; spare -= gv; s.shared = (s.shared ?? 0) + gv; gave(s, g, t2.h, gv);
     }
   }
@@ -765,12 +766,12 @@ function evening(s) {
     for (const id in a.places) { const k = a.places[id], kb = b.places[id]; if (!kb || kb.t < k.t) { if (!kb) note(s, b, `Heard from ${a.name} about ${s.patchById.get(id).name.toLowerCase()}.`); b.places[id] = { exp: k.exp, t: k.t, u: kb?.u || k.u, n: kb?.n ?? 0 }; } } // news, not their own looks
     for (const id in a.waters) { const k = a.waters[id], kb = b.waters[id]; if (!kb || kb.t < k.t) b.waters[id] = { active: k.active, t: k.t, dryOk: (kb?.dryOk ?? false) || !!k.dryOk }; }
     for (const id in a.carcasses) if (b.body.age >= 14 && !b.carcasses[id] && s.carcasses.some(c => c.id === +id)) b.carcasses[id] = 1; // where the meat is
-    for (const k of [...knownRecipes(a), ...(a.skills.cook >= 0.03 ? ['cook'] : [])]) if (!((b.skills[k] ?? 0) >= 0.03) && b.body.age >= 5 && draw(s, a.id * 101 + b.id, SALT.tinker + 4, s.tick) < 0.15 + 0.2 * a.skills[k]) { practise(s, b, k, 1); note(s, b, `${a.name} showed how to ${k === 'cook' ? 'cook food by the fire' : recipeName(k)}.`); }
+    for (const k of [...knownRecipes(a), ...(a.skills.cook >= 0.03 ? ['cook'] : [])]) if (!((b.skills[k] ?? 0) >= 0.03) && b.body.age >= 5 && draw(s, a.id * 101 + b.id, SALT.showHow, s.tick) < 0.15 + 0.2 * a.skills[k]) { practise(s, b, k, 1); note(s, b, `${a.name} showed how to ${k === 'cook' ? 'cook food by the fire' : recipeName(k)}.`); }
     if (a.hunt.hours > (b.huntHeard?.hours ?? 0)) b.huntHeard = { kcal: a.hunt.kcal, hours: a.hunt.hours }; // how hunting has gone for them
   };
   for (const a of here) {
     const b0 = bandOf(s, a);
-    for (const b of here) if (b !== a && b.household === a.household && draw(s, a.id * 7 + b.id, SALT.talk + 1) < 0.7 + 0.3 * a.mind.social) tell(a, b);
+    for (const b of here) if (b !== a && b.household === a.household && draw(s, a.id * 7 + b.id, SALT.talkHome) < 0.7 + 0.3 * a.mind.social) tell(a, b);
     const mates = here.filter(b => bandOf(s, b) === b0);
     for (let i = 0; i < 3; i++) { if (draw(s, a.id, SALT.talk, s.tick * 3 + i) > a.mind.social) continue; const b = mates[Math.floor(draw(s, a.id + 7919, SALT.talk, s.tick * 3 + i) * mates.length)]; if (b && b !== a) tell(a, b); }
   }
@@ -818,14 +819,14 @@ function bandLife(s) {
     const mem = bandMembers(s, b);
     if (!mem.length) { b.ended = s.tick; event(s, `${bandName(s, b)} is gone: no one is left.`); continue; }
     if (mem.length > cfg.fissionSize && draw(s, b.id, SALT.band) < 0.3) split(s, b);
-    else if (mem.length < cfg.fusionSize && draw(s, b.id, SALT.band + 1) < 0.5) {
+    else if (mem.length < cfg.fusionSize && draw(s, b.id, SALT.bandJoin) < 0.5) {
       const others = s.bands.filter(o => o !== b && !o.ended && bandMembers(s, o).length); if (!others.length) continue;
       const to = others.sort((x, y) => (Math.abs(x.camp.x - b.camp.x) + Math.abs(x.camp.y - b.camp.y)) - (Math.abs(y.camp.x - b.camp.x) + Math.abs(y.camp.y - b.camp.y)))[0];
       joinBand(s, homes(s).filter(h => h.band === b.id), to); b.ended = s.tick; event(s, `${bandName(s, b)}, down to ${mem.length}, joined ${bandName(s, to)}.`);
     }
   }
   for (const h of homes(s)) {
-    const r0 = draw(s, h.id, SALT.band + 2); if (r0 > cfg.householdMove) continue;
+    const r0 = draw(s, h.id, SALT.bandHousehold); if (r0 > cfg.householdMove) continue;
     const others = s.bands.filter(o => o.id !== h.band && !o.ended && bandMembers(s, o).length); if (!others.length) continue;
     const lead = h.members.map(i => s.people[i]).find(m => m.alive); if (!lead) continue;
     const kin = others.map(o => ({ o, r: Math.max(0, ...bandMembers(s, o).map(m => related(s, lead, m))) })).sort((a, b2) => b2.r - a.r)[0];
@@ -840,7 +841,7 @@ function joinBand(s, hs, b) {
 function split(s, b) {
   const hs = homes(s).filter(h => h.band === b.id); if (hs.length < 4) return;
   // the families closest in kin to one family go with it, about half the band
-  const seed = hs[Math.floor(draw(s, b.id, SALT.band + 3) * hs.length)], lead = s.people[seed.members.find(i => s.people[i].alive)];
+  const seed = hs[Math.floor(draw(s, b.id, SALT.bandSplit) * hs.length)], lead = s.people[seed.members.find(i => s.people[i].alive)];
   const go = hs.map(h => ({ h, r: h === seed ? 9 : kinTo(s, lead, h) })).sort((a, b2) => b2.r - a.r).slice(0, Math.floor(hs.length / 2)).map(x => x.h);
   const goers = go.flatMap(h => h.members.map(i => s.people[i]).filter(p => p.alive && p.body.age >= 14));
   // a new camp at lasting water they know, at least 8 km away from every other camp
@@ -869,7 +870,7 @@ function monthly(s) {
     if (!m) continue;
     p.partner = m.id; m.partner = p.id;
     // they live with her band more often than his (approx.; Hadza couples often begin near the wife's mother)
-    const band = draw(s, p.id, SALT.pairing + 1) < 0.6 ? (s.households[p.household]?.band ?? 0) : (s.households[m.household]?.band ?? 0);
+    const band = draw(s, p.id, SALT.pairBand) < 0.6 ? (s.households[p.household]?.band ?? 0) : (s.households[m.household]?.band ?? 0);
     const hh = { id: s.households.length, members: [], pool: 0, band }; s.households.push(hh);
     for (const q of [p, m]) { const old = s.households[q.household]; if (old) old.members = old.members.filter(i => i !== q.id); q.household = hh.id; hh.members.push(q.id); }
     for (const k of p.young.map(i => s.people[i]).filter(k => k.alive && k.body.age < 14 && k.household !== hh.id)) { const old = s.households[k.household]; if (old) old.members = old.members.filter(i => i !== k.id); k.household = hh.id; hh.members.push(k.id); }

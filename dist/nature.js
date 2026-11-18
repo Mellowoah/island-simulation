@@ -24,11 +24,12 @@
 //              2011). The paper gives the direction, not a percentage, so the gains are ranges to sweep.
 
 import { noise2, seedKey, STREAMS } from './sim.js';
+import { SALTS } from './streams.js';
 import { clockOf, hourOf } from './clock.js';
 import * as T from './terrain.js';
 
 const K = STREAMS.world[0];
-const SALT = { animals: K + 30, encounter: K + 31, attempt: K + 32, fire: K + 33, material: K + 34, carcass: K + 35 };
+const SALT = SALTS; // named once in streams.js
 const draw = (s, id, salt, t = s.tick) => noise2(seedKey(s.seed), t, id, salt);
 
 // ---------- animals ----------
@@ -73,7 +74,7 @@ export function animalDay(s) {
       // a carcass a person could find: most natural deaths are kills that lions and hyenas finish; a small share
       // (CARCASS_FOUND, approx.) lies with meat on it for about a day
       if (sp.mass >= 20 && draw(s, c * 7 + Object.keys(SPECIES).indexOf(id), SALT.carcass) < Math.min(1, deaths * CARCASS_FOUND)) {
-        const tiles = []; for (let k = 0; k < 6; k++) { const x = (c % CW) * CELL + Math.floor(draw(s, c, SALT.carcass + 1, s.tick * 6 + k) * CELL), y = Math.floor(c / CW) * CELL + Math.floor(draw(s, c, SALT.carcass + 2, s.tick * 6 + k) * CELL); if (T.isWalkable(x, y)) { tiles.push([x, y]); break; } }
+        const tiles = []; for (let k = 0; k < 6; k++) { const x = (c % CW) * CELL + Math.floor(draw(s, c, SALT.carcassX, s.tick * 6 + k) * CELL), y = Math.floor(c / CW) * CELL + Math.floor(draw(s, c, SALT.carcassY, s.tick * 6 + k) * CELL); if (T.isWalkable(x, y)) { tiles.push([x, y]); break; } }
         if (tiles.length) { const kcal = sp.mass * MEAT.edible * MEAT.kcalPerKg * 0.5; s.carcasses.push({ id: s.nextId++, species: id, x: tiles[0][0], y: tiles[0][1], kcal, kcal0: kcal, taken: 0, until: s.tick + C.day, natural: true, roasted: false }); book(s, 'made', kcal); }
       }
     }
@@ -180,7 +181,7 @@ export const WEAPON = { hands: { reach: 1, joule: 50, point: false }, stone: { r
   spear: { reach: 10, joule: 110, point: true } };
 const KILL_K = 15.6;
 export function attempt(s, p, species, weapon, skill, stealth) {
-  const sp = SPECIES[species], w = WEAPON[weapon], r = i => draw(s, p.id, SALT.attempt + i);
+  const sp = SPECIES[species], w = WEAPON[weapon], key = [SALT.attempt, SALT.attemptHit, SALT.attemptDisable, SALT.attemptHurt], r = i => draw(s, p.id, key[i]);
   const close = Math.min(1, w.reach / sp.flee) * stealth; // getting within reach before it bolts: harder the further it flees
   if (r(0) > close) return { got: false, why: 'it ran before I was close' };
   if (r(1) > 0.4 + 0.4 * skill) return { got: false, why: 'I missed', hurt: r(3) < sp.danger };

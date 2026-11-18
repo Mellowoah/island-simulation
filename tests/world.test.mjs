@@ -112,3 +112,13 @@ test('Y11 no recipes: a flake needs a hard stone struck on flint; an ember needs
   assert.equal(N.law(s, 'cut', 'flake', 'stick', 1, 0)?.made, 'spear');
   s.tick = 0; const wet = N.moisture(s) > 0.15; assert.equal(N.law(s, 'rub', 'stick', 'stick', 1, 0)?.made ?? null, wet ? null : 'ember');
 });
+
+test('Y12 chance keys: every key named once; draws under different keys are uncorrelated (|r| < 0.01 over 100,000)', async () => {
+  const { SALTS } = await import('../dist/streams.js');
+  const { noise2, seedKey } = await import('../dist/sim.js');
+  const vals = Object.values(SALTS); assert.equal(new Set(vals).size, vals.length);
+  const k = seedKey(1), n = 100000; let sx = 0, sy = 0, sxy = 0, sxx = 0, syy = 0;
+  for (let i = 0; i < n; i++) { const x = noise2(k, 7, i, SALTS.shareOffer), y = noise2(k, 7, i, SALTS.band); sx += x; sy += y; sxy += x * y; sxx += x * x; syy += y * y; }
+  const r = (sxy - sx * sy / n) / Math.sqrt((sxx - sx * sx / n) * (syy - sy * sy / n));
+  assert.ok(Math.abs(r) < 0.01, `r = ${r}`);
+});
