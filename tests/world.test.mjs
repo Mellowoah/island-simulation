@@ -165,3 +165,15 @@ test('Y15 maximum-entropy priors: every register number has one; samples stay in
   const n = 20, rows = latinHypercube(n, ['dayKmMax', 'soilMaxMm'], 3);
   for (const key of ['dayKmMax', 'soilMaxMm']) { const r = RATES[key], strata = new Set(rows.map(x => Math.min(n - 1, Math.floor((x[key] - r.low) / (r.high - r.low) * n)))); assert.equal(strata.size, n, key); }
 });
+
+test('Y16 cross-entropy score: exact for a known case, unit-free, worse when the model misses; held-out patterns hidden without --release', async () => {
+  const { crossEntropy, PATTERNS } = await import('../dist/patterns.js');
+  const P = [{ id: 'a', z: 10, sd: 2 }];
+  const hit = crossEntropy(P, [{ a: 9 }, { a: 11 }]), miss = crossEntropy(P, [{ a: 19 }, { a: 21 }]);
+  const sd = Math.sqrt(2 + 4); assert.ok(Math.abs(hit.ce - (0.5 * Math.log(2 * Math.PI * sd * sd) - Math.log(2))) < 1e-9);
+  const exact = crossEntropy(P, [{ a: 10 }, { a: 10 }]); assert.ok(Math.abs(exact.ce - 0.5 * Math.log(2 * Math.PI)) < 1e-9, 'floor 0.92');
+  assert.ok(miss.ce > hit.ce + 3);
+  const inM = crossEntropy([{ id: 'a', z: 10000, sd: 2000 }], [{ a: 9000 }, { a: 11000 }]); assert.ok(Math.abs(inM.ce - hit.ce) < 1e-9, 'unit-free');
+  assert.ok(PATTERNS.some(p => p.set === 'heldout') && PATTERNS.some(p => p.set === 'calibration'));
+  const { readFileSync } = await import('node:fs'); assert.match(readFileSync('tools/score.mjs', 'utf8'), /release \|\| p\.set === 'calibration'/);
+});

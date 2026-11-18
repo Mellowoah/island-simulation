@@ -133,6 +133,7 @@ export function maybeMoveCamp(s, b, urgent = false) {
   if (draw(s, b.id, SALT.move) > P) return;
   b.camp = { x: best.x, y: best.y, water: best.id, since: s.tick };
   for (const p of bandMembers(s, b)) { p.waters[best.id] = { ...(p.waters[best.id] ?? {}), active: best.active, t: s.tick, dryOk: true }; if (!s.carer.get(p.id)) { stopGather(s, p); p.plan = []; p.step = null; } }
+  s.campMoves = (s.campMoves ?? 0) + 1; // counted for the patterns (never read by the world)
   event(s, `${bandName(s, b)} moved camp to ${best.name.toLowerCase()}, where more food is known nearby.`);
 }
 export const bandName = (s, b) => `Band ${b.id + 1}`;
