@@ -28,14 +28,18 @@ test('A2 temperament: seeking is the sim\'s own curiosity; the rest are fixed by
   assert.ok(Math.max(...care) - Math.min(...care) > 0.2, 'creatures differ');
 });
 
-test('A3 children inherit temperament by the same rule as curiosity (hand check)', () => {
+test('A3 children inherit temperament by breeding value, like curiosity (hand check; no pull back to the founders)', () => {
   const s = createEden(41); edenStep(s, 9 * 1440);
   const kids = s.creatures.filter(c => c.eden.mother !== null); assert.ok(kids.length > 5);
-  const cfg = s.eden.config, mean = (cfg.curiosityMin + cfg.curiosityMax) / 2, k = seedKey(41);
+  const cfg = s.eden.config, k = seedKey(41), h2 = cfg.heritability;
+  const lo = cfg.curiosityMin, hi = cfg.curiosityMax, vp = (hi - lo) ** 2 / 12;
   for (const c of kids.slice(0, 6)) {
-    const mo = temperament(s, s.creatures[c.eden.mother]), fa = temperament(s, s.creatures[c.eden.father]), b = c.eden.born, salt = STREAMS.temperament[0] + 2;
-    const noise = (noise2(k, b, c.id, salt) + noise2(k, b + 1, c.id, salt) + noise2(k, b + 2, c.id, salt) - 1.5) * 0.2;
-    assert.equal(temperament(s, c).grief, clamp(mean + cfg.heritability * ((mo.grief + fa.grief) / 2 - mean) + noise, cfg.curiosityMin, cfg.curiosityMax));
+    const mo = temperament(s, s.creatures[c.eden.mother]), fa = temperament(s, s.creatures[c.eden.father]);
+    const b = c.eden.born, salt = STREAMS.temperament[0] + 2;
+    const z = j => (noise2(k, b + 3 * j, c.id, salt) + noise2(k, b + 3 * j + 1, c.id, salt) + noise2(k, b + 3 * j + 2, c.id, salt) - 1.5) * 2;
+    const g = (mo.g.grief + fa.g.grief) / 2 + Math.sqrt(h2 * vp / 2) * z(1);
+    assert.equal(temperament(s, c).g.grief, g);
+    assert.equal(temperament(s, c).grief, clamp(g + Math.sqrt((1 - h2) * vp) * z(2), lo, hi));
     assert.equal(temperament(s, c).seeking, c.eden.curiosity);
   }
 });

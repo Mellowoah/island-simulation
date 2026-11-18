@@ -78,17 +78,24 @@ export function temperament(s, c) {
   if (m.has(c.id)) return m.get(c.id);
   const cfg = s.eden.config, lo = cfg.curiosityMin, hi = cfg.curiosityMax, mean = (lo + hi) / 2, k = seedKey(s.seed);
   const t = { seeking: c.eden.traits?.base.seeking ?? c.eden.curiosity }; // inborn seeking, even after development has moved curiosity
-  const first = c.eden.mother === null;
+  const first = c.eden.mother === null, g = {};
   TEMPERAMENT.slice(1).forEach((x, i) => {
     const salt = STREAMS.temperament[0] + i;
-    if (first) t[x.key] = lo + noise2(k, 0, c.id, salt) * (hi - lo);
-    else {
+    // Inheritance by breeding value (g): founders draw g given their temperament; a child's g is its parents' mean
+    // plus Mendelian noise of half the additive variance, and its temperament adds an environmental part.
+    const h2 = cfg.heritability, vp = (hi - lo) ** 2 / 12, b = first ? 0 : c.eden.born;
+    const z = j => (noise2(k, b + 3 * j, c.id, salt) + noise2(k, b + 3 * j + 1, c.id, salt)
+      + noise2(k, b + 3 * j + 2, c.id, salt) - 1.5) * 2; // approx. normal, sd 1
+    if (first) {
+      t[x.key] = lo + noise2(k, 0, c.id, salt) * (hi - lo);
+      g[x.key] = mean + h2 * (t[x.key] - mean) + Math.sqrt(h2 * (1 - h2) * vp) * z(1);
+    } else {
       const mo = temperament(s, s.creatures[c.eden.mother]), fa = temperament(s, s.creatures[c.eden.father]);
-      const mid = (mo[x.key] + fa[x.key]) / 2, b = c.eden.born;
-      const noise = (noise2(k, b, c.id, salt) + noise2(k, b + 1, c.id, salt) + noise2(k, b + 2, c.id, salt) - 1.5) * 0.2; // approx. normal, sd ~0.1
-      t[x.key] = clamp(mean + cfg.heritability * (mid - mean) + noise, lo, hi);
+      g[x.key] = (mo.g[x.key] + fa.g[x.key]) / 2 + Math.sqrt(h2 * vp / 2) * z(1);
+      t[x.key] = clamp(g[x.key] + Math.sqrt((1 - h2) * vp) * z(2), lo, hi);
     }
   });
+  Object.defineProperty(t, 'g', { value: g, enumerable: false }); // breeding values, kept off the listed traits
   m.set(c.id, t);
   return t;
 }

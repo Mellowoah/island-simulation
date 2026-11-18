@@ -100,6 +100,12 @@ export function createEden(seed = 41, overrides = {}, edenOverrides = {}) {
       clothed: false, tool: false, bias: { rest: 0, explore: 0, gather: 0, cultivate: 0, craft: 0, drink: 0 }, judged: 0, guided: 0,
       sex: c.id % 2 ? 'M' : 'F', born: -cfg.startAge * YR(s), mother: null, father: null, pregnant: null, births: [], children: [],
       thirst: 0, parched: 0, health: 100, water: {}, sight: s.config.perception, work: { clothing: 0, tool: 0, cultivate: 0 } };
+    // founders' breeding value for curiosity, drawn given what they were born with (g = mean + h2 (P - mean) + noise)
+    const h2 = cfg.heritability, mean = (cfg.curiosityMin + cfg.curiosityMax) / 2;
+    const vp = (cfg.curiosityMax - cfg.curiosityMin) ** 2 / 12;
+    const z = (noise2(k, 1, c.id, STREAMS.birthCuriosity[0]) + noise2(k, 2, c.id, STREAMS.birthCuriosity[0])
+      + noise2(k, 3, c.id, STREAMS.birthCuriosity[0]) - 1.5) * 2;
+    c.eden.gCuriosity = mean + h2 * (c.eden.curiosity - mean) + Math.sqrt(h2 * (1 - h2) * vp) * z;
     event(s, 'Warned by the Creator: do not eat from the tree.', c);
   }
   event(s, 'Eden begins. Each creature is warned not to eat from the tree. The Creator guides them.');
@@ -642,13 +648,20 @@ function birth(s, m, f) {
   const E = s.eden, cfg = E.config, id = s.creatures.length, k = seedKey(s.seed);
   const r = i => noise2(k, s.tick, id, STREAMS.newborn[0] + i - 1);
   const name = (SYL[Math.floor(r(1) * 16)] + SYL[Math.floor(r(2) * 16)]).replace(/^./, x => x.toUpperCase());
-  const mean = (cfg.curiosityMin + cfg.curiosityMax) / 2, born = x => x.eden.traits?.base.seeking ?? x.eden.curiosity, mid = (born(m) + born(f)) / 2; // parents pass on what they were born with
-  const noise = (r(3) + r(4) + r(5) - 1.5) * 0.2; // approx. normal, sd ~0.1
-  const curiosity = clamp(mean + cfg.heritability * (mid - mean) + noise, cfg.curiosityMin, cfg.curiosityMax);
+  // Inheritance by breeding value (as in the small world, w-people.js): the child's breeding value is the mean of its
+  // parents' plus Mendelian noise of half the additive variance; its inborn curiosity adds an environmental part.
+  // Nothing pulls a child back toward the founders' mean, so selection can move it. h2 = cfg.heritability.
+  const h2 = cfg.heritability;
+  const vp = (cfg.curiosityMax - cfg.curiosityMin) ** 2 / 12; // founders' variance (uniform)
+  const z = j => (noise2(k, s.tick + 3 * j, id, STREAMS.newborn[0] + 2) + noise2(k, s.tick + 3 * j + 1, id, STREAMS.newborn[0] + 2)
+    + noise2(k, s.tick + 3 * j + 2, id, STREAMS.newborn[0] + 2) - 1.5) * 2; // approx. normal, sd 1
+  const gOf = x => x.eden.gCuriosity ?? x.eden.traits?.base.seeking ?? x.eden.curiosity;
+  const gCuriosity = (gOf(m) + gOf(f)) / 2 + Math.sqrt(h2 * vp / 2) * z(1);
+  const curiosity = clamp(gCuriosity + Math.sqrt((1 - h2) * vp) * z(2), cfg.curiosityMin, cfg.curiosityMax);
   const fallen = E.phase === 'released';
   const c = { id, name, x: m.x, y: m.y, alive: true, hunger: 20, energy: 80, starving: 0, known: {}, skills: { a: 0, b: 0 }, visited: {},
     action: null, decision: null, memories: [], consumed: 0, giftConsumed: 0, times: { travel: 0, gather: 0, rest: 0, explore: 0, work: 0 }, death: null,
-    eden: { curiosity, instruction: fallen ? null : { source: 'Creator', text: WARNING, tick: s.tick }, warning: fallen ? 0 : 1, hearings: 0, credence: 0, lastSerpent: null,
+    eden: { curiosity, gCuriosity, instruction: fallen ? null : { source: 'Creator', text: WARNING, tick: s.tick }, warning: fallen ? 0 : 1, hearings: 0, credence: 0, lastSerpent: null,
       clothed: false, tool: false, bias: { rest: 0, explore: 0, gather: 0, cultivate: 0, craft: 0, drink: 0 }, judged: 0, guided: 0,
       sex: r(6) < cfg.maleRatio ? 'M' : 'F', born: s.tick, mother: m.id, father: f.id, pregnant: null, births: [], children: [],
       thirst: 0, parched: 0, health: 100, water: { ...m.eden.water }, sight: s.config.perception, work: { clothing: 0, tool: 0, cultivate: 0 } } };
