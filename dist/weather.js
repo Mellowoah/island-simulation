@@ -8,7 +8,7 @@
 // emptied by evaporation, which follows a Hargreaves-type potential evaporation. Water holes: stores filled from their
 // catchment and emptied by evaporation. Moon and tides from their periods. Every number is in the register
 // (clock.js RATES) or marked as an assumption here; the water books must balance (weatherLedger).
-import { R, clockOf, dateOf } from './clock.js';
+import { R, clockOf, dateOf, hourOf } from './clock.js';
 import { noise2, seedKey, STREAMS } from './sim.js';
 import { rainOf, useWeather } from './savanna.js';
 
@@ -107,6 +107,19 @@ export const BOLTZMANN_EV = 8.617333e-5;
 export const arrhenius = (tC, E = R('activationEnergy'), refC = 25) => Math.exp(-E / BOLTZMANN_EV * (1 / (tC + 273.15) - 1 / (refC + 273.15)));
 // Microbial spoilage speeds up with warmth (E 0.65 eV gives about x2.3 per 10 C near 25 C, the familiar Q10 of 2-3)
 export const spoilFactor = s => s.weather ? arrhenius((s.weather.tmax + s.weather.tmin) / 2) : 1;
+// Moonlight at a given hour, 0 (no moon up, or new) .. 1 (full moon overhead): the lit fraction of the disc
+// (W.light) while the moon is above the horizon. The moon crosses the sky about 50 minutes later each day: it is
+// highest at noon when new and at midnight when full, and up for about 12 hours around that. (A full moon gives
+// about 0.1-0.3 lux, starlight about 0.001: enough to walk by, not to see far.)
+export function moonLight(s, tick = s.tick) {
+  const W = s.weather; if (!W) return 0;
+  const transit = (12 + 24 * W.moon) % 24, h = hourOf(clockOf(s), tick);
+  const off = Math.abs(((h - transit) % 24 + 36) % 24 - 12); // hours from the moon's highest point, 0..12
+  return off < 6 ? W.light : 0;
+}
+// Night factors: walking pace and fall risk between a moonless night (L = 0) and a full moon up (L = 1)
+export const nightPaceOf = s => R('nightPace') + (R('moonNightPace') - R('nightPace')) * moonLight(s);
+export const nightInjuryOf = s => R('nightInjury') + (R('moonNightInjury') - R('nightInjury')) * moonLight(s);
 // Tide (for a coast): semi-diurnal, 12.42 h, larger at new and full moon (spring tides). -1 low .. 1 high.
 export const tide = (s, tick = s.tick) => { const C = clockOf(s), h = tick * C.hours, phase = s.weather?.moon ?? 0; return Math.cos(2 * Math.PI * h / 12.42) * (0.7 + 0.3 * Math.cos(4 * Math.PI * phase)); };
 // The water books: rain in = change in soil + evaporation + runoff (soil); hole inflow = change in holes + evaporation + spill.

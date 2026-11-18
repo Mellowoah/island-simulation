@@ -277,3 +277,14 @@ test('Y25 wiring: heat raises water loss in the world (not only in Eden), and th
   const a = { ...p, deficit: 0 }, b = { ...p, deficit: 0 }; loseWater(cool, a, 1000); loseWater(hot, b, 1000); assert.ok(b.deficit > a.deficit * 1.1, `${a.deficit} ${b.deficit}`);
   assert.doesNotMatch(execFileSync('node', ['tools/page-files.mjs'], { encoding: 'utf8' }), /MISSING/);
 });
+
+test('Y26 moonlight: waxing moon lights the evening, full moon the whole night, waning moon the small hours; night pace rises with it', async () => {
+  const W = await import('../dist/weather.js'); const { R } = await import('../dist/clock.js');
+  const s = createWorld2(61), at = (moon, hourAfter6) => { s.weather.moon = moon; s.weather.light = (1 - Math.cos(2 * Math.PI * moon)) / 2; return W.moonLight(s, s.tick + hourAfter6); };
+  assert.equal(at(0, 18), 0); // new moon, midnight
+  assert.ok(at(0.5, 18) > 0.99 && at(0.5, 14) > 0.99 && at(0.5, 22) > 0.99); // full moon up all night
+  assert.ok(at(0.25, 15) > 0.4 && at(0.25, 22) === 0); // first quarter: evening only
+  assert.ok(at(0.75, 22) > 0.4 && at(0.75, 15) === 0); // last quarter: before dawn only
+  at(0, 18); const dark = W.nightPaceOf(s); s.weather.moon = 0.5; s.weather.light = 1;
+  assert.equal(dark, R('nightPace')); assert.ok(W.nightPaceOf({ ...s, tick: s.tick + 18 }) > dark);
+});

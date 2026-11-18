@@ -8,6 +8,7 @@ import { lifeStage } from './being.js';
 import * as T from './terrain.js';
 import * as N from './nature.js';
 import { SALTS } from './streams.js';
+import { nightPaceOf, nightInjuryOf } from './weather.js';
 import { H, SALT, W, clamp, draw, note } from './w-core.js';
 import { pickUp, tinker } from './w-craft.js';
 import { gatherDone, look, unload } from './w-food.js';
@@ -55,7 +56,7 @@ export function walk(s, p, st, budget) {
   // journey break it into days)
   if ((p.tiles - (p.tilesAtDay ?? p.tiles)) * T.TILE_KM >= R('dayKmHard')) { p.plan.unshift(st); p.step = { k: 'rest', left: ticksUntilWake(clockOf(s), s.tick) }; if (!p.sleptOut || p.sleptOut < s.tick - 24) note(s, p, 'Too far to go on today: slept out and went on in the morning.'); p.sleptOut = s.tick; return budget; }
   if (!st.route) { st.route = st.explore ? path(p.x, p.y, st.to[0], st.to[1], false, m) : fieldPath(p.x, p.y, st.to[0], st.to[1], false, m); if (st.route.some(([x, y]) => !p.seen[y * W + x])) { st.route = believedPath(s, p, st.to[0], st.to[1]) ?? st.route; st.guess = true; } if (s.diag) { let u = 0; for (const [x, y] of st.route) if (!p.seen[y * W + x]) u++; s.diag.routes.push({ id: p.id, day: Math.floor(s.tick / clockOf(s).day), k: p.decision?.chose ?? st.k, explore: !!st.explore, len: st.route.length, unseen: u }); } if (!st.route.length) { st.arrived = true; return budget; } }
-  const C = clockOf(s), B = body(s), v = p.body.tilesTick * (isNight(C, s.tick) ? B.nightPace : 1);
+  const C = clockOf(s), B = body(s), v = p.body.tilesTick * (isNight(C, s.tick) ? nightPaceOf(s) : 1); // moonlight helps
   const young = youngOf(s, p), load = young.filter(k => EN.carried(k.body.age)).reduce((n, k) => n + k.body.mass, 0) + p.carry / 2000, walkers = young.filter(k => !EN.carried(k.body.age));
   p.stride = (p.stride ?? 0) + v * budget; let moved = 0;
   while (p.stride >= 1 && st.route.length) {
@@ -73,7 +74,7 @@ export function walk(s, p, st, budget) {
   }
   for (const k of young) { k.x = p.x; k.y = p.y; for (const i of [p.y * W + p.x]) k.seen[i] = 1; }
   if (moved) { spotCarcasses(s, p); pickUp(s, p); }
-  if (moved && draw(s, p.id, SALT.injury) < 1 - (1 - B.injuryPerTile * (isNight(C, s.tick) ? B.nightInjury : 1)) ** moved) { p.health = clamp(p.health - B.injuryDamage); note(s, p, 'Fell and was hurt.'); }
+  if (moved && draw(s, p.id, SALT.injury) < 1 - (1 - B.injuryPerTile * (isNight(C, s.tick) ? nightInjuryOf(s) : 1)) ** moved) { p.health = clamp(p.health - B.injuryDamage); note(s, p, 'Fell and was hurt.'); }
   const used = st.route.length ? budget : Math.min(budget, moved / v);
   p.times[st.explore ? 'explore' : 'walk'] += used;
   if (st.route.length) return 0;
