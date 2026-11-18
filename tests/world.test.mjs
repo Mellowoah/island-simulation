@@ -153,3 +153,15 @@ test('Y14 one temperature law: Arrhenius factor is 1 at 25 C, rises with warmth,
     for (let t = 0; t < 45; t++) assert.ok(arrhenius(t + 1, E) > arrhenius(t, E));
   }
 });
+
+test('Y15 maximum-entropy priors: every register number has one; samples stay in range; a measured value is the prior mean; Latin hypercube uses each stratum once', async () => {
+  const { RATES, priorOf } = await import('../dist/clock.js');
+  const { latinHypercube } = await import('../tools/design.mjs');
+  for (const k of Object.keys(RATES)) {
+    const r = RATES[k], p = priorOf(k);
+    for (let i = 0; i < 200; i++) { const x = p.sample((i + 0.5) / 200); assert.ok(x >= r.low - 1e-9 && x <= r.high + 1e-9, `${k} ${x}`); }
+    if (p.kind === 'truncexp') { let m = 0; for (let i = 0; i < 4000; i++) m += p.sample((i + 0.5) / 4000); assert.ok(Math.abs(m / 4000 - r.value) < 0.01 * (r.high - r.low), `${k} mean ${m / 4000} vs ${r.value}`); }
+  }
+  const n = 20, rows = latinHypercube(n, ['dayKmMax', 'soilMaxMm'], 3);
+  for (const key of ['dayKmMax', 'soilMaxMm']) { const r = RATES[key], strata = new Set(rows.map(x => Math.min(n - 1, Math.floor((x[key] - r.low) / (r.high - r.low) * n)))); assert.equal(strata.size, n, key); }
+});

@@ -146,6 +146,30 @@ export const RATES = {
 };
 export const R = k => RATES[k].value;
 
+// ---------- Maximum-entropy priors for the register (Jaynes) ----------
+// What we may assume about a number is only what we know about it; the least-committal distribution consistent with
+// that is the one with the most entropy (Jaynes 1957). For each register entry:
+//   - a fixed rule (low = high): fixed.
+//   - only a range known (src says assumption): uniform on [low, high]; if the range spans a factor of 4 or more,
+//     uniform on the log scale (the maximum-entropy choice when what is known is the order of magnitude, i.e. E[log x]).
+//   - a measured value and a range (src cites a source): the truncated exponential on [low, high] whose mean is the
+//     measured value (the maximum-entropy distribution with a known mean on a bounded interval).
+// An entry can name its own with `dist`. Sweeps and the designed runs for the emulator sample from these.
+export function priorOf(k) {
+  const r = RATES[k]; if (!r) throw new Error(`no register entry ${k}`);
+  if (!(r.high > r.low)) return { kind: 'fixed', sample: () => r.value, mean: r.value };
+  const kind = r.dist ?? (/^\s*(assumption|motive weight \(assumption\))/i.test(r.src) || /assumption/i.test(r.src.slice(0, 40)) ? (r.low > 0 && r.high / r.low >= 4 ? 'loguniform' : 'uniform') : 'truncexp');
+  if (kind === 'uniform') return { kind, sample: u => r.low + u * (r.high - r.low), mean: (r.low + r.high) / 2 };
+  if (kind === 'loguniform') { const a = Math.log(r.low), b = Math.log(r.high); return { kind, sample: u => Math.exp(a + u * (b - a)), mean: (r.high - r.low) / (b - a) }; }
+  // truncated exponential on [a, b] with mean m: density ~ exp(-lam x); solve lam by bisection on the mean
+  const a = r.low, b = r.high, w = b - a, m = Math.min(b - 1e-9 * w, Math.max(a + 1e-9 * w, r.value));
+  const meanOf = lam => Math.abs(lam * w) < 1e-9 ? a + w / 2 : a + 1 / lam - w / Math.expm1(lam * w);
+  let lo = -1e3 / w, hi = 1e3 / w; for (let i = 0; i < 200; i++) { const mid = (lo + hi) / 2; if (meanOf(mid) > m) lo = mid; else hi = mid; }
+  const lam = (lo + hi) / 2;
+  const sample = u => Math.abs(lam * w) < 1e-9 ? a + u * w : a - Math.log1p(-u * -Math.expm1(-lam * w)) / lam;
+  return { kind: 'truncexp', lambda: lam, sample, mean: meanOf(lam) };
+}
+
 // ---------- Per-tick values, worked out from the register ----------
 // Hunger 0-100 is the short-term store (gut and glycogen): 100 points are hungerFullDays of need.
 // Below it is the body store (fat), in kcal: full is starveDays of a day's need (kcalDay).
