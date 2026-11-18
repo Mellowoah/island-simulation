@@ -112,6 +112,10 @@ export const moisture = (s, tick = s.tick) => { const C = clockOf(s), f = (((tic
 
 // ---------- the laws: what an action on two things does ----------
 // Each returns { made, note } or null (nothing happened). `skill` is the doer's 0-1 practice at this action.
+// The chance that a first, unpractised try works (a blank slate: someone who has never seen it done). Approx.; to
+// sweep. A novice striking flint mostly crushes or misses it; a useful sharp flake on a first strike is uncommon;
+// a fire drill takes most people many failed tries before an ember (experimental archaeology, qualitative).
+export const FIRST = { flake: 0.05, chopper: 0.03, spear: 0.1, ember: 0.005 };
 export const ITEM = {
   flake:   { label: 'sharp flake', sharp: 0.9, hard: 7, mass: 0.05 },
   chopper: { label: 'rough-edged stone', sharp: 0.4, hard: 6, mass: 0.6 },
@@ -127,21 +131,21 @@ export function law(s, verb, a, b, skill, r) {
     // a hard, heavy enough stone breaks a conchoidal stone into a sharp flake; two tough stones give a rough edge
     for (const [h, t] of [[A, B], [B, A]]) {
       const hk = h === A ? a : b, tk = h === A ? b : a;
-      if (MATERIAL[tk]?.fracture === 'conchoidal' && hardnessOf(hk) >= hardnessOf(tk) - 1 && massOf(hk) >= 0.3 && r < 0.25 + 0.65 * skill) return { made: 'flake', note: 'struck a flake off the flint' };
+      if (MATERIAL[tk]?.fracture === 'conchoidal' && hardnessOf(hk) >= hardnessOf(tk) - 1 && massOf(hk) >= 0.3 && r < FIRST.flake + (0.9 - FIRST.flake) * skill) return { made: 'flake', note: 'struck a flake off the flint' };
     }
-    if (MATERIAL[a]?.fracture === 'tough' && MATERIAL[b]?.fracture === 'tough' && r < 0.1 + 0.3 * skill) return { made: 'chopper', note: 'broke a rough edge on a cobble' };
+    if (MATERIAL[a]?.fracture === 'tough' && MATERIAL[b]?.fracture === 'tough' && r < FIRST.chopper + (0.4 - FIRST.chopper) * skill) return { made: 'chopper', note: 'broke a rough edge on a cobble' };
     return null;
   }
   if (verb === 'cut') {
     // an edge harder than the thing, and sharp enough, shapes wood into a point
-    for (const [e, w] of [[a, b], [b, a]]) if ((ITEM[e]?.sharp ?? 0) >= 0.35 && MATERIAL[w]?.wood && r < 0.4 + 0.5 * skill) return { made: 'spear', note: 'cut a stick to a point' };
+    for (const [e, w] of [[a, b], [b, a]]) if ((ITEM[e]?.sharp ?? 0) >= 0.35 && MATERIAL[w]?.wood && r < FIRST.spear + (0.9 - FIRST.spear) * skill) return { made: 'spear', note: 'cut a stick to a point' };
     return null;
   }
   if (verb === 'rub') {
     // friction between two pieces of dry wood can make an ember; dry grass catches it
     if (MATERIAL[a]?.wood && MATERIAL[b]?.wood) {
       if (moisture(s) > 0.15) return null; // wet wood: the heat goes into the water (no ember)
-      if (r < 0.04 + 0.5 * skill) return { made: 'ember', note: 'twirled one dry stick against another until it smoked and glowed' };
+      if (r < FIRST.ember + (0.55 - FIRST.ember) * skill) return { made: 'ember', note: 'twirled one dry stick against another until it smoked and glowed' };
     }
     return null;
   }

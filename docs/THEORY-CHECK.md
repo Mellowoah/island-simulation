@@ -182,3 +182,9 @@ Integrated nature.js into the small world. Nothing here says who does what; resu
 - **Boom and bust found and fixed**: on one island a spear and a few lucky kills spread high hopes and almost everyone took up hunting, and the island fell to 20 people. Causes: hunting hours were not recorded when a trip was cut short (hopes never fell); approach was too easy; hunting days reached 60 km. All three fixed. Three islands are now stable.
 - **Inner voice**: each choice now carries its motives in words (survival, pleasure, success, risk), shown on the phone page.
 - **Ledgers**: kcal gathered from plants plus meat taken plus cooking gain = eaten + carried + at camp + spoiled; carcass kcal made = taken + rotted + lying. Both are checked daily (alarms) and in tests.
+
+## Start knowledge and the start screen (17 Nov 2026)
+
+- Robert noticed a pointed stick in the first weeks. On a blank slate a first try succeeded too often (a flake 1 time in 4). First-try chances are now in one place (nature.js FIRST: flake 5%, rough edge 3%, point 10%, ember 0.5%; approx., to sweep), rising with practice. On seed 1 the first flake now comes at about day 53 (was 18), the first spear at about day 126 (was 24). How soon is still a judgement: with about 50 people each trying things for an hour on idle days, rare first successes add up.
+- Start knowledge is a setting: 'none' (a blank slate) or 'basic' (about half the grown-ups of 25 and over know how to knap flint, point a stick, make fire and cook, and carry a flake, a stick and dry grass; some a spear).
+- The phone page now opens on a start screen: island seed, bands, families per band, start knowledge, run length, speed. The settings live in the address, so a run can be repeated exactly. Climate is not a setting; it comes from the island's own climate model.

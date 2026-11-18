@@ -34,7 +34,9 @@ export const WORLD_DEFAULTS = {
   families: 4,              // families per band at the start: about 20 people a camp (Hadza camps average about 30; Marlowe 2010)
   fissionSize: 50,          // a band this large may split (group sizes nest by about x3: families ~5, bands ~15-50, communities ~150; Hamilton et al. 2007)
   fusionSize: 8,            // a band this small may join another
-  householdMove: 0.03,      // chance a month that a family moves to another band where it has kin (camp membership is fluid among foragers; approx.)
+  householdMove: 0.03,
+  startKnowledge: 'none',   // 'none': a blank slate, nothing known about tools or fire; 'basic': like people landing on an island, some grown-ups know how to knap flint, point a stick, make fire and cook
+  years: 0,                 // run length for the page (0 = until stopped)      // chance a month that a family moves to another band where it has kin (camp membership is fluid among foragers; approx.)
   clockMinutes: 60,
   density: 0.24,            // people per km² the land feeds in an ordinary year (Hadza, Marlowe)
   choiceTemperature: 0.05,  // bounded rationality: how often a person picks something other than the best-looking option
@@ -243,6 +245,12 @@ export function createWorld2(seed = 41, opts = {}) {
     for (let y = Math.max(0, Math.floor(c.y - kr)); y <= Math.min(H - 1, Math.ceil(c.y + kr)); y++) for (let x = Math.max(0, Math.floor(c.x - kr)); x <= Math.min(W - 1, Math.ceil(c.x + kr)); x++) if (Math.hypot(x - c.x, y - c.y) <= kr) { const i = y * W + x; p.seen[i] = 1; if (s.seenAt[i] < 0) { s.seenAt[i] = 0; s.seenBy[i] = -1; s.discovered++; } }
     for (const q of s.patches) if (Math.hypot(q.x - c.x, q.y - c.y) <= kr) p.places[q.id] = { exp: q.stock, t: 0, u: q.stock, n: 1 };
     for (const w of s.waters) if (Math.hypot(w.x - c.x, w.y - c.y) <= kr) p.waters[w.id] = { active: w.active, t: 0, dryOk: w.id === c.water };
+  }
+  // Arriving with know-how: about half the grown-ups of 25 and over know how to knap flint, point a stick, make fire
+  // and cook (practised skill), and carry a flake, a stick and dry grass; some a spear. Children learn by being shown.
+  if (cfg.startKnowledge === 'basic') for (const p of s.people) if (p.body.age >= 25 && draw(s, p.id, SALT.setup + 9, 0) < 0.5) {
+    for (const k of ['make:strike:cobble+flint', 'make:cut:flake+stick', 'make:rub:stick+stick', 'cook']) practise(s, p, k, 40);
+    p.items = ['flake', 'stick', 'tinder', ...(draw(s, p.id, SALT.setup + 10, 0) < 0.5 ? ['spear'] : [])];
   }
   refreshCarers(s);
   event(s, `The island begins. ${s.people.length} people in ${cfg.bands} bands of ${cfg.families} families, each camped at its own water. Everything beyond a few km of each camp is unknown.`);

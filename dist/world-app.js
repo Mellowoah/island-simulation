@@ -6,13 +6,37 @@ import { FOODS } from './savanna.js';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const seed = Number(new URLSearchParams(location.search).get('seed')) || 41;
-const s = createWorld2(seed);
+// Start screen: the settings live in the address (so a run can be shared and repeated exactly).
+const Q = new URLSearchParams(location.search);
+if (!Q.has('go')) {
+  const box = document.createElement('div'); box.className = 'box'; box.id = 'setup';
+  const v = (k, d) => esc(Q.get(k) ?? d);
+  box.innerHTML = `<h2>Start a world</h2>
+    <p class="note">Each island is different, and so is each run: nothing is scripted. The same settings and seed give the same history.</p>
+    <div class="setgrid">
+      <label>Island (seed)<input id="sSeed" type="number" min="1" value="${v('seed', Math.floor(Math.random() * 9999) + 1)}"></label>
+      <label>Bands<input id="sBands" type="number" min="1" max="6" value="${v('bands', 3)}"></label>
+      <label>Families per band<input id="sFam" type="number" min="1" max="10" value="${v('families', 4)}"></label>
+      <label>Start knowledge<select id="sKnow"><option value="none">Blank slate: nothing known about tools or fire</option><option value="basic">Arrive with know-how: some grown-ups knap flint, make spears and fire, cook</option></select></label>
+      <label>Run length<select id="sYears"><option value="0">Until I stop it</option><option value="10">10 years</option><option value="30">30 years</option><option value="100">100 years</option><option value="300">300 years</option></select></label>
+      <label>Speed<select id="sSpeed"><option value="24">1 day a second</option><option value="168">1 week a second</option><option value="720">1 month a second</option></select></label>
+    </div>
+    <p class="note">The weather is not a setting: it comes from the island's own climate (seasons, wet and dry years).</p>
+    <button id="sGo" style="min-height:48px;width:100%">Start</button>`;
+  document.querySelector('main').insertBefore(box, document.querySelector('main').children[1]);
+  for (const id of ['mapWrap']) $(id).style.display = 'none';
+  for (const el of document.querySelectorAll('main > .box:not(#setup), .ctl')) el.style.display = 'none';
+  $('sKnow').value = Q.get('know') ?? 'none'; $('sYears').value = Q.get('years') ?? '0'; $('sSpeed').value = Q.get('speed') ?? '24';
+  $('sGo').onclick = () => { const p = new URLSearchParams({ seed: $('sSeed').value || 41, bands: $('sBands').value, families: $('sFam').value, know: $('sKnow').value, years: $('sYears').value, speed: $('sSpeed').value, go: 1 }); location.search = p.toString(); };
+  await new Promise(() => {}); // wait here until Start reloads the page with the settings
+}
+const seed = Number(Q.get('seed')) || 41, runYears = Number(Q.get('years')) || 0;
+const s = createWorld2(seed, { bands: Math.max(1, Math.min(6, Number(Q.get('bands')) || 3)), families: Math.max(1, Math.min(10, Number(Q.get('families')) || 4)), startKnowledge: Q.get('know') === 'basic' ? 'basic' : 'none' });
 const C = clockOf(s);
 
 let skipping = 0, skipEnd = 0;
 const history = []; // one row a year (measure only, kept here, not in the world)
-let px = 6, speed = 24, paused = false, selected = null, follow = false, acc = 0, last = performance.now(), drawnDiscovered = -1, lastUi = 0;
+let px = 6, speed = Number(Q.get('speed')) || 24, paused = false, selected = null, follow = false, acc = 0, last = performance.now(), drawnDiscovered = -1, lastUi = 0;
 
 const REGION_COL = { sea: '#1d4f86', lake: '#3a86c8', river: '#4aa3df', rock: '#8a7f72', shore: '#e4d7a0', woodland: '#3f7d3a', grass: '#a8c45a' };
 const FOOD_COL = { berries: '#d0455e', baobab: '#f0c040', tubers: '#a0602a', nuts: '#7a4a20', honey: '#ffb000', fish: '#c0e8ff', shellfish: '#f4f0ec' };
@@ -108,6 +132,7 @@ function ui(force = false) {
 }
 
 $('pause').onclick = () => { paused = !paused; ui(); };
+$('newWorld').onclick = () => { const p = new URLSearchParams(location.search); p.delete('go'); location.search = p.toString(); };
 for (const b of document.querySelectorAll('[data-speed]')) b.onclick = () => { speed = Number(b.dataset.speed); paused = false; ui(); };
 $('zoomIn').onclick = () => { const cx = (wrap.scrollLeft + wrap.clientWidth / 2) / px, cy = (wrap.scrollTop + wrap.clientHeight / 2) / px; px = Math.min(16, px + 2); sizeCanvases(); centerOn(cx, cy); };
 $('zoomOut').onclick = () => { const cx = (wrap.scrollLeft + wrap.clientWidth / 2) / px, cy = (wrap.scrollTop + wrap.clientHeight / 2) / px; px = Math.max(3, px - 2); sizeCanvases(); centerOn(cx, cy); };
@@ -131,7 +156,7 @@ function drawLong() {
   const line = (k, mx, col) => { g.strokeStyle = col; g.lineWidth = 2; g.beginPath(); history.forEach((h, i) => { const y = Y(h[k], mx); i ? g.lineTo(X(i), y) : g.moveTo(X(i), y); }); g.stroke(); };
   line('known', 1, '#ffd84a'); line('gen', maxGen * 1.1, '#7fc4ff'); line('born', maxPop, '#7fd88f'); line('died', maxPop, '#ff6a6a'); line('pop', maxPop, '#ffffff');
 }
-for (const b of document.querySelectorAll('[data-skip]')) b.onclick = () => { skipping = Number(b.dataset.skip); skipEnd = s.tick + skipping * C.year; paused = false; $('stopSkip').disabled = false; for (const x of document.querySelectorAll('[data-skip]')) x.disabled = true; };
+for (const b of document.querySelectorAll('[data-skip]')) b.onclick = () => { skipping = Number(b.dataset.skip); skipEnd = s.tick + skipping * C.year; if (runYears) skipEnd = Math.min(skipEnd, runYears * C.year); paused = false; $('stopSkip').disabled = false; for (const x of document.querySelectorAll('[data-skip]')) x.disabled = true; };
 $('stopSkip').onclick = () => { skipEnd = s.tick; };
 function skipStep(now) {
   // run in slices so the page stays responsive; the map is not drawn while skipping
@@ -148,6 +173,7 @@ function frame(now) {
     acc += dt / 1000 * speed;
     const n = Math.min(Math.floor(acc), 400);
     if (n) { stepWorld(s, n); acc -= n; if (acc > 400) acc = 0; }
+    if (runYears && s.tick >= runYears * C.year) { paused = true; skipping = 0; ui(); $('hud').innerHTML += `<span>RUN COMPLETE: ${runYears} years</span>`; }
   }
   if (s.discovered !== drawnDiscovered && (now - lastUi > 400 || drawnDiscovered < 0)) drawLand();
   drawPeople();
