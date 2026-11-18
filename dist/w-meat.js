@@ -8,6 +8,7 @@ import { lifeStage } from './being.js';
 import * as T from './terrain.js';
 import * as N from './nature.js';
 import { spoilFactor } from './weather.js';
+import { herdAlarm, wariness } from './learning.js';
 import { SALTS } from './streams.js';
 import { H, SALT, W, campOf, clamp, draw, event, note } from './w-core.js';
 import { pickUp } from './w-craft.js';
@@ -50,12 +51,15 @@ export function huntHour(s, p, st, u) {
   const seen = N.sightings(s, p, Math.max(moved, 1) * T.TILE_KM); if (!seen.length) return;
   // a child along makes stalking harder; practice makes it easier
   const skill = p.skills.hunt ?? 0, stealth = (0.5 + 0.5 * skill) * (young.some(k => EN.carried(k.body.age)) ? 0.5 : 1), w = N.WEAPON[weaponOf(p)];
-  const judge = id => { const sp = N.SPECIES[id], close = Math.min(1, w.reach / sp.flee) * stealth, hit = 0.4 + 0.4 * skill, dis = 1 - Math.exp(-(w.joule * (w.point ? 3 : 1)) / (15.6 * sp.mass)); return { id, pk: close * hit * dis, gain: close * hit * dis * N.carcassKcal(id) * N.access(hasEdge(p), hasStone(p)) - sp.danger * p.mind.caution * 20000 }; };
+  // herds that have been chased here lately flee sooner (learning.js); a hunter sees how skittish they are
+  const cellHere = N.cellOf(p.x, p.y), flee = id => 1 + wariness(s, id, cellHere);
+  const judge = id => { const sp = N.SPECIES[id], close = Math.min(1, w.reach / (sp.flee * flee(id))) * stealth, hit = 0.4 + 0.4 * skill, dis = 1 - Math.exp(-(w.joule * (w.point ? 3 : 1)) / (15.6 * sp.mass)); return { id, pk: close * hit * dis, gain: close * hit * dis * N.carcassKcal(id) * N.access(hasEdge(p), hasStone(p)) - sp.danger * p.mind.caution * 20000 }; };
   const best = seen.map(judge).sort((a, b) => b.gain - a.gain)[0]; if (best.gain <= 0) return;
   const drive = survivalDrive(p, young), tryP = Math.min(0.95, Math.max(0.05, 0.2 + 0.4 * (1 - p.mind.caution) + 0.3 * drive + 0.2 * p.mind.ambition));
   if (draw(s, p.id, SALT.tryKill, s.tick) > tryP) return;
   s.hunting.attempts++; practise(s, p, 'hunt', 0.5);
-  const res = N.attempt(s, p, best.id, weaponOf(p), skill, stealth), sp = N.SPECIES[best.id];
+  const res = N.attempt(s, p, best.id, weaponOf(p), skill, stealth, flee(best.id)), sp = N.SPECIES[best.id];
+  herdAlarm(s, best.id, cellHere); // a chase is a surprise the herd learns from, whatever its end
   if (res.hurt) { p.health = clamp(p.health - 3 * B.injuryDamage); s.hunting.hurt++; note(s, p, `Hurt by a ${sp.label}.`); }
   if (!res.got) { note(s, p, `Went after a ${sp.label}: ${res.why}.`); return; }
   const cell = N.cellOf(p.x, p.y); s.animals[best.id][cell] = Math.max(0, s.animals[best.id][cell] - 1);

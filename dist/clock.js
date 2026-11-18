@@ -142,6 +142,8 @@ export const RATES = {
   heatWaterPerC: { value: 0.03, low: 0.01, high: 0.06, unit: 'per C', src: 'assumption: water loss rises about 3% for each degree of the day high above 30 C' },
   activationEnergy:{ value: 0.65, low: 0.5, high: 0.8, unit: 'eV', src: 'mean activation energy of biological rates, 0.6-0.7 eV (Gillooly et al. 2001, Science 293; Brown et al. 2004, Ecology 85), for microbial and ectotherm processes' },
   regrowHalf:    { value: 0.5, low: 0.2, high: 0.8, unit: 'share of natural level', src: 'assumption: below this a picked-over patch regrows more slowly in proportion (overuse can deplete it)' },
+  wariAlarm:     { value: 0.3, low: 0.1, high: 0.6, unit: 'share of surprise', src: 'assumption: how much one chase raises a herd\'s wariness; hunted ungulates flee from further away (Stankowich 2008 meta-analysis: flight distance rises with hunting pressure)' },
+  wariForgetDays:{ value: 21, low: 7, high: 90, unit: 'days', src: 'assumption: how fast wariness fades without chases (habituation)' },
   cookFindHour:  { value: 0.003, low: 0.0005, high: 0.01, unit: 'chance/hour', src: 'assumption: someone tending a fire notices food by it is softer (x curiosity)' },
 };
 export const R = k => RATES[k].value;

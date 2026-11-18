@@ -177,3 +177,21 @@ test('Y16 cross-entropy score: exact for a known case, unit-free, worse when the
   assert.ok(PATTERNS.some(p => p.set === 'heldout') && PATTERNS.some(p => p.set === 'calibration'));
   const { readFileSync } = await import('node:fs'); assert.match(readFileSync('tools/score.mjs', 'utf8'), /release \|\| p\.set === 'calibration'/);
 });
+
+test('Y17 one learning engine: delta rule moves by a share of the surprise; herds grow wary after chases and calm down over weeks; wary herds are harder to approach', async () => {
+  const L = await import('../dist/learning.js');
+  const N = await import('../dist/nature.js');
+  const { RATES } = await import('../dist/clock.js');
+  assert.equal(L.delta(10, 20, 0.25), 12.5); assert.equal(L.deltaByCount(10, 20, 4), 12.5);
+  const lg = L.deltaLog(10, 1, 1000, 20); assert.ok(Math.abs(lg.value - 100) < 1e-9 && lg.weight === 2);
+  const s = createWorld2(47), cell = 5;
+  for (let i = 0; i < 5; i++) L.herdAlarm(s, 'impala', cell);
+  const w5 = L.wariness(s, 'impala', cell), a = RATES.wariAlarm.value; assert.ok(Math.abs(w5 - (1 - (1 - a) ** 5)) < 1e-12, `${w5}`);
+  for (let d = 0; d < RATES.wariForgetDays.value; d++) L.herdDay(s);
+  assert.ok(Math.abs(L.wariness(s, 'impala', cell) - w5 * (1 - 1 / RATES.wariForgetDays.value) ** RATES.wariForgetDays.value) < 1e-12);
+  assert.equal(L.wariness(s, 'impala', 6), 0);
+  // same draws, wary herd: getting close can only be harder
+  const p = s.people[0]; let calm = 0, wary = 0;
+  for (let t = 0; t < 4000; t++) { s.tick = t; if (N.attempt(s, p, 'impala', 'spear', 1, 1, 1).why !== 'it ran before I was close') calm++; if (N.attempt(s, p, 'impala', 'spear', 1, 1, 1.8).why !== 'it ran before I was close') wary++; }
+  assert.ok(wary < calm, `${wary} vs ${calm}`);
+});

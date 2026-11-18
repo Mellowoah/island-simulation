@@ -29,6 +29,7 @@ import * as T from './terrain.js';
 import * as N from './nature.js';
 import { SALTS } from './streams.js';
 import { makeWeather, weatherDay } from './weather.js';
+import { herdDay } from './learning.js';
 
 import { sanity } from './w-checks.js';
 import { H, SALT, W, WORLD_DEFAULTS, WORLD_VERSION, bandMembers, campOf, draw, event, living } from './w-core.js';
@@ -112,7 +113,7 @@ export function stepWorld(s, n = 1) {
     s.tick++;
     if (s.weather && s.tick % day === 0) weatherDay(s); // the day's sky first: everything below reads it
     landStep(s, 1);
-    if (s.tick % day === 0) { for (const p of living(s)) { setBody(s, p); forget(s, p); } refreshCarers(s); N.animalDay(s); N.wildfireDay(s); fireDay(s); const ids = new Set(s.carcasses.map(c => c.id)); for (const p of living(s)) for (const id in p.carcasses) if (!ids.has(+id)) delete p.carcasses[id]; }
+    if (s.tick % day === 0) { for (const p of living(s)) { setBody(s, p); forget(s, p); } refreshCarers(s); N.animalDay(s); herdDay(s); N.wildfireDay(s); fireDay(s); const ids = new Set(s.carcasses.map(c => c.id)); for (const p of living(s)) for (const id in p.carcasses) if (!ids.has(+id)) delete p.carcasses[id]; }
     const alive = [...living(s)];
     for (const p of alive) {
       const carer = s.carer.get(p.id);

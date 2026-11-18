@@ -7,6 +7,7 @@ import { practise, forget } from './body.js';
 import { lifeStage } from './being.js';
 import * as T from './terrain.js';
 import * as N from './nature.js';
+import { LEARNERS, delta, deltaByCount, deltaLog } from './learning.js';
 import { SALTS } from './streams.js';
 import { H, W, bandOf, dist, note, placeName } from './w-core.js';
 import { lightFire } from './w-craft.js';
@@ -63,10 +64,11 @@ export function observe(s, p, q, stock) {
   if (k && k.n > 0 && k.u > 0) {
     // regrowth: what was left, what is there now, against the usual level -> an implied recovery time
     const days = (s.tick - k.t) * C.hours / 24, f = (k.u - stock) / (k.u - k.exp);
-    if (days > 1 && k.u > k.exp && f > 0.05 && f < 0.95) { const tauObs = Math.min(2000, Math.max(1, days / -Math.log(f))), lw = Math.log(b.tau) * b.w + Math.log(tauObs); b.w = Math.min(20, b.w + 1); b.tau = Math.exp(lw / b.w); }
-    const m = MONTH(s); b.month[m] += (stock / Math.max(1e-9, k.u) - b.month[m]) * 0.2;
+    // learned with the shared engine (learning.js): recovery time on a log scale, the season shape by the delta rule
+    if (days > 1 && k.u > k.exp && f > 0.05 && f < 0.95) { const tauObs = Math.min(2000, Math.max(1, days / -Math.log(f))), L = deltaLog(b.tau, b.w, tauObs, LEARNERS.human.recoveryLooks); b.w = L.weight; b.tau = L.value; }
+    const m = MONTH(s); b.month[m] = delta(b.month[m], stock / Math.max(1e-9, k.u), LEARNERS.human.seasonRate);
   }
-  const n = (k?.n ?? 0) + 1, u = k?.u ? k.u + (stock - k.u) / Math.min(n, 10) : stock;
+  const n = (k?.n ?? 0) + 1, u = k?.u ? deltaByCount(k.u, stock, Math.min(n, LEARNERS.human.memoryLooks)) : stock;
   p.places[q.id] = { exp: stock, t: s.tick, u, n };
 }
 export function expected(s, p, q, k) {

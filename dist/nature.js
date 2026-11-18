@@ -186,9 +186,9 @@ export function wildfireDay(s) {
 export const WEAPON = { hands: { reach: 1, joule: 50, point: false }, stone: { reach: 8, joule: 45, point: false }, stick: { reach: 1.5, joule: 60, point: false },
   spear: { reach: 10, joule: 110, point: true } };
 const KILL_K = 15.6;
-export function attempt(s, p, species, weapon, skill, stealth) {
+export function attempt(s, p, species, weapon, skill, stealth, fleeMult = 1) {
   const sp = SPECIES[species], w = WEAPON[weapon], key = [SALT.attempt, SALT.attemptHit, SALT.attemptDisable, SALT.attemptHurt], r = i => draw(s, p.id, key[i]);
-  const close = Math.min(1, w.reach / sp.flee) * stealth; // getting within reach before it bolts: harder the further it flees
+  const close = Math.min(1, w.reach / (sp.flee * fleeMult)) * stealth; // getting within reach before it bolts: harder the further it flees (and wary herds flee further)
   if (r(0) > close) return { got: false, why: 'it ran before I was close' };
   if (r(1) > 0.4 + 0.4 * skill) return { got: false, why: 'I missed', hurt: r(3) < sp.danger };
   const dmg = w.joule * (w.point ? 3 : 1), disable = 1 - Math.exp(-dmg / (KILL_K * sp.mass));
