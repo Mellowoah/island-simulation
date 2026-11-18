@@ -244,3 +244,13 @@ test('Y22 news is a noisy channel with trust (idea 9): retold amounts carry hops
   const heard = s.people.flatMap(q => Object.values(q.places)).filter(k => k.hops > 0); assert.ok(heard.length > 0); assert.ok(heard.every(k => k.heard > 0 || k.heard === 0));
   const b = newsBits(s); assert.ok(b && b.checks > 10); assert.ok(b.bits > 0.3 && b.bits < 8, `bits ${b.bits}`); assert.ok(b.right > 0.5 && b.right < 1);
 });
+
+test('Y23 Price equation (idea 10): selection + transmission add up to the change in mean exactly, on made-up data and on a world', async () => {
+  const { price, priceOfWorld } = await import('../dist/price.js');
+  const rows = [{ z: 1, w: 0, zOff: 0 }, { z: 2, w: 3, zOff: 2.5 }, { z: 3, w: 1, zOff: 2 }, { z: 4, w: 2, zOff: 4 }];
+  const r = price(rows); assert.ok(Math.abs(r.check) < 1e-12); assert.ok(Math.abs(r.dz - (r.selection + r.transmission)) < 1e-12);
+  assert.ok(Math.abs(price(rows.map(x => ({ ...x, zOff: x.z }))).transmission) < 1e-12); // perfect inheritance: no transmission term
+  assert.ok(Math.abs(price(rows.map(x => ({ ...x, w: 2 }))).selection) < 1e-12); // equal offspring: no selection term
+  const s = createWorld2(55); stepWorld(s, 8760); const t0 = s.tick; stepWorld(s, 8760 * 2);
+  for (const v of Object.values(priceOfWorld(s, t0))) if (v) assert.ok(Math.abs(v.check) < 1e-9);
+});
