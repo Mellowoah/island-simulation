@@ -316,6 +316,7 @@ function householdShort(s, p) {
 }
 const householdDay = (s, p) => { const h = s.households[p.household]; return h ? h.members.reduce((n, i) => n + (s.people[i].alive ? s.people[i].body.base : 0), 0) : p.body.base; };
 const atCamp = (s, p) => { const c = campOf(s, p); return Math.abs(p.x - c.x) + Math.abs(p.y - c.y) <= 1; };
+const DAY_KM_MAX = 35; // km: a long forager day (approx.; Hadza day ranges average 6-11 km and rarely pass 30)
 const maxTripKm = a => a < 5 ? 0 : a < 10 ? 2 : a < 14 ? 5 : 15; // how far children range from camp (Hadza children forage near camp)
 const hoursTo = (s, p, x, y) => { const d = fieldDist(p.x, p.y, x, y, false, mapOf(s)); return d < 0 ? Infinity : d / p.body.tilesTick * clockOf(s).hours; };
 
@@ -327,6 +328,9 @@ function options(s, p) {
   // the drive to stay alive: as body fat runs low (one's own, or a child's one is looking after) getting food
   // overrides tiredness and comfort, and people look further afield for it (survival before pleasure)
   const drive = survivalDrive(p, young);
+  // how far one has already walked today: a new trip that would take the day past about 35 km is not set out on
+  // (forager day ranges rarely pass 30 km; going home or to water is always possible)
+  const kmLeft = DAY_KM_MAX - (p.tiles - (p.tilesAtDay ?? p.tiles)) * T.TILE_KM;
   // sleep
   if (night) opts.push({ k: 'sleep', u: 2.5 + tired, why: 'night' });
   else opts.push({ k: 'rest', u: tired * tired * 3 - 0.2 - (p.energy > 15 ? 1.5 * drive : 0), why: `tired ${Math.round(tired * 100)}` });
@@ -353,7 +357,7 @@ function options(s, p) {
       const k = { exp: expected(s, p, q, k0) };
       if (k.exp * 500 < 1000) continue; // exp is in food units (500 kcal)
       const out = hoursTo(s, p, q.x, q.y), back = fieldDist(q.x, q.y, camp.x, camp.y, false, mapOf(s)) / p.body.tilesTick * C.hours;
-      if (!isFinite(out) || (out + back) * p.body.kmh / 2 > maxTripKm(a)) continue;
+      if (!isFinite(out) || (out + back) * p.body.kmh / 2 > maxTripKm(a) || (out + back) * p.body.kmh > kmLeft) continue;
       // central-place foraging: an adult who goes out brings back a full load if the patch has it (load-size theory,
       // Orians and Pearson 1979); a child gathers for itself
       const rate = returnRate(q.food, a, p.skills[q.id] ?? 0), want = Math.min(a < 14 ? Math.max(500, short) : p.body.carryKcal, k.exp * 500);
@@ -366,7 +370,7 @@ function options(s, p) {
   if (!night && a >= 14) {
     const short = householdShort(s, p), day = householdDay(s, p), urgency = Math.min(2, short / Math.max(1, day)) + 0.12;
     const walkH = p.body.cotTile * p.body.mass * p.body.kmh * 0.3 / T.TILE_KM; // kcal an hour stalking at 0.3 of walking pace
-    if (hour < 12) {
+    if (hour < 12 && kmLeft > 20) {
       const rate = huntRate(p), net = rate - walkH;
       // motives: survival (the drive), success (ambition: meat is shared and brings standing, as Hawkes argues for Hadza
       // men), and caution against the risk of the chase. Weights approx.; what hunting returns is learned, not given.
@@ -375,14 +379,14 @@ function options(s, p) {
     for (const id in p.carcasses) {
       const c = s.carcasses.find(k => k.id === +id); if (!c) continue;
       const out = hoursTo(s, p, c.x, c.y), back = fieldDist(c.x, c.y, camp.x, camp.y, false, mapOf(s)) / p.body.tilesTick * C.hours;
-      if (!isFinite(out) || s.tick + out * C.perHour > c.until || (out + back) * p.body.kmh / 2 > maxTripKm(a)) continue; // within a day's reach, before it rots
+      if (!isFinite(out) || s.tick + out * C.perHour > c.until || (out + back) * p.body.kmh / 2 > maxTripKm(a) || (out + back) * p.body.kmh > kmLeft) continue; // within a day's reach, before it rots
       const want = Math.min(meatAvail(p, c), meatCarry(p)); if (want < 300) continue;
       const hrs = out + 0.5 + back, net = (want - (out + back) * p.body.kmh / T.TILE_KM * p.body.cotTile * p.body.mass) / hrs;
       opts.push({ k: 'fetch', c, u: urgency * net / 1000 + (net > 0 ? 2 * drive : 0) + 0.2 - 0.1 * p.mind.caution, why: `meat: a ${N.SPECIES[c.species].label} carcass ${out.toFixed(1)} h away` });
     }
   }
   // explore: curiosity, more when what is known is poor
-  if (!night && a >= 12 && hour < 15) {
+  if (!night && a >= 12 && hour < 15 && kmLeft > 15) {
     const bestFood = opts.filter(o => o.k === 'forage').reduce((m, o) => Math.max(m, o.u), 0);
     // worth more when what they know is poor or far: long days of walking, or little worth going for
     // (how far the food trips have to go, not how far people walk in all, or exploring would feed on itself)
@@ -644,7 +648,7 @@ function walk(s, p, st, budget) {
       if (st.replans === 1) note(s, p, 'The way was blocked; looked for another.');
       if (!st.route.length) break; continue;
     }
-    p.stride -= 1; moved++; [p.x, p.y] = st.route.shift(); p.tiles++;
+    p.stride -= 1; moved++; [p.x, p.y] = st.route.shift(); p.tiles++; if (s.diag) { const k = (st.explore ? 'explore' : p.decision?.chose) ?? '?'; (p.dayK ??= {})[k] = (p.dayK[k] ?? 0) + 1; }
     const kc = p.body.cotTile * (p.body.mass + load); burnKcal(s, p, kc); loseWater(s, p, kc);
     for (const k of walkers) { const kk = k.body.cotTile * k.body.mass; burnKcal(s, k, kk); loseWater(s, k, kk); }
     p.energy = clamp(p.energy - B.walkFatigueTile * (1 + load / p.body.mass));
@@ -972,7 +976,7 @@ export function stepWorld(s, n = 1) {
         if (!s.waterById.get(b.camp.water).active || (s.tick % (7 * day) === 0 && (bandThin(s, b) || (b.tripKm ?? 0) > 6))) maybeMoveCamp(s, b, true);
       }
       sanity(s);
-      for (const p of living(s)) p.tilesAtDay = p.tiles;
+      for (const p of living(s)) { p.tilesAtDay = p.tiles; p.dayK = null; }
       if (s.diag?.track) for (const p of living(s)) { const tr = (s.diag.track[p.id] ??= []); tr.push({ r: +(p.reserve / p.body.fatMax).toFixed(2), got: Math.round(p.gotKcal ?? 0), g: +p.times.gather.toFixed(1), c: +p.times.camp.toFixed(1), w: +p.times.walk.toFixed(1), h: Math.round(p.health), y: youngOf(s, p).length, ch: p.decision?.chose, pool: Math.round(s.households[p.household]?.pool ?? 0), hh: (s.households[p.household]?.members ?? []).filter(i => s.people[i].alive).map(i => Math.round(s.people[i].body.age)).join("/") }); if (tr.length > 40) tr.shift(); }
       adoptOrphans(s);
     }
@@ -990,7 +994,7 @@ function sanity(s) {
     for (const k of ['hunger', 'thirst', 'energy', 'health']) if (!(p[k] >= -1e-9 && p[k] <= 100 + 1e-9)) add(`${p.name}: ${k} ${p[k]}`);
     if (!(p.reserve >= -1e-6) || p.reserve > p.body.fatMax * 1.01 + 1) add(`${p.name}: body fat ${p.reserve}`);
     // over 60 km in a day is impossible on foot with a family (an alarm); over 40 is rare but real (counted as unusual)
-    const km = (p.tiles - (p.tilesAtDay ?? p.tiles)) * T.TILE_KM; if (km > 60) add(`${p.name} walked ${km.toFixed(0)} km in a day`); else if (km > 40) { s.unusual = (s.unusual ?? 0) + 1; if (s.diag) s.diag.long.push({ id: p.id, day: Math.floor(s.tick / clockOf(s).day), km, age: p.body.age, sex: p.sex }); }
+    const km = (p.tiles - (p.tilesAtDay ?? p.tiles)) * T.TILE_KM; if (km > 60) add(`${p.name} walked ${km.toFixed(0)} km in a day`); else if (km > 40) { s.unusual = (s.unusual ?? 0) + 1; if (s.diag) s.diag.long.push({ id: p.id, day: Math.floor(s.tick / clockOf(s).day), km, age: p.body.age, sex: p.sex, k: p.dayK, hunt: p.times.hunt }); }
   }
   for (const q of s.patches) if (!(q.stock >= -1e-9)) add(`${q.name}: stock ${q.stock}`);
   const L = s.ledger, left = s.patches.reduce((n, q) => n + q.stock, 0);

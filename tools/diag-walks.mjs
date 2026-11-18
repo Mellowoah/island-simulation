@@ -17,3 +17,6 @@ const key = l => `${l.id}:${l.day}`, longSet = new Set(L.map(key));
 const lr = R.filter(r => longSet.has(key(r)) || longSet.has(`${r.id}:${r.day + 1}`));
 console.log(`  routes on long days: ${lr.length}, unseen share ${(100 * sum(lr, r => r.unseen) / Math.max(1, sum(lr, r => r.len))).toFixed(1)}%, kinds ${JSON.stringify(lr.filter(r => r.unseen > 0).reduce((o, r) => (o[r.explore ? 'explore' : r.k] = (o[r.explore ? 'explore' : r.k] ?? 0) + 1, o), {}))}`);
 console.log(`  long-day km: median ${L.map(l => l.km).sort((a, b) => a - b)[L.length >> 1]?.toFixed(1)}, ages ${L.map(l => Math.round(l.age)).sort((a, b) => a - b).join(',').slice(0, 200)}`);
+const agg = {}; for (const l of L) for (const [k, v] of Object.entries(l.k ?? {})) agg[k] = (agg[k] ?? 0) + v;
+console.log('  tiles on long days by purpose:', JSON.stringify(agg), ' (tiles not in routes = hunting stalks)');
+for (const l of L.slice(0, 5)) console.log('   ', l.km.toFixed(0), 'km', JSON.stringify(l.k));
