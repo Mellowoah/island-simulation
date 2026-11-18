@@ -140,7 +140,7 @@ export const RATES = {
   rainPerWetDay: { value: 6.5, low: 5, high: 9, unit: 'mm', src: 'assumption: mean rain on a wet day; with the month odds gives about 575 mm a year, in the range reported for the Eyasi basin (300-600 mm); to verify' },
   yearSwingWeight:{ value: 0.6, low: 0.3, high: 1, unit: 'exponent', src: 'assumption: how much of the year-to-year swing (rainOf) reaches the daily rain, set so annual rain varies by about 25-35% (typical of semi-arid East Africa; to verify against station records)' },
   heatWaterPerC: { value: 0.03, low: 0.01, high: 0.06, unit: 'per C', src: 'assumption: water loss rises about 3% for each degree of the day high above 30 C' },
-  spoilQ10:      { value: 2.5, low: 2, high: 3, unit: 'Q10', src: 'assumption: microbial spoilage rate about 2-3 times faster per 10 C (Q10 rule)' },
+  activationEnergy:{ value: 0.65, low: 0.5, high: 0.8, unit: 'eV', src: 'mean activation energy of biological rates, 0.6-0.7 eV (Gillooly et al. 2001, Science 293; Brown et al. 2004, Ecology 85), for microbial and ectotherm processes' },
   regrowHalf:    { value: 0.5, low: 0.2, high: 0.8, unit: 'share of natural level', src: 'assumption: below this a picked-over patch regrows more slowly in proportion (overuse can deplete it)' },
   cookFindHour:  { value: 0.003, low: 0.0005, high: 0.01, unit: 'chance/hour', src: 'assumption: someone tending a fire notices food by it is softer (x curiosity)' },
 };

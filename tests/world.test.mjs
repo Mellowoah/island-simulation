@@ -143,3 +143,13 @@ test('Y13 weather: wet-day share by month within 0.03 of target; annual rain wit
   assert.ok(Math.abs(mean / expectedAnnual() - 1) < 0.1, `mean ${mean}`); assert.ok(cv > 0.25 && cv < 0.4, `cv ${cv}`); assert.ok(dry > 0.03 && dry < 0.15, `drought share ${dry}`);
   const L = weatherLedger(s); assert.ok(Math.abs(L.soilError) < 1e-3 && Math.abs(L.holeError) < 1e-2, JSON.stringify(L));
 });
+
+test('Y14 one temperature law: Arrhenius factor is 1 at 25 C, rises with warmth, gives Q10 of 2-3 across its register range', async () => {
+  const { arrhenius } = await import('../dist/weather.js');
+  const { RATES } = await import('../dist/clock.js');
+  assert.ok(Math.abs(arrhenius(25) - 1) < 1e-12);
+  for (const E of [RATES.activationEnergy.low, RATES.activationEnergy.value, RATES.activationEnergy.high]) {
+    const q10 = arrhenius(30, E) / arrhenius(20, E); assert.ok(q10 > 1.8 && q10 < 3.2, `E ${E}: Q10 ${q10}`);
+    for (let t = 0; t < 45; t++) assert.ok(arrhenius(t + 1, E) > arrhenius(t, E));
+  }
+});

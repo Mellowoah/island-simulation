@@ -217,3 +217,7 @@ Proof nothing changed: `tools/fingerprint.mjs 120 1,2` (every person's state and
 Checks (tools/weather-check.mjs, test Y13): wet-day share by month within 0.01-0.02 of target; annual rain 574-604 mm (expected 583), year-to-year variation 31-33%, years under 60% of normal 6-8%; seasonal rivers dry in the late dry season of ordinary years; pans dry most of Jul-Oct; water books balance to 1e-6 mm (also a daily alarm).
 
 Effects on the people (4 islands x 20 years): 0 alarms after three fixes found by tracing (lasting water learned from June sightings; stalking distance per time slice; exploring that ignored the walk back). Hunger and thirst deaths rose (anomaly A7); adults' day range 4.6 km against the Hadza 5-15 (A6). Both are logged, not tuned; Y4 now averages four islands.
+
+## Idea 1 of 10: one temperature law (18 Nov 2026)
+
+Microbial spoilage now follows the Boltzmann-Arrhenius factor of the metabolic theory of ecology, exp(-E/k (1/T - 1/T_ref)), with activation energy E = 0.65 eV (register: activationEnergy, 0.5-0.8; Gillooly et al. 2001; Brown et al. 2004), replacing the separate Q10 number. It gives Q10 = 2.34 near 25 C, inside the familiar 2-3. The same function (weather.js `arrhenius`) is the one later microbial and ectotherm processes (infection, mosquitoes) must use. Not applied to people and mammals (they hold their own body temperature) or to plant growth (already shaped by season and rain; it would count heat twice). Test Y14. Checks: 139 tests pass, no drift, two islands x 5 years with 0 alarms and balanced books.

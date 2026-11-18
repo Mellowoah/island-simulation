@@ -98,8 +98,15 @@ export const rainYearRatio = s => s.weather ? s.weather.yearSum / s.weather.expe
 export const woodMoisture = s => s.weather ? 0.08 + 0.3 * Math.min(1, rainLastDays(s, 7) / 20) + 0.07 * soilMoisture(s) : null;
 // Heat raises water loss: about +3% per degree above 30 C of the day's high (assumption; sweat rises with heat load)
 export const heatFactor = s => s.weather ? Math.max(0.8, 1 + R('heatWaterPerC') * (s.weather.tmax - 30)) : 1;
-// Microbial spoilage speeds up with warmth: Q10 rule, rate x Q10^((T - 25)/10)
-export const spoilFactor = s => s.weather ? Math.pow(R('spoilQ10'), ((s.weather.tmax + s.weather.tmin) / 2 - 25) / 10) : 1;
+// One temperature law for living rates (metabolic theory of ecology; Gillooly et al. 2001, Brown et al. 2004): a
+// rate at temperature T (C) relative to 25 C is exp(-E/k (1/T_K - 1/298.15)), the Boltzmann-Arrhenius factor, with
+// activation energy E (eV) and Boltzmann's constant k. Used for processes run by microbes and other ectotherms
+// (spoilage now; infection and mosquitoes later). Warm-blooded animals and people keep their own body temperature, so
+// it does not apply to them; plant growth is already shaped by season and rain (adding it would count heat twice).
+export const BOLTZMANN_EV = 8.617333e-5;
+export const arrhenius = (tC, E = R('activationEnergy'), refC = 25) => Math.exp(-E / BOLTZMANN_EV * (1 / (tC + 273.15) - 1 / (refC + 273.15)));
+// Microbial spoilage speeds up with warmth (E 0.65 eV gives about x2.3 per 10 C near 25 C, the familiar Q10 of 2-3)
+export const spoilFactor = s => s.weather ? arrhenius((s.weather.tmax + s.weather.tmin) / 2) : 1;
 // Tide (for a coast): semi-diurnal, 12.42 h, larger at new and full moon (spring tides). -1 low .. 1 high.
 export const tide = (s, tick = s.tick) => { const C = clockOf(s), h = tick * C.hours, phase = s.weather?.moon ?? 0; return Math.cos(2 * Math.PI * h / 12.42) * (0.7 + 0.3 * Math.cos(4 * Math.PI * phase)); };
 // The water books: rain in = change in soil + evaporation + runoff (soil); hole inflow = change in holes + evaporation + spill.
