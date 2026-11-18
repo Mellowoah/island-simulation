@@ -98,14 +98,10 @@ export function options(s, p) {
       opts.push({ k: 'fetch', c, u: urgency * net / 1000 + (net > 0 ? R('wDrive') * drive : 0) + 0.2 - 0.5 * R('wCaution') * p.mind.caution, why: `meat: a ${N.SPECIES[c.species].label} carcass ${out.toFixed(1)} h away` });
     }
   }
-  // explore: curiosity, more when what is known is poor
+  // explore, valued as information (idea 5): the food per hour that finding a better place is expected to add
   if (!night && a >= 12 && hour < 15 && kmLeft > 15) {
-    const bestFood = opts.filter(o => o.k === 'forage').reduce((m, o) => Math.max(m, o.u), 0);
-    // worth more when what they know is poor or far: long days of walking, or little worth going for
-    // (how far the food trips have to go, not how far people walk in all, or exploring would feed on itself)
-    const far = Math.min(1, Math.max(0, ((band.tripKm ?? 3) - 4) / 4));
-    const seek = bestFood < 0.5 ? R('wSeek') * drive : 0; // nothing worth going for nearby and going hungry: look for new sources
-    opts.push({ k: 'explore', u: p.mind.curiosity * (p.energy / 100) * (0.3 + 0.4 * Math.max(0, 0.5 - bestFood) + 0.6 * far) + seek, why: seek > 0.3 ? 'hungry, looking for new food' : `curiosity ${Math.round(p.mind.curiosity * 100)}${far > 0.2 ? ', the known places are far' : ''}` });
+    const v = exploreValue(s, p);
+    opts.push({ k: 'explore', u: urgency0(s, p) * v.rate / 1000 + (v.rate > 0 ? R('wDrive') * drive : 0), why: `looking for new food: I might find about ${v.found.toFixed(1)} new places, worth about ${Math.round(v.rate)} kcal an hour of the trip`, voi: v });
   }
   // camp: being with others, caring for the young, going home in the evening
   // trying things with what one has picked up: curiosity, when well fed and with time on one's hands (a full belly
@@ -160,6 +156,25 @@ export function decide(s, p) {
   else p.plan = [{ k: 'camp', left: 2 * C.perHour }];
   p.step = null;
 }
+// The same urgency foraging uses (how short the household is), so exploring and foraging are weighed alike.
+const urgency0 = (s, p) => Math.min(2, householdShort(s, p) / Math.max(1, householdDay(s, p))) + R('forageBase');
+// Value of information for a day's exploring. What a person expects of unseen land comes from their own looks: places
+// found per tile seen, starting from a hopeful guess (exploreHopeTiles, more hopeful with curiosity). A new place is
+// worth what it would add over the best place they know: the expected positive part of (its rate - the best rate),
+// for a normal spread like the places they know (the standard expected-improvement formula), used for
+// voiHorizonHours. Divided by the trip's hours, less the walking, it is food per hour, the currency of foraging.
+export function exploreValue(s, p) {
+  const C = clockOf(s), reach = Math.min(maxTripKm(p.body.age), 3 * EN.speedKmH(p.body.mass)) / T.TILE_KM / 2, tripTiles = 2 * reach * 0.7;
+  const hope = R('exploreHopeTiles') / (0.5 + p.mind.curiosity), rho = ((p.foundN ?? 0) + 1) / ((p.seenN ?? 0) + hope);
+  const unseenShare = Math.max(0, Math.min(1, 1 - (p.seenN ?? 0) / (Math.PI * reach * reach))), newTiles = tripTiles * 9 * unseenShare; // sight about 4 tiles each side
+  const nets = []; for (const id in p.places) { const q = s.patchById.get(id); if (q) nets.push(returnRate(q.food, p.body.age, p.skills[q.id] ?? 0)); }
+  const best = nets.length ? Math.max(...nets) : 0, mean = nets.length ? nets.reduce((a, b) => a + b, 0) / nets.length : R('exploreGuessRate');
+  const sd = Math.max(100, nets.length > 1 ? Math.sqrt(nets.reduce((a, b) => a + (b - mean) ** 2, 0) / (nets.length - 1)) : mean / 2);
+  const d = (mean - best) / sd, phi = Math.exp(-d * d / 2) / Math.sqrt(2 * Math.PI), Phi = 0.5 * (1 + erf(d / Math.SQRT2)), gain = sd * (phi + d * Phi);
+  const found = rho * newTiles, hours = tripTiles * T.TILE_KM / p.body.kmh, walk = p.body.cotTile * p.body.mass * p.body.kmh / T.TILE_KM;
+  return { found, gain, rate: found * gain * R('voiHorizonHours') / Math.max(1, hours) - walk, hope: rho };
+}
+const erf = x => { const t = 1 / (1 + 0.3275911 * Math.abs(x)), y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x); return x >= 0 ? y : -y; }; // Abramowitz and Stegun 7.1.26
 export function exploreTarget(s, p) {
   const C = clockOf(s), reach = Math.min(maxTripKm(p.body.age), 3 * EN.speedKmH(p.body.mass)) / T.TILE_KM / 2; // out and back within the day
   let best = null, bs = -Infinity;

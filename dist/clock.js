@@ -105,7 +105,6 @@ export const RATES = {
   survivalFat:   { value: 0.4, low: 0.2, high: 0.6, unit: 'share of most fat', src: 'assumption: below this the drive to stay alive begins to override other motives' },
   wDrive:        { value: 2, low: 1, high: 4, unit: 'utility', src: 'motive weight (assumption): survival, added to food options at full drive' },
   wRestDrive:    { value: 1.5, low: 0.5, high: 3, unit: 'utility', src: 'motive weight (assumption): how far hunger overrides tiredness' },
-  wSeek:         { value: 1.5, low: 0.5, high: 3, unit: 'utility', src: 'motive weight (assumption): looking for new food when nothing known is worth it and hungry' },
   wAmbition:     { value: 0.3, low: 0, high: 0.6, unit: 'utility', src: 'motive weight (assumption): success, the standing from meat shared (Hawkes show-off hypothesis)' },
   wCaution:      { value: 0.2, low: 0, high: 0.5, unit: 'utility', src: 'motive weight (assumption): the risk of the chase' },
   forageBase:    { value: 0.12, low: 0, high: 0.3, unit: 'urgency', src: 'assumption: foragers go out most days even when not short' },
@@ -144,6 +143,9 @@ export const RATES = {
   regrowHalf:    { value: 0.5, low: 0.2, high: 0.8, unit: 'share of natural level', src: 'assumption: below this a picked-over patch regrows more slowly in proportion (overuse can deplete it)' },
   wariAlarm:     { value: 0.3, low: 0.1, high: 0.6, unit: 'share of surprise', src: 'assumption: how much one chase raises a herd\'s wariness; hunted ungulates flee from further away (Stankowich 2008 meta-analysis: flight distance rises with hunting pressure)' },
   wariForgetDays:{ value: 21, low: 7, high: 90, unit: 'days', src: 'assumption: how fast wariness fades without chases (habituation)' },
+  exploreHopeTiles:{ value: 200, low: 50, high: 1000, unit: 'tiles per place', src: 'assumption: before much is seen, how much land a person guesses holds one food place (divided by 0.5 + curiosity: the curious are more hopeful); replaced by experience as they look' },
+  exploreGuessRate:{ value: 300, low: 100, high: 800, unit: 'kcal/h', src: 'assumption: what a food place is guessed to return when none is known yet' },
+  voiHorizonHours:{ value: 120, low: 40, high: 400, unit: 'hours', src: 'assumption: hours a newly found better place is used before the season changes (about a month of gathering)' },
   cookFindHour:  { value: 0.003, low: 0.0005, high: 0.01, unit: 'chance/hour', src: 'assumption: someone tending a fire notices food by it is softer (x curiosity)' },
 };
 export const R = k => RATES[k].value;

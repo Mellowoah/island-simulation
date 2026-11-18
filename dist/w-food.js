@@ -42,12 +42,12 @@ export function look(s, p) {
     if (Math.abs(dx) + Math.abs(dy) > r) continue;
     const x = p.x + dx, y = p.y + dy; if (x < 0 || y < 0 || x >= W || y >= H) continue;
     const i = y * W + x;
-    if (!p.seen[i]) p.seen[i] = 1;
+    if (!p.seen[i]) { p.seen[i] = 1; p.seenN = (p.seenN ?? 0) + 1; } // tiles seen with one's own eyes (for how rich unseen land may be)
     if (s.seenAt[i] < 0) { s.seenAt[i] = s.tick; s.seenBy[i] = p.id; s.discovered++; }
   }
   for (const q of s.patchIndex(p.x, p.y, r)) {
     const near = dist(q, p) <= 2, prev = p.places[q.id];
-    if (!prev) note(s, p, `Found ${q.name.toLowerCase()} (${placeName(q)}).`);
+    if (!prev) { note(s, p, `Found ${q.name.toLowerCase()} (${placeName(q)}).`); p.foundN = (p.foundN ?? 0) + 1; }
     if (near) observe(s, p, q, q.stock);                                  // a close look
     else if (!prev) p.places[q.id] = { exp: q.stock * 0.5, t: s.tick, u: 0, n: 0 }; // seen from afar: it is there, how much is a guess
   }

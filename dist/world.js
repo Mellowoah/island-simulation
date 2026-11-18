@@ -91,6 +91,7 @@ export function createWorld2(seed = 41, opts = {}) {
     for (let y = Math.max(0, Math.floor(c.y - kr)); y <= Math.min(H - 1, Math.ceil(c.y + kr)); y++) for (let x = Math.max(0, Math.floor(c.x - kr)); x <= Math.min(W - 1, Math.ceil(c.x + kr)); x++) if (Math.hypot(x - c.x, y - c.y) <= kr) { const i = y * W + x; p.seen[i] = 1; if (s.seenAt[i] < 0) { s.seenAt[i] = 0; s.seenBy[i] = -1; s.discovered++; } }
     for (const q of s.patches) if (Math.hypot(q.x - c.x, q.y - c.y) <= kr) p.places[q.id] = { exp: q.stock, t: 0, u: q.stock, n: 1 };
     for (const w of s.waters) if (Math.hypot(w.x - c.x, w.y - c.y) <= kr) p.waters[w.id] = { active: w.active, t: 0, dryOk: w.id === c.water };
+    p.seenN = p.seen.reduce((n, v) => n + v, 0); p.foundN = Object.keys(p.places).length; // what they know at the start counts as their own looks
   }
   // Arriving with know-how: about half the grown-ups of 25 and over know how to knap flint, point a stick, make fire
   // and cook (practised skill), and carry a flake, a stick and dry grass; some a spear. Children learn by being shown.

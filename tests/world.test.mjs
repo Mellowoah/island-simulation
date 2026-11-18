@@ -195,3 +195,14 @@ test('Y17 one learning engine: delta rule moves by a share of the surprise; herd
   for (let t = 0; t < 4000; t++) { s.tick = t; if (N.attempt(s, p, 'impala', 'spear', 1, 1, 1).why !== 'it ran before I was close') calm++; if (N.attempt(s, p, 'impala', 'spear', 1, 1, 1.8).why !== 'it ran before I was close') wary++; }
   assert.ok(wary < calm, `${wary} vs ${calm}`);
 });
+
+test('Y18 curiosity as value of information: exploring is worth more with unseen land near, poor known places and a curious mind; nothing when all within reach is seen', async () => {
+  const { exploreValue } = await import('../dist/w-mind.js');
+  const s = createWorld2(48); stepWorld(s, 24 * 5);
+  const p = s.people.find(q => q.alive && q.body.age >= 18), base = exploreValue(s, p);
+  const keep = { seenN: p.seenN, cur: p.mind.curiosity };
+  p.mind.curiosity = Math.min(1, keep.cur + 0.4); assert.ok(exploreValue(s, p).found > base.found, 'curious: more hopeful');
+  p.mind.curiosity = keep.cur; p.seenN = 1e6; assert.ok(exploreValue(s, p).found === 0 && exploreValue(s, p).rate < 0, 'all seen: nothing to gain');
+  p.seenN = keep.seenN;
+  const places = p.places; p.places = {}; assert.ok(exploreValue(s, p).rate > base.rate, 'knowing nothing: exploring is worth more'); p.places = places;
+});
