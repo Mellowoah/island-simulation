@@ -295,3 +295,11 @@ test('Y27 water news is a binary noisy channel: retold water news carries hops, 
   const heard = s.people.flatMap(q => Object.values(q.waters)).filter(k => k.hops > 0); assert.ok(heard.length > 0);
   const b = waterNewsBits(s); assert.ok(b && b.checks > 10); assert.ok(b.right > 0.5 && b.right < 1, `right ${b.right}`); assert.ok(b.bits >= 0 && b.bits <= 1);
 });
+
+test('Y28 per-run overrides: any register number can be set for a run and put back exactly', async () => {
+  const { R, RATES, setRate, clearRates } = await import('../dist/clock.js');
+  const run = () => { const s = createWorld2(65); stepWorld(s, 24 * 30); return s.people.map(p => [p.x, p.y, Math.round(p.reserve)]).join(); };
+  const base = run(); setRate('forageBase', RATES.forageBase.value * 3); assert.equal(R('forageBase'), RATES.forageBase.value * 3);
+  const changed = run(); clearRates(); assert.notEqual(changed, base); assert.equal(run(), base);
+  assert.throws(() => setRate('noSuchRate', 1));
+});

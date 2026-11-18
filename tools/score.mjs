@@ -18,6 +18,8 @@ if (isMainThread) {
   const { createWorld2, stepWorld, lifeTable } = await import('../dist/world.js');
   const { snapshot, islandStats } = await import('../dist/patterns.js');
   const T = await import('../dist/terrain.js');
-  const s = createWorld2(workerData.seed, workerData.cfg ?? {}), Y = 8760; stepWorld(s, Y); const s0 = snapshot(s); stepWorld(s, Y * (workerData.years - 2)); const sY = snapshot(s); stepWorld(s, Y);
+  const { RATES, setRate } = await import('../dist/clock.js'), cfg = {};
+  for (const [k, v] of Object.entries(workerData.cfg ?? {})) { if (k in RATES) setRate(k, v); else cfg[k] = v; } // register numbers or world settings
+  const s = createWorld2(workerData.seed, cfg), Y = 8760; stepWorld(s, Y); const s0 = snapshot(s); stepWorld(s, Y * (workerData.years - 2)); const sY = snapshot(s); stepWorld(s, Y);
   parentPort.postMessage(islandStats(s, s0, sY, lifeTable, T.TILE_KM));
 }

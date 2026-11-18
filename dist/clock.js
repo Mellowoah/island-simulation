@@ -160,7 +160,15 @@ export const RATES = {
   dayKmHard:     { value: 45, low: 40, high: 55, unit: 'km/day', src: 'assumption: beyond this a walker stops and sleeps out, going on next morning (a long day on foot with loads; the 60 km alarm stays as a check)' },
   cookFindHour:  { value: 0.003, low: 0.0005, high: 0.01, unit: 'chance/hour', src: 'assumption: someone tending a fire notices food by it is softer (x curiosity)' },
 };
-export const R = k => RATES[k].value;
+// Per-run overrides: any register number can be changed for one run (tools/score.mjs --set, sweeps, fits)
+// without touching the register. Set them before the world is made; clearRates() puts everything back.
+const OVERRIDE = {};
+export const R = k => (k in OVERRIDE ? OVERRIDE[k] : RATES[k].value);
+export function setRate(k, v) {
+  if (!(k in RATES)) throw new Error(`no register entry ${k}`);
+  OVERRIDE[k] = v;
+}
+export function clearRates() { for (const k in OVERRIDE) delete OVERRIDE[k]; }
 
 // ---------- Maximum-entropy priors for the register (Jaynes) ----------
 // What we may assume about a number is only what we know about it; the least-committal distribution consistent with
