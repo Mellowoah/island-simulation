@@ -72,6 +72,9 @@ const fracOf = tick => (((tick % YEAR_TICKS) + YEAR_TICKS) % YEAR_TICKS) / YEAR_
 // under 60% of normal rain, comes about one year in ten) times a slow 40-year wet/dry swing of +-20%. Fixed by the seed.
 export const CLIMATE = { yearSd: 0.4, swing: 0.2, swingYears: 40, drought: 0.6 };
 const rainCache = new Map();
+// set by weather.js when a world has weather (avoids an import cycle)
+let weatherRain = s => 1, weatherRegrowHalf = () => 0.5;
+export const useWeather = (rainFn, halfFn) => { weatherRain = rainFn; weatherRegrowHalf = halfFn; };
 export function rainOf(seed, year) {
   const key = seed + ':' + year; if (rainCache.has(key)) return rainCache.get(key);
   const k = seedKey(seed), u = i => noise2(k, year + 1000, i, STREAMS.climate[0]);
@@ -184,14 +187,16 @@ export const realFrac = (s, tick = s.tick) => { const C = clockOf(s); return (((
 export const realSeason = (s, tick = s.tick) => realFrac(s, tick) < WET_SHARE ? 'wet' : 'dry';
 export const realYear = (s, tick = s.tick) => Math.floor(tick / clockOf(s).year);
 function landStepReal(s, groundFactor) {
-  const C = clockOf(s), rain = rainOf(s.seed, realYear(s)), f = realFrac(s);
+  const C = clockOf(s), f = realFrac(s), rain = s.weather ? Math.max(0.1, Math.min(2.5, weatherRain(s))) : rainOf(s.seed, realYear(s));
   for (const p of s.patches) {
     if (!p.food) continue;
-    const F = FOODS[p.food], grow = p.regen * F.season(f) * F.norm * rainFactor(p.food, rain) * groundFactor;
+    // with weather: a patch picked below regrowHalf of its natural level regrows in proportion (overuse can deplete it)
+    const F = FOODS[p.food], depleted = s.weather ? Math.min(1, (p.stock / p.capacity + 0.05) / weatherRegrowHalf()) : 1;
+    const grow = p.regen * F.season(f) * F.norm * rainFactor(p.food, rain) * groundFactor * depleted;
     const { add, lost } = growPatch(p, grow);
     s.ledger.regenerated += add; s.ledger.decayed = (s.ledger.decayed ?? 0) + lost;
   }
-  if (s.tick % Math.round(C.day) === 0) { const season = realSeason(s); for (const w of (s.waters ?? s.eden.springs)) w.active = waterActive(w.kind, season, rain); }
+  if (!s.weather && s.tick % Math.round(C.day) === 0) { const season = realSeason(s); for (const w of (s.waters ?? s.eden.springs)) w.active = waterActive(w.kind, season, rain); } // with weather, water holes fill and empty in weather.js
 }
 // How many ticks it takes to gather `units` of a food: units x kcal per unit / (return rate x hours per tick).
 // The return rate falls for the young on skill-intensive foods (Pretelli et al. 2022), and rises with practice.

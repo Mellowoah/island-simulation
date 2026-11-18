@@ -28,6 +28,7 @@ import { lifeStage } from './being.js';
 import * as T from './terrain.js';
 import * as N from './nature.js';
 import { SALTS } from './streams.js';
+import { makeWeather, weatherDay } from './weather.js';
 
 import { sanity } from './w-checks.js';
 import { H, SALT, W, WORLD_DEFAULTS, WORLD_VERSION, bandMembers, campOf, draw, event, living } from './w-core.js';
@@ -96,6 +97,7 @@ export function createWorld2(seed = 41, opts = {}) {
     for (const k of ['make:strike:cobble+flint', 'make:cut:flake+stick', 'make:rub:stick+stick', 'cook']) practise(s, p, k, 40);
     p.items = ['flake', 'stick', 'tinder', ...(draw(s, p.id, SALT.setupSpear, 0) < 0.5 ? ['spear'] : [])];
   }
+  makeWeather(s);
   refreshCarers(s);
   event(s, `The island begins. ${s.people.length} people in ${cfg.bands} bands of ${cfg.families} families, each camped at its own water. Everything beyond a few km of each camp is unknown.`);
   return s;
@@ -108,6 +110,7 @@ export function stepWorld(s, n = 1) {
   if (!s.patchById) { Object.defineProperty(s, 'patchById', { enumerable: false, configurable: true, value: new Map(s.patches.map(q => [q.id, q])) }); Object.defineProperty(s, 'waterById', { enumerable: false, configurable: true, value: new Map(s.waters.map(w => [w.id, w])) }); refreshCarers(s); }
   for (let z = 0; z < n; z++) {
     s.tick++;
+    if (s.weather && s.tick % day === 0) weatherDay(s); // the day's sky first: everything below reads it
     landStep(s, 1);
     if (s.tick % day === 0) { for (const p of living(s)) { setBody(s, p); forget(s, p); } refreshCarers(s); N.animalDay(s); N.wildfireDay(s); fireDay(s); const ids = new Set(s.carcasses.map(c => c.id)); for (const p of living(s)) for (const id in p.carcasses) if (!ids.has(+id)) delete p.carcasses[id]; }
     const alive = [...living(s)];

@@ -7,6 +7,7 @@ import { practise, forget } from './body.js';
 import { lifeStage } from './being.js';
 import * as T from './terrain.js';
 import * as N from './nature.js';
+import { spoilFactor } from './weather.js';
 import { SALTS } from './streams.js';
 import { H, SALT, W, campOf, clamp, draw, event, note } from './w-core.js';
 import { pickUp } from './w-craft.js';
@@ -36,7 +37,8 @@ export function huntTarget(s, p) {
 // group of animals is seen, deciding whether to try for one (the chance of success they can judge, against the risk).
 export function huntHour(s, p, st, u) {
   const C = clockOf(s), B = body(s), young = youngOf(s, p), load = young.filter(k => EN.carried(k.body.age)).reduce((n, k) => n + k.body.mass, 0) + p.carry / 2000;
-  const tiles = Math.max(1, Math.round(p.body.kmh * R('stalkPace') * u * C.hours / T.TILE_KM)); // stalking: slow, with long pauses (approx. 1-1.5 km an hour)
+  // distance stalked builds up over the hour's slices (a bout cut into short slices must not move faster)
+  st.stride = (st.stride ?? 0) + p.body.kmh * R('stalkPace') * u * C.hours / T.TILE_KM; const tiles = Math.floor(st.stride); st.stride -= tiles; // stalking: slow, with long pauses (approx. 1-1.5 km an hour)
   const ang = draw(s, p.id, SALT.huntDirection, s.tick) * 2 * Math.PI; let moved = 0;
   for (let i = 0; i < tiles; i++) {
     const x = Math.round(p.x + Math.cos(ang)), y = Math.round(p.y + Math.sin(ang)); if (!T.isWalkable(x, y) || (x === p.x && y === p.y)) break;
@@ -57,7 +59,7 @@ export function huntHour(s, p, st, u) {
   if (res.hurt) { p.health = clamp(p.health - 3 * B.injuryDamage); s.hunting.hurt++; note(s, p, `Hurt by a ${sp.label}.`); }
   if (!res.got) { note(s, p, `Went after a ${sp.label}: ${res.why}.`); return; }
   const cell = N.cellOf(p.x, p.y); s.animals[best.id][cell] = Math.max(0, s.animals[best.id][cell] - 1);
-  const kcal = N.carcassKcal(best.id), c = { id: s.nextId++, species: best.id, x: p.x, y: p.y, kcal, kcal0: kcal, taken: 0, until: s.tick + C.day, natural: false, roasted: false, by: p.id };
+  const kcal = N.carcassKcal(best.id), c = { id: s.nextId++, species: best.id, x: p.x, y: p.y, kcal, kcal0: kcal, taken: 0, until: s.tick + Math.round(C.day / spoilFactor(s)), natural: false, roasted: false, by: p.id };
   s.carcasses.push(c); N.book(s, 'made', kcal); p.carcasses[c.id] = 1;
   s.hunting.kills[best.id] = (s.hunting.kills[best.id] ?? 0) + 1; if (sp.mass >= N.LARGE) s.hunting.largeKills++;
   const ag = p.body.age < 20 ? '14-19' : p.body.age < 40 ? '20-39' : '40+'; (s.hunting.byAge[p.sex + ag] ??= { kills: 0, kcal: 0 }).kills++;

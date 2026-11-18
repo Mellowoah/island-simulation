@@ -167,6 +167,9 @@ export function exploreTarget(s, p) {
     const ang = draw(s, p.id, SALT.explore, s.tick * 16 + i) * Math.PI * 2, rr = reach * (0.4 + 0.6 * draw(s, p.id, SALT.exploreAlt, s.tick * 16 + i));
     const c = campOf(s, p), x = Math.round(c.x + Math.cos(ang) * rr), y = Math.round(c.y + Math.sin(ang) * rr);
     if (!T.isWalkable(x, y)) continue;
+    // there and back to camp must fit what is left of the day's walking (straight-line distance x 1.3 for the way)
+    const kmLeft = R('dayKmMax') - (p.tiles - (p.tilesAtDay ?? p.tiles)) * T.TILE_KM;
+    if ((Math.hypot(x - p.x, y - p.y) + Math.hypot(x - c.x, y - c.y)) * T.TILE_KM * 1.3 > kmLeft) continue;
     let unseen = 0; for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) { const xx = x + dx, yy = y + dy; if (xx >= 0 && yy >= 0 && xx < W && yy < H && !p.seen[yy * W + xx]) unseen++; }
     if (unseen > bs) { bs = unseen; best = [x, y]; }
   }

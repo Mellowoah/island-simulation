@@ -25,6 +25,7 @@
 
 import { noise2, seedKey, STREAMS } from './sim.js';
 import { SALTS } from './streams.js';
+import { woodMoisture, rainYearRatio, soilMoisture, rainLastDays, spoilFactor } from './weather.js';
 import { R, clockOf, hourOf } from './clock.js';
 import * as T from './terrain.js';
 
@@ -65,16 +66,18 @@ export function makeAnimals() {
 export function animalDay(s) {
   const C = clockOf(s), dt = 1 / 365;
   for (const [id, sp] of Object.entries(SPECIES)) {
-    const N = s.animals[id], r = rMax(sp.mass);
+    // with weather, the land carries more herbivores after a wet year and fewer in drought (forage follows rain;
+    // exponent 0.7 so herds respond less than in proportion, approx.)
+    const N = s.animals[id], r = rMax(sp.mass), kf = s.weather ? Math.max(0.3, Math.min(1.4, rainYearRatio(s) ** 0.7)) : 1;
     for (let c = 0; c < N.length; c++) {
-      const K = capacity(sp, c); if (K <= 0) continue;
+      const K = capacity(sp, c) * kf; if (K <= 0) continue;
       const n = N[c], births = r * n * dt, deaths = r * n * n / K * dt;
       N[c] = Math.max(0, n + births - deaths);
       // a carcass a person could find: most natural deaths are kills that lions and hyenas finish; a small share
       // (register: carcassFound) lies with meat on it for about a day
       if (sp.mass >= 20 && draw(s, c * 7 + Object.keys(SPECIES).indexOf(id), SALT.carcass) < Math.min(1, deaths * R('carcassFound'))) {
         const tiles = []; for (let k = 0; k < 6; k++) { const x = (c % CW) * CELL + Math.floor(draw(s, c, SALT.carcassX, s.tick * 6 + k) * CELL), y = Math.floor(c / CW) * CELL + Math.floor(draw(s, c, SALT.carcassY, s.tick * 6 + k) * CELL); if (T.isWalkable(x, y)) { tiles.push([x, y]); break; } }
-        if (tiles.length) { const kcal = sp.mass * MEAT.edible * MEAT.kcalPerKg * 0.5; s.carcasses.push({ id: s.nextId++, species: id, x: tiles[0][0], y: tiles[0][1], kcal, kcal0: kcal, taken: 0, until: s.tick + C.day, natural: true, roasted: false }); book(s, 'made', kcal); }
+        if (tiles.length) { const kcal = sp.mass * MEAT.edible * MEAT.kcalPerKg * 0.5; s.carcasses.push({ id: s.nextId++, species: id, x: tiles[0][0], y: tiles[0][1], kcal, kcal0: kcal, taken: 0, until: s.tick + Math.round(C.day / spoilFactor(s)), natural: true, roasted: false }); book(s, 'made', kcal); }
       }
     }
   }
@@ -108,7 +111,7 @@ export function materialsAt(x, y) {
   return out;
 }
 // Wood and grass are dry in the dry season (about 10% water) and wet in the rains.
-export const moisture = (s, tick = s.tick) => { const C = clockOf(s), f = (((tick % C.year) + C.year) % C.year) / C.year; return f < 7 / 12 ? 0.3 : 0.1; };
+export const moisture = (s, tick = s.tick) => { if (s.weather && tick === s.tick) return woodMoisture(s); const C = clockOf(s), f = (((tick % C.year) + C.year) % C.year) / C.year; return f < 7 / 12 ? 0.3 : 0.1; };
 
 // ---------- the laws: what an action on two things does ----------
 // Each returns { made, note } or null (nothing happened). `skill` is the doer's 0-1 practice at this action.
@@ -159,8 +162,12 @@ export const COOK = { tubers: 1.3, meat: 1.15, fish: 1.1, shellfish: 1.05, nuts:
 // Lightning: in the dry season, about one fire per 1,000 km² a day lights the grass of one cell for a day, so a given
 // patch of grass burns every few years (approx.; savanna fire return 2-6 years).
 export function wildfireDay(s) {
-  const C = clockOf(s), f = (((s.tick % C.year) + C.year) % C.year) / C.year; if (f < 7 / 12) return;
-  if (draw(s, 1, SALT.fire) < T.LAND_KM2 / 1000) {
+  const C = clockOf(s), f = (((s.tick % C.year) + C.year) % C.year) / C.year;
+  // with weather: grass burns when it has cured (dry soil, no rain for three days), and more often when last year's
+  // rain grew more grass to burn (fuel); without weather, the dry season by the calendar
+  const odds = s.weather ? (soilMoisture(s) < 0.3 && rainLastDays(s, 3) < 1 ? Math.max(0.3, Math.min(1.6, rainYearRatio(s))) : 0) : (f < 7 / 12 ? 0 : 1);
+  if (!odds) return;
+  if (draw(s, 1, SALT.fire) < odds * T.LAND_KM2 / 1000) {
     const c = Math.floor(draw(s, 2, SALT.fire) * CW * CH), h = habitat()[c];
     if ((h.grass ?? 0) + (h.woodland ?? 0) < 2) return;
     const x = (c % CW) * CELL + CELL / 2 | 0, y = Math.floor(c / CW) * CELL + CELL / 2 | 0;

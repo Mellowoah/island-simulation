@@ -53,7 +53,7 @@ export function look(s, p) {
   for (const w of s.waters) if (dist(w, p) <= r) {
     if (!p.waters[w.id]) note(s, p, `Found water: ${w.name.toLowerCase()}.`);
     const was = p.waters[w.id];
-    p.waters[w.id] = { active: w.active, t: s.tick, dryOk: (was?.dryOk ?? false) || (w.active && realFrac(s) >= 7 / 12) }; // seen with water in the dry season: it lasts
+    p.waters[w.id] = { active: w.active, t: s.tick, dryOk: !w.active && realFrac(s) >= 7 / 12 ? false : (was?.dryOk ?? false) || (w.active && realFrac(s) >= 10 / 12) }; // a hole seen with water at the end of the dry season (Sep-Oct) lasts; one seen dry in the dry season does not (learned both ways)
   }
 }
 export const MONTH = s => Math.floor(realFrac(s) * 12);

@@ -7,6 +7,7 @@ import { practise, forget } from './body.js';
 import { lifeStage } from './being.js';
 import * as T from './terrain.js';
 import * as N from './nature.js';
+import { weatherLedger } from './weather.js';
 import { SALTS } from './streams.js';
 import { H, W, bandMembers, homes, living } from './w-core.js';
 import { births, siler } from './w-people.js';
@@ -27,6 +28,7 @@ export function sanity(s) {
   const held = living(s).reduce((n, p) => n + p.carry, 0) + s.households.reduce((n, h) => n + h.pool, 0) + (s.lostCarry ?? 0);
   const err = L.consumed * 500 + (L.meatKcal ?? 0) + (L.cookGain ?? 0) - ((s.energyLedger?.eaten ?? 0) - (L.milkKcal ?? 0)) - held - L.poolSpoiled;
   if (L.carcass) { const lying = s.carcasses.reduce((n, c) => n + c.kcal, 0), ce = L.carcass.made - L.carcass.taken - L.carcass.rotted - lying; if (Math.abs(ce) > 1e-6 * Math.max(1, L.carcass.made)) add(`carcass ledger off by ${ce.toFixed(1)}`); }
+  if (s.weatherLedger) { const wl = weatherLedger(s); if (Math.abs(wl.soilError) > 1e-3 || Math.abs(wl.holeError) > 1e-2) add(`water books off: soil ${wl.soilError.toFixed(3)}, holes ${wl.holeError.toFixed(3)} mm`); }
   for (const id in s.animals ?? {}) if (s.animals[id].some(n => !(n >= 0))) add(`${id}: negative or invalid numbers`);
   if (Math.abs(err) > 1e-6 * Math.max(1, L.consumed * 500)) add(`kcal ledger off by ${err.toFixed(1)}`);
 }

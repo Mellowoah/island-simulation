@@ -7,6 +7,7 @@ import { practise, forget } from './body.js';
 import { lifeStage } from './being.js';
 import * as T from './terrain.js';
 import * as N from './nature.js';
+import { spoilFactor } from './weather.js';
 import { SALTS } from './streams.js';
 import { SALT, bandMembers, bandOf, changed, draw, event, homes, living, note } from './w-core.js';
 import { cooked, knownRecipes, recipeName } from './w-craft.js';
@@ -99,7 +100,7 @@ export function evening(s) {
     const mates = here.filter(b => bandOf(s, b) === b0);
     for (let i = 0; i < 3; i++) { if (draw(s, a.id, SALT.talk, s.tick * 3 + i) > a.mind.social) continue; const b = mates[Math.floor(draw(s, a.id + 7919, SALT.talk, s.tick * 3 + i) * mates.length)]; if (b && b !== a) tell(a, b); }
   }
-  for (const h of hs) { const keep = h.pool * Math.exp(-Math.LN2 / s.config.poolHalfLifeDays); s.ledger.poolSpoiled += h.pool - keep; h.pool = keep; } // camp food spoils (booked, kcal)
+  for (const h of hs) { const keep = h.pool * Math.exp(-Math.LN2 * spoilFactor(s) / s.config.poolHalfLifeDays); s.ledger.poolSpoiled += h.pool - keep; h.pool = keep; } // camp food spoils (booked, kcal)
 }
 
 // ---------- moving camp ----------

@@ -2,6 +2,7 @@
 // The law of energy is in energy.js, the rates and pairs in clock.js. This file applies them to one creature.
 
 import { clockOf, body, eatKcal, burnKcal, storedKcal, sleepTime, ticksUntilWake, isNight, hourOf, SLEEP_UNTIL } from './clock.js';
+import { heatFactor } from './weather.js';
 import * as EN from './energy.js';
 import { lifeStage } from './being.js';
 
@@ -24,7 +25,7 @@ export function setBody(s, c) {
 
 // Water: lost with the energy burned (ml per kcal); thirst is that loss against the body's size.
 export function loseWater(s, c, kcal) {
-  const e = c.eden; e.deficit += kcal * body(s).waterMlPerKcal;
+  const e = c.eden; e.deficit += kcal * body(s).waterMlPerKcal * heatFactor(s); // more in the heat (weather.js; 1 without weather)
   e.thirst = Math.min(100, e.deficit / c.body.waterAt * 100);
 }
 export function drink(c) { c.eden.deficit = 0; c.eden.thirst = 0; }
