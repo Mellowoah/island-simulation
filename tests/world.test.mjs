@@ -254,3 +254,18 @@ test('Y23 Price equation (idea 10): selection + transmission add up to the chang
   const s = createWorld2(55); stepWorld(s, 8760); const t0 = s.tick; stepWorld(s, 8760 * 2);
   for (const v of Object.values(priceOfWorld(s, t0))) if (v) assert.ok(Math.abs(v.check) < 1e-9);
 });
+
+test('Y24 inheritance (fixes A8): child-on-midparent slope is h2, additive variance holds across generations, and a selected shift stays (breeder\'s equation R = h2 S)', async () => {
+  const { drawFactors } = await import('../dist/w-people.js');
+  const s = createWorld2(57), h2 = s.config.heritability; let id = 200000;
+  const st = xs => { const m = xs.reduce((a, b) => a + b, 0) / xs.length; return [m, xs.reduce((a, b) => a + (b - m) ** 2, 0) / xs.length]; };
+  let pop = Array.from({ length: 1500 }, () => drawFactors(s, id++)); const means = [];
+  for (let gen = 0; gen < 5; gen++) {
+    const parents = gen === 1 ? [...pop].sort((a, b) => b.g.f.mass - a.g.f.mass).slice(0, 750) : pop, kids = [], mids = [];
+    for (let i = 0; i < 1500; i++) { const a = parents[(i * 7919) % parents.length], b = parents[(i * 104729 + 13) % parents.length]; kids.push(drawFactors(s, id++, [a, b])); mids.push((a.f.mass + b.f.mass) / 2); }
+    if (gen === 0) { const [mm, vm] = st(mids), [mk] = st(kids.map(k => k.f.mass)); const slope = mids.reduce((a, x, i) => a + (x - mm) * (kids[i].f.mass - mk), 0) / mids.length / vm; assert.ok(Math.abs(slope - h2) < 0.1, `slope ${slope}`); }
+    pop = kids; means.push(st(pop.map(p => p.f.mass))[0]);
+    const r = st(pop.map(p => p.g.f.mass))[1] / st(pop.map(p => p.f.mass))[1]; if (gen !== 1) assert.ok(Math.abs(r - h2) < 0.08, `Var(g)/Var(P) ${r}`);
+  }
+  assert.ok(means[1] - means[0] > 0.02, 'selection on breeding value moves the mean'); assert.ok(Math.abs(means[4] - means[1]) < 0.012, 'and it does not drift back');
+});

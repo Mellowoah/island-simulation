@@ -68,12 +68,12 @@ export function liveTick(s, p, mother) {
 }
 
 // ---------- people and families at the start ----------
-export function newPerson(s, { sex, born, mother = null, father = null, household = null, f, mind }) {
+export function newPerson(s, { sex, born, mother = null, father = null, household = null, f, mind, g = null }) {
   const id = s.people.length;
   const gen = mother === null ? 0 : 1 + Math.max(s.people[mother]?.gen ?? 0, s.people[father]?.gen ?? 0);
   const p = { id, name: nameOf(s, id), gen, sex, born, mother, father, partner: null, household, alive: true, death: null,
     x: 0, y: 0, hunger: 20, reserve: undefined, energy: 80, health: 100, deficit: 0, thirst: 0,
-    f, mind, skills: {}, places: {}, waters: {}, seen: new Uint8Array(W * H), plan: [], step: null, carry: 0, items: [], hunt: { kcal: 0, hours: 0 }, carcasses: {},
+    f, mind, g, skills: {}, places: {}, waters: {}, seen: new Uint8Array(W * H), plan: [], step: null, carry: 0, items: [], hunt: { kcal: 0, hours: 0 }, carcasses: {},
     times: { sleep: 0, rest: 0, walk: 0, gather: 0, explore: 0, camp: 0, drink: 0, hunt: 0 }, tiles: 0,
     pregnant: null, births: [], young: [], memories: [] };
   s.people.push(p); changed(s); setBody(s, p);
@@ -81,13 +81,29 @@ export function newPerson(s, { sex, born, mother = null, father = null, househol
   return p;
 }
 export const MIND_KEYS = ['curiosity', 'caution', 'care', 'social', 'ambition']; // ambition: the wish to do well in others' eyes (success)
+// Inheritance (fixing anomaly A8): standard quantitative genetics (Falconer and Mackay 1996). Each trait has a
+// breeding value g (what is passed on) and a phenotype P = g + environment. heritability is h2, the share of the
+// variance that is additive: Var(g) = h2 Var(P). A child's breeding value is the mean of its parents' plus Mendelian
+// noise of half the additive variance (so Var(g) stays h2 Var(P) from one generation to the next); its phenotype adds
+// an environmental part of (1 - h2) Var(P). Nothing pulls a child back toward the founders' mean, so selection can
+// move the population. Founders keep the phenotype they always had; their breeding value is drawn given it
+// (g = mean + h2 (P - mean) + noise of variance h2 (1 - h2) Var(P)). Mind traits are clamped to 0.05-0.95 as
+// phenotypes; breeding values are not clamped.
 export function drawFactors(s, id, parents = null) {
-  const g = (k, sd) => gauss(s, id, SALT.setupWho, k) * sd;
-  const h = s.config.heritability, mix = (k, own) => parents ? 1 + h * ((parents[0].f[k] + parents[1].f[k]) / 2 - 1) + own * Math.sqrt(1 - h * h) : 1 + own;
-  const f = { mass: mix('mass', g(1, 0.08)), fat: mix('fat', g(2, 0.2)), bmr: mix('bmr', g(3, 0.05)), speed: mix('speed', g(4, 0.07)), sleep: 5.7 + 1.4 * draw(s, id, SALT.setupWhere, 5) };
-  const mind = {};
-  MIND_KEYS.forEach((k, i) => { const own = 0.5 + 0.18 * gauss(s, id, SALT.setupMind, 10 + i); mind[k] = clamp(parents ? 0.5 + h * ((parents[0].mind[k] + parents[1].mind[k]) / 2 - 0.5) + (own - 0.5) * Math.sqrt(1 - h * h) : own, 0.05, 0.95); });
-  return { f, mind };
+  const h2 = s.config.heritability, z = (salt, k) => gauss(s, id, salt, k);
+  const one = (mean, sd, P0, k, salt, gOf) => {
+    if (!parents) return [P0, mean + h2 * (P0 - mean) + sd * Math.sqrt(h2 * (1 - h2)) * z(salt, k + 20)];
+    const g = (gOf(parents[0]) + gOf(parents[1])) / 2 + sd * Math.sqrt(h2 / 2) * z(salt, k + 20);
+    return [g + sd * Math.sqrt(1 - h2) * z(salt, k + 40), g];
+  };
+  const f = { sleep: 5.7 + 1.4 * draw(s, id, SALT.setupWhere, 5) }, mind = {}, g = { f: {}, mind: {} };
+  [['mass', 0.08, 1], ['fat', 0.2, 2], ['bmr', 0.05, 3], ['speed', 0.07, 4]].forEach(([k, sd, n]) => {
+    const [P, gv] = one(1, sd, parents ? 0 : 1 + z(SALT.setupWho, n) * sd, n, SALT.setupWho, q => q.g?.f[k] ?? q.f[k]); f[k] = P; g.f[k] = gv;
+  });
+  MIND_KEYS.forEach((k, i) => {
+    const [P, gv] = one(0.5, 0.18, parents ? 0 : 0.5 + 0.18 * z(SALT.setupMind, 10 + i), 10 + i, SALT.setupMind, q => q.g?.mind[k] ?? q.mind[k]); mind[k] = clamp(P, 0.05, 0.95); g.mind[k] = gv;
+  });
+  return { f: { mass: f.mass, fat: f.fat, bmr: f.bmr, speed: f.speed, sleep: f.sleep }, mind, g };
 }
 
 export function attachIndex(s) {
@@ -157,8 +173,8 @@ export function births(s) {
   const C = clockOf(s), cfg = s.config;
   for (const p of [...living(s)]) if (p.alive && p.pregnant && s.tick >= p.pregnant.due) {
     const dad = s.people[p.pregnant.father]; p.pregnant = null;
-    const { f, mind } = drawFactors(s, s.people.length + 5000, [p, dad]);
-    const kid = newPerson(s, { sex: draw(s, s.people.length, SALT.newborn) < cfg.maleRatio ? 'M' : 'F', born: s.tick, mother: p.id, father: dad.id, household: p.household, f, mind });
+    const { f, mind, g } = drawFactors(s, s.people.length + 5000, [p, dad]);
+    const kid = newPerson(s, { sex: draw(s, s.people.length, SALT.newborn) < cfg.maleRatio ? 'M' : 'F', born: s.tick, mother: p.id, father: dad.id, household: p.household, f, mind, g });
     kid.x = p.x; kid.y = p.y; kid.reserve = kid.body.fatMax * 0.8; kid.seen.set(p.seen);
     p.births.push(s.tick); p.young.push(kid.id); dad.young.push(kid.id); s.births++;
     event(s, `${p.name} gave birth to ${kid.name}.`); note(s, p, `Gave birth to ${kid.name}.`);

@@ -18,3 +18,4 @@ Fixed, for the record (each was a code error found by tracing a mismatch, 17 Nov
 
 ## A8 — inheritance pulls back to the founders' mean (18 Nov 2026, found by the Price tool, idea 10)
 Children's traits regress toward a fixed 1 (body) or 0.5 (mind), not toward the population as it now is: child = 1 + h(midparent − 1) + noise. So whatever selection moves, transmission moves back: the population cannot evolve away from where it started. Seen as transmission +0.014 ± 0.004 on body mass while parents average below 1. Standard quantitative genetics (breeding value = midparent breeding value + Mendelian noise of half the additive variance; phenotype = breeding value + environment) would let means move. Not changed: a modelling decision.
+**Resolved 18 Nov 2026** (Robert approved): breeding values with Mendelian noise; see THEORY-CHECK 'Inheritance fixed (A8)'.
