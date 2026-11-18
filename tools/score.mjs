@@ -5,9 +5,9 @@ import { availableParallelism } from 'node:os';
 import { fileURLToPath } from 'node:url';
 if (isMainThread) {
   const args = process.argv.slice(2), release = args.includes('--release'), [islands = 4, years = 10] = args.filter(a => !a.startsWith('--')).map(Number);
-  const cfg = Object.fromEntries(args.filter(a => a.startsWith('--set=')).map(a => { const [k, v] = a.slice(6).split(':'); return [k, Number(v)]; })); // --set=choiceTemperature:0.1
+  const cfg = Object.fromEntries(args.filter(a => a.startsWith('--set=')).map(a => { const [k, v] = a.slice(6).split(':'); return [k, isNaN(Number(v)) ? v : Number(v)]; })); // --set=choiceTemperature:0.1
   const { PATTERNS, crossEntropy } = await import('../dist/patterns.js');
-  const seeds = Array.from({ length: islands }, (_, i) => i + 1), stats = [];
+  const from = +(args.find(a => a.startsWith('--from='))?.slice(7) ?? 1), seeds = Array.from({ length: islands }, (_, i) => i + from), stats = [];
   await Promise.all(Array.from({ length: Math.min(islands, availableParallelism()) }, async () => {
     while (seeds.length) { const seed = seeds.shift(); stats.push(await new Promise((ok, no) => { const w = new Worker(fileURLToPath(import.meta.url), { workerData: { seed, years, cfg } }); w.on('message', ok); w.on('error', no); })); process.stderr.write(`island ${seed} done\n`); }
   }));

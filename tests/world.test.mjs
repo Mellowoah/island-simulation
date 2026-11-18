@@ -226,3 +226,12 @@ test('Y20 choice noise is a fitted number: choiceTemperature in the register say
   assert.ok(RATES.choiceTemperature.low < RATES.choiceTemperature.value && RATES.choiceTemperature.value < RATES.choiceTemperature.high);
   assert.equal(createWorld2(49).config.choiceTemperature, undefined); assert.equal(createWorld2(49, { choiceTemperature: 0.2 }).config.choiceTemperature, 0.2);
 });
+
+test('Y21 active inference (idea 8): information gain is 0.5 ln((n+1)/n) and falls with looks; off by default; weight 0 reduces to expected utility', async () => {
+  const { infoGain } = await import('../dist/w-mind.js'); const { R } = await import('../dist/clock.js');
+  const n0 = R('aifPriorLooks'); assert.ok(Math.abs(infoGain(0) - 0.5 * Math.log((n0 + 1) / n0)) < 1e-12);
+  for (let n = 0; n < 20; n++) assert.ok(infoGain(n + 1) < infoGain(n));
+  assert.equal(createWorld2(51).config.decision, undefined);
+  const a = createWorld2(51), b = createWorld2(51, { decision: 'activeInference', aifEpistemicWeight: 0 }); stepWorld(a, 24 * 20); stepWorld(b, 24 * 20);
+  assert.deepEqual(a.people.map(p => [p.x, p.y, Math.round(p.reserve)]), b.people.map(p => [p.x, p.y, Math.round(p.reserve)]));
+});

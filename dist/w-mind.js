@@ -138,8 +138,26 @@ export function innerVoice(s, p, o) {
   if (why) out.push(why);
   return out.join(' ');
 }
+// ---------- active inference (idea 8): a second decision model, switched on with config.decision = 'activeInference' ----------
+// Friston's active inference scores a course of action by its expected free energy G = risk + ambiguity, and chooses
+// by softmax over -G (precision = 1/temperature). Risk is how far the outcomes it expects fall from the outcomes it
+// prefers; the utility u of each option already stands for that (a log preference), so risk = -u. What is new is the
+// epistemic part: the expected information gain, in nats, about the hidden state the option would look at. Here the
+// hidden states are what a food place holds (a mean learned from n looks), what unseen land holds, and how well one
+// hunts. For a mean learned from n noisy looks, one more look shrinks the variance from 1/n to 1/(n+1), a gain of
+// 0.5 ln((n+1)/n) nats; a place seen only from afar (n = 0) starts with a vague prior (aifPriorLooks). The gain is
+// weighed into utility at aifEpistemicWeight per nat. The default model (expected utility) is left untouched.
+export function infoGain(n) { const n0 = Math.max(n, 0) + R('aifPriorLooks'); return 0.5 * Math.log((n0 + 1) / n0); }
+export function epistemic(s, p, o) {
+  if (o.k === 'forage') return infoGain(p.places[o.q.id]?.n ?? 0);
+  if (o.k === 'explore') return (o.voi?.found ?? 0) * infoGain(0); // each new place found is a first look
+  if (o.k === 'hunt') { const tries = p.hunt.hours / R('huntHoursMax'); return infoGain(tries); } // a day's hunt is one more look at one's own hunting rate
+  return 0; // resting, drinking, going home, a known carcass: nothing much to learn
+}
 export function decide(s, p) {
-  const opts = options(s, p), T0 = s.config.choiceTemperature ?? R('choiceTemperature'), mx = Math.max(...opts.map(o => o.u));
+  const opts = options(s, p), T0 = s.config.choiceTemperature ?? R('choiceTemperature');
+  if (s.config.decision === 'activeInference') { const e = s.config.aifEpistemicWeight ?? R('aifEpistemicWeight'); for (const o of opts) { o.ig = epistemic(s, p, o); o.u += e * o.ig; } } // -G = u + weight x information gain
+  const mx = Math.max(...opts.map(o => o.u));
   const w = opts.map(o => Math.exp((o.u - mx) / T0)), tot = w.reduce((a, b) => a + b, 0);
   let r = draw(s, p.id, SALT.choice) * tot, o = opts[opts.length - 1];
   for (let i = 0; i < opts.length; i++) { r -= w[i]; if (r <= 0) { o = opts[i]; break; } }
