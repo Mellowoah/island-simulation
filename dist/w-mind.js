@@ -8,6 +8,8 @@ import { lifeStage } from './being.js';
 import * as T from './terrain.js';
 import * as N from './nature.js';
 import { SALTS } from './streams.js';
+import { feelingsOn, fearLevel } from './feelings.js';
+import { moonLight } from './weather.js';
 import { H, SALT, W, bandOf, campOf, draw } from './w-core.js';
 import { knownRecipes, productOf, recipeName, tinker } from './w-craft.js';
 import { expected, look, unload } from './w-food.js';
@@ -33,6 +35,12 @@ export const atCamp = (s, p) => { const c = campOf(s, p); return Math.abs(p.x - 
 export const maxTripKm = a => a < 5 ? 0 : a < 10 ? 2 : a < 14 ? 5 : 15; // how far children range from camp (Hadza children forage near camp)
 export const hoursTo = (s, p, x, y) => { const d = fieldDist(p.x, p.y, x, y, false, mapOf(s)); return d < 0 ? Infinity : d / p.body.tilesTick * clockOf(s).hours; };
 
+// Fear of the dark as a cost per hour of a trip that runs past dusk: learned fear, less under a moon that will be up.
+function darkCost(s, p, hrs) {
+  if (!feelingsOn(s)) return 0;
+  const C = clockOf(s), light = moonLight(s, s.tick + Math.round(hrs * C.perHour));
+  return R('wFear') * fearLevel(p, 'dark') * (1 - 0.7 * light);
+}
 export function options(s, p) {
   const C = clockOf(s), a = p.body.age, hour = hourOf(C, s.tick), night = sleepTime(C, s.tick), opts = [];
   const young = youngOf(s, p), thirst = young.reduce((m, k) => Math.max(m, k.thirst), p.thirst) / 100;
@@ -75,7 +83,7 @@ export function options(s, p) {
       // Orians and Pearson 1979); a child gathers for itself
       const rate = returnRate(q.food, a, p.skills[q.id] ?? 0), want = Math.min(a < 14 ? Math.max(500, short) : p.body.carryKcal, k.exp * 500);
       const hrs = out + want / rate + back, walk = (out + back) * p.body.tilesTick / C.hours * p.body.cotTile * p.body.mass;
-      const net = (want - walk) / hrs, late = hour + hrs > 19 ? (hour + hrs - 19) * 0.25 : 0;
+      const net = (want - walk) / hrs, late = hour + hrs > 19 ? (hour + hrs - 19) * (0.25 + darkCost(s, p, hrs)) : 0;
       opts.push({ k: 'forage', q, want, u: urgency * net / 1000 + (net > 0 ? R('wDrive') * drive : 0) - late - p.mind.caution * Math.max(0, out - 3) * 0.05, why: `${q.name.toLowerCase()} ${out.toFixed(1)} h away, about ${Math.round(net)} kcal an hour after walking` });
     }
   }
@@ -91,7 +99,7 @@ export function options(s, p) {
       const rate = ce / hrs, net = rate - walkH;
       // motives: survival (the drive), success (ambition: meat is shared and brings standing, as Hawkes argues for Hadza
       // men), and caution against the risk of the chase. Weights approx.; what hunting returns is learned, not given.
-      opts.push({ k: 'hunt', u: urgency * net / 1000 + (net > 0 ? R('wDrive') * drive : 0) + R('wAmbition') * p.mind.ambition - R('wCaution') * p.mind.caution, why: `hunting: about a ${Math.round(q * 100)}% chance of meat; worth about ${Math.round(net)} kcal an hour to me as things stand${p.hunt.hours < 1 ? ' (never tried)' : ''}`, risk: { q, haul, ce, mean: q * haul } });
+      opts.push({ k: 'hunt', u: urgency * net / 1000 + (net > 0 ? R('wDrive') * drive : 0) + R('wAmbition') * p.mind.ambition - R('wCaution') * p.mind.caution - (feelingsOn(s) ? R('wFear') * fearLevel(p, 'beast') : 0), why: `hunting: about a ${Math.round(q * 100)}% chance of meat; worth about ${Math.round(net)} kcal an hour to me as things stand${p.hunt.hours < 1 ? ' (never tried)' : ''}`, risk: { q, haul, ce, mean: q * haul } });
     }
     for (const id in p.carcasses) {
       const c = s.carcasses.find(k => k.id === +id); if (!c) continue;

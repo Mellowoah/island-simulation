@@ -9,6 +9,7 @@ import * as T from './terrain.js';
 import * as N from './nature.js';
 import { spoilFactor } from './weather.js';
 import { SALTS } from './streams.js';
+import { feelingsOn, toldFear } from './feelings.js';
 import { SALT, bandMembers, bandOf, changed, draw, event, homes, living, note } from './w-core.js';
 import { cooked, knownRecipes, recipeName } from './w-craft.js';
 import { expected, stopGather } from './w-food.js';
@@ -138,6 +139,7 @@ export function evening(s) {
     }
     for (const id in a.carcasses) if (b.body.age >= 14 && !b.carcasses[id] && s.carcasses.some(c => c.id === +id)) b.carcasses[id] = 1; // where the meat is
     for (const k of [...knownRecipes(a), ...(a.skills.cook >= 0.03 ? ['cook'] : [])]) if (!((b.skills[k] ?? 0) >= 0.03) && b.body.age >= 5 && draw(s, a.id * 101 + b.id, SALT.showHow, s.tick) < R('showChance') + 0.2 * a.skills[k]) { practise(s, b, k, 1); note(s, b, `${a.name} showed how to ${k === 'cook' ? 'cook food by the fire' : recipeName(k)}.`); }
+    if (feelingsOn(s)) toldFear(a, b, trustOf(b, a.id)); // fear passes in the telling (Muris 2001)
     if (a.hunt.hours > (b.huntHeard?.hours ?? 0)) b.huntHeard = { kcal: a.hunt.kcal, hours: a.hunt.hours }; // how hunting has gone for them
   };
   for (const a of here) {

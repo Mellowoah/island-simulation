@@ -25,6 +25,7 @@ import * as EN from './energy.js';
 import { FOODS, rainOf, waterActive, landStep, returnRate, realFrac } from './savanna.js';
 import { practise, forget } from './body.js';
 import { lifeStage } from './being.js';
+import { feelingsOn, fearDay } from './feelings.js';
 import * as T from './terrain.js';
 import * as N from './nature.js';
 import { SALTS } from './streams.js';
@@ -146,7 +147,7 @@ export function stepWorld(s, n = 1) {
         if (!s.waterById.get(b.camp.water).active || (s.tick % (7 * day) === 0 && (bandThin(s, b) || (b.tripKm ?? 0) > 6))) maybeMoveCamp(s, b, true);
       }
       sanity(s);
-      for (const p of living(s)) { p.tilesAtDay = p.tiles; p.dayK = null; }
+      for (const p of living(s)) { p.tilesAtDay = p.tiles; p.dayK = null; if (feelingsOn(s)) fearDay(p); }
       if (s.diag?.track) for (const p of living(s)) { const tr = (s.diag.track[p.id] ??= []); tr.push({ r: +(p.reserve / p.body.fatMax).toFixed(2), got: Math.round(p.gotKcal ?? 0), g: +p.times.gather.toFixed(1), c: +p.times.camp.toFixed(1), w: +p.times.walk.toFixed(1), h: Math.round(p.health), y: youngOf(s, p).length, ch: p.decision?.chose, pool: Math.round(s.households[p.household]?.pool ?? 0), hh: (s.households[p.household]?.members ?? []).filter(i => s.people[i].alive).map(i => Math.round(s.people[i].body.age)).join("/") }); if (tr.length > 40) tr.shift(); }
       adoptOrphans(s);
     }

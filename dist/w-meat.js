@@ -10,6 +10,7 @@ import * as N from './nature.js';
 import { spoilFactor } from './weather.js';
 import { herdAlarm, wariness } from './learning.js';
 import { SALTS } from './streams.js';
+import { feelingsOn, harmed, safeHour } from './feelings.js';
 import { H, SALT, W, campOf, clamp, draw, event, note } from './w-core.js';
 import { pickUp } from './w-craft.js';
 import { look } from './w-food.js';
@@ -64,6 +65,7 @@ export function huntHour(s, p, st, u) {
   const res = N.attempt(s, p, best.id, weaponOf(p), skill, stealth, flee(best.id)), sp = N.SPECIES[best.id];
   herdAlarm(s, best.id, cellHere); // a chase is a surprise the herd learns from, whatever its end
   if (res.hurt) { p.health = clamp(p.health - 3 * B.injuryDamage); s.hunting.hurt++; note(s, p, `Hurt by a ${sp.label}.`); }
+  if (feelingsOn(s)) { if (res.hurt) harmed(s, p, 'beast', 3 * B.injuryDamage); else safeHour(s, p, 'beast', 1); } // close to a large animal
   if (!res.got) { note(s, p, `Went after a ${sp.label}: ${res.why}.`); return; }
   const cell = N.cellOf(p.x, p.y); s.animals[best.id][cell] = Math.max(0, s.animals[best.id][cell] - 1);
   const kcal = N.carcassKcal(best.id), c = { id: s.nextId++, species: best.id, x: p.x, y: p.y, kcal, kcal0: kcal, taken: 0, until: s.tick + Math.round(C.day / spoilFactor(s)), natural: false, roasted: false, by: p.id };

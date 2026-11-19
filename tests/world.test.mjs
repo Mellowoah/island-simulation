@@ -303,3 +303,29 @@ test('Y28 per-run overrides: any register number can be set for a run and put ba
   const changed = run(); clearRates(); assert.notEqual(changed, base); assert.equal(run(), base);
   assert.throws(() => setRate('noSuchRate', 1));
 });
+
+test('F1 fear (feelings stage 1): pain teaches fear; safe hours build safety on top without erasing fear; safety fades back; a new harm reinstates', async () => {
+  const F = await import('../dist/feelings.js');
+  const s = { config: { feelings: true }, tick: 0 }, p = { body: { age: 25 }, mind: { caution: 0.5 } };
+  F.harmed(s, p, 'dark', 15); const f1 = F.fearOf(p).dark.F; assert.ok(f1 > 0.1, `fear ${f1}`);
+  for (let i = 0; i < 200; i++) F.safeHour(s, p, 'dark', 1);
+  assert.equal(F.fearOf(p).dark.F, f1, 'safe hours never lower the fear memory'); assert.ok(F.fearLevel(p, 'dark') < 0.1, 'but expressed fear falls');
+  for (let d = 0; d < 365; d++) F.fearDay(p); assert.ok(F.fearLevel(p, 'dark') > 0.5 * f1, 'spontaneous recovery: safety fades back');
+  for (let i = 0; i < 200; i++) F.safeHour(s, p, 'dark', 1); const before = F.fearLevel(p, 'dark'); F.harmed(s, p, 'dark', 15); assert.ok(F.fearLevel(p, 'dark') > 2 * before && F.fearLevel(p, 'dark') > 0.5 * f1, 'reinstatement after one new harm');
+});
+
+test('F2 fear: children learn faster than adults; prepared cues faster; told fear moves the hearer toward the teller both ways', async () => {
+  const F = await import('../dist/feelings.js');
+  const s = { config: { feelings: true }, tick: 0 }, kid = { body: { age: 6 }, mind: { caution: 0.5 } }, adult = { body: { age: 40 }, mind: { caution: 0.5 } };
+  F.harmed(s, kid, 'dark', 8); F.harmed(s, adult, 'dark', 8); assert.ok(F.fearOf(kid).dark.F > F.fearOf(adult).dark.F);
+  const calm = { body: { age: 30 }, mind: { caution: 0.5 } }, scared = { body: { age: 30 }, mind: { caution: 0.5 } }; F.harmed(s, scared, 'dark', 20);
+  const hearer = { body: { age: 8 }, mind: { caution: 0.5 } }; F.toldFear(scared, hearer, 0.9); const up = F.fearLevel(hearer, 'dark'); assert.ok(up > 0);
+  for (let i = 0; i < 50; i++) F.toldFear(calm, hearer, 0.9); assert.ok(F.fearLevel(hearer, 'dark') < up, 'a calm teller brings safety (vicarious extinction)');
+  assert.equal(F.feelingsOn({ config: {} }), false, 'off by default until stage 1 is checked');
+});
+
+test('F3 plasticity(age) matches personality consistency by age (Roberts and DelVecchio 2000): about .31 child, .54 college, .64 at 30, .74 at 50+', async () => {
+  const { plasticity } = await import('../dist/being.js');
+  const r = a => 1 / (1 + 2.23 * 7 * plasticity(a) ** 2); // 7-year retest: stable part against change of variance P(a)^2 per year
+  for (const [a, want] of [[8, 0.31], [20, 0.54], [30, 0.64], [55, 0.74]]) assert.ok(Math.abs(r(a) - want) < 0.1, `age ${a}: ${r(a).toFixed(2)} vs ${want}`);
+});

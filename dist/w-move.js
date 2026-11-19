@@ -8,6 +8,7 @@ import { lifeStage } from './being.js';
 import * as T from './terrain.js';
 import * as N from './nature.js';
 import { SALTS } from './streams.js';
+import { feelingsOn, harmed, safeHour, cueNow } from './feelings.js';
 import { nightPaceOf, nightInjuryOf } from './weather.js';
 import { H, SALT, W, clamp, draw, note } from './w-core.js';
 import { pickUp, tinker } from './w-craft.js';
@@ -74,7 +75,8 @@ export function walk(s, p, st, budget) {
   }
   for (const k of young) { k.x = p.x; k.y = p.y; for (const i of [p.y * W + p.x]) k.seen[i] = 1; }
   if (moved) { spotCarcasses(s, p); pickUp(s, p); }
-  if (moved && draw(s, p.id, SALT.injury) < 1 - (1 - B.injuryPerTile * (isNight(C, s.tick) ? nightInjuryOf(s) : 1)) ** moved) { p.health = clamp(p.health - B.injuryDamage); note(s, p, 'Fell and was hurt.'); }
+  if (moved && draw(s, p.id, SALT.injury) < 1 - (1 - B.injuryPerTile * (isNight(C, s.tick) ? nightInjuryOf(s) : 1)) ** moved) { p.health = clamp(p.health - B.injuryDamage); note(s, p, 'Fell and was hurt.'); if (feelingsOn(s) && isNight(C, s.tick)) harmed(s, p, 'dark', B.injuryDamage); }
+  else if (moved && feelingsOn(s) && isNight(C, s.tick)) safeHour(s, p, 'dark', cueNow(s, p, 'dark') * C.hours); // out in the dark and nothing happened
   const used = st.route.length ? budget : Math.min(budget, moved / v);
   p.times[st.explore ? 'explore' : 'walk'] += used;
   if (st.route.length) return 0;
