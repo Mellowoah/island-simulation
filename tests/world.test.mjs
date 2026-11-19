@@ -289,11 +289,13 @@ test('Y26 moonlight: waxing moon lights the evening, full moon the whole night, 
   assert.equal(dark, R('nightPace')); assert.ok(W.nightPaceOf({ ...s, tick: s.tick + 18 }) > dark);
 });
 
-test('Y27 water news is a binary noisy channel: retold water news carries hops, is checked on arrival, and carries some information', async () => {
+test('Y27 water news (honest test, after the 18 Nov audit): over a full year, beliefs built from news by Bayes beat simply assuming water, and the news carries real information', async () => {
   const { waterNewsBits } = await import('../dist/w-social.js');
-  const s = createWorld2(63); stepWorld(s, 24 * 150);
+  const s = createWorld2(63); stepWorld(s, 24 * 365); // a full year: the dry season is when holes change
   const heard = s.people.flatMap(q => Object.values(q.waters)).filter(k => k.hops > 0); assert.ok(heard.length > 0);
-  const b = waterNewsBits(s); assert.ok(b && b.checks > 10); assert.ok(b.right > 0.5 && b.right < 1, `right ${b.right}`); assert.ok(b.bits >= 0 && b.bits <= 1);
+  const b = waterNewsBits(s); assert.ok(b && b.checks > 100);
+  assert.ok(b.believedRight > b.baseRate + 0.01, `believed right ${b.believedRight} against base rate ${b.baseRate}`);
+  assert.ok(b.bits > 0.03 && b.bits < 1, `bits ${b.bits}`);
 });
 
 test('Y28 per-run overrides: any register number can be set for a run and put back exactly', async () => {
@@ -321,7 +323,7 @@ test('F2 fear: children learn faster than adults; prepared cues faster; told fea
   const calm = { body: { age: 30 }, mind: { caution: 0.5 } }, scared = { body: { age: 30 }, mind: { caution: 0.5 } }; F.harmed(s, scared, 'dark', 20);
   const hearer = { body: { age: 8 }, mind: { caution: 0.5 } }; F.toldFear(scared, hearer, 0.9); const up = F.fearLevel(hearer, 'dark'); assert.ok(up > 0);
   for (let i = 0; i < 50; i++) F.toldFear(calm, hearer, 0.9); assert.ok(F.fearLevel(hearer, 'dark') < up, 'a calm teller brings safety (vicarious extinction)');
-  assert.equal(F.feelingsOn({ config: {} }), false, 'off by default until stage 1 is checked');
+  assert.equal(F.feelingsOn({ config: {} }), true, 'on by default (checked 19 Nov)'); assert.equal(F.feelingsOn({ config: { feelings: false } }), false);
 });
 
 test('F3 plasticity(age) matches personality consistency by age (Roberts and DelVecchio 2000): about .31 child, .54 college, .64 at 30, .74 at 50+', async () => {

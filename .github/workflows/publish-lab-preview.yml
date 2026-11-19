@@ -1,7 +1,9 @@
-name: Publish Island Lab test build
+name: Publish Island Lab (live site from main)
+# The live site is main: every merge to main publishes it. Design branches no longer publish over it
+# (before 19 Nov 2026 only design/lab-visual-polish did, so merges to main never reached the site).
 on:
   push:
-    branches: [design/lab-visual-polish]
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
@@ -25,6 +27,7 @@ jobs:
           mkdir -p _site
           cp -R dist/. _site/
           cp dist/lab.html _site/index.html
+          sed -i 's|href="lab.html"|href="index.html"|' _site/world.html
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site

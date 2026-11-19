@@ -69,8 +69,8 @@ test('S2 every simulation draw takes its salt from STREAMS', () => {
   ];
   assert.ok(used.length >= 20, `found ${used.length} draws`);
   for (const salt of used) assert.match(salt, SALT, salt);
-  assert.match(sim, /i<=STREAMS\.exploreX\[1\]-STREAMS\.exploreX\[0\]/);
-  assert.match(eden, /i <= STREAMS\.guideX\[1\] - STREAMS\.guideX\[0\]/);
+  assert.match(sim, /i\s*<=\s*STREAMS\.exploreX\[1\]\s*-\s*STREAMS\.exploreX\[0\]/); // spacing-free: the code is formatted by prettier
+  assert.match(eden, /i\s*<=\s*STREAMS\.guideX\[1\]\s*-\s*STREAMS\.guideX\[0\]/);
   assert.match(eden, /r\(1\)/);
   assert.match(eden, /r\(6\)/);
   assert.doesNotMatch(eden, /r\((?:0|7)\)/);

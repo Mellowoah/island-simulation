@@ -8,12 +8,24 @@
 import { MIND_KEYS } from './w-people.js';
 import { clockOf } from './clock.js';
 
-export function price(rows) { // rows: [{ z, w, zOff }] (zOff ignored when w = 0)
-  const n = rows.length, wbar = rows.reduce((a, r) => a + r.w, 0) / n, zbar = rows.reduce((a, r) => a + r.z, 0) / n;
+export function price(rows) {
+  // rows: [{ z, w, zOff }] (zOff ignored when w = 0)
+  const n = rows.length,
+    wbar = rows.reduce((a, r) => a + r.w, 0) / n,
+    zbar = rows.reduce((a, r) => a + r.z, 0) / n;
   if (!(wbar > 0)) return null;
-  const cov = rows.reduce((a, r) => a + (r.w - wbar) * (r.z - zbar), 0) / n, ewdz = rows.reduce((a, r) => a + (r.w > 0 ? r.w * (r.zOff - r.z) : 0), 0) / n;
+  const cov = rows.reduce((a, r) => a + (r.w - wbar) * (r.z - zbar), 0) / n,
+    ewdz = rows.reduce((a, r) => a + (r.w > 0 ? r.w * (r.zOff - r.z) : 0), 0) / n;
   const zOffBar = rows.reduce((a, r) => a + (r.w > 0 ? r.w * r.zOff : 0), 0) / (n * wbar); // offspring mean, each child once per parent
-  return { n, wbar, zbar, dz: zOffBar - zbar, selection: cov / wbar, transmission: ewdz / wbar, check: zOffBar - zbar - (cov + ewdz) / wbar };
+  return {
+    n,
+    wbar,
+    zbar,
+    dz: zOffBar - zbar,
+    selection: cov / wbar,
+    transmission: ewdz / wbar,
+    check: zOffBar - zbar - (cov + ewdz) / wbar,
+  };
 }
 // The traits a person carries from birth: mind (0-1) and body factors (multipliers about 1)
 export const TRAITS = [...MIND_KEYS.map(k => ['mind', k]), ['f', 'mass'], ['f', 'fat'], ['f', 'bmr'], ['f', 'speed']];
@@ -23,8 +35,19 @@ export function priceOfWorld(s, t0, t1 = s.tick, minAge = 15) {
   const Y = clockOf(s).year;
   const alive0 = s.people.filter(p => p.born <= t0 - minAge * Y && (p.alive || p.death.t > t0));
   const kids = new Map(alive0.map(p => [p.id, []]));
-  for (const c of s.people) if (c.born > t0 && c.born <= t1) for (const id of [c.mother, c.father]) kids.get(id)?.push(c);
+  for (const c of s.people)
+    if (c.born > t0 && c.born <= t1) for (const id of [c.mother, c.father]) kids.get(id)?.push(c);
   const out = {};
-  for (const tr of TRAITS) out[tr.join('.')] = price(alive0.map(p => { const ks = kids.get(p.id); return { z: traitOf(p, tr), w: ks.length, zOff: ks.length ? ks.reduce((a, c) => a + traitOf(c, tr), 0) / ks.length : 0 }; }));
+  for (const tr of TRAITS)
+    out[tr.join('.')] = price(
+      alive0.map(p => {
+        const ks = kids.get(p.id);
+        return {
+          z: traitOf(p, tr),
+          w: ks.length,
+          zOff: ks.length ? ks.reduce((a, c) => a + traitOf(c, tr), 0) / ks.length : 0,
+        };
+      }),
+    );
   return out;
 }
