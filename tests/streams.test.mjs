@@ -2,9 +2,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { STREAMS } from '../dist/sim.js';
-import { createEden, edenStep } from '../dist/eden.js';
-import { setDefaultClock } from '../dist/clock.js';
+import { STREAMS } from '../dist/frozen/sim.js';
+import { createEden, edenStep } from '../dist/frozen/eden.js';
+import { setDefaultClock } from '../dist/frozen/clock.js';
 setDefaultClock('legacy'); // these tests pin the original (pre-17 Nov) behaviour; tests/clock.test.mjs covers the real clock
 
 const span = ([lo, hi]) => hi - lo;
@@ -58,8 +58,8 @@ function saltArgs(src, name, index) {
 const SALT = /^(?:salt|STREAMS\.\w+\[0\](?:\s*\+\s*(?:i(?:\s*-\s*1)?|\d+))?)$/;
 
 test('S2 every simulation draw takes its salt from STREAMS', () => {
-  const sim = fs.readFileSync(new URL('../dist/sim.js', import.meta.url), 'utf8');
-  const eden = fs.readFileSync(new URL('../dist/eden.js', import.meta.url), 'utf8');
+  const sim = fs.readFileSync(new URL('../dist/frozen/sim.js', import.meta.url), 'utf8');
+  const eden = fs.readFileSync(new URL('../dist/frozen/eden.js', import.meta.url), 'utf8');
   const used = [
     ...saltArgs(sim, 'draw', 3),
     ...saltArgs(sim, 'noise2', 3),

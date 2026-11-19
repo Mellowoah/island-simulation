@@ -1,4 +1,4 @@
-name: Publish Island (live site from main)
+name: Publish Island: the small world (live site from main)
 # The live site is main: every merge to main publishes it. Design branches no longer publish over it
 # (before 19 Nov 2026 only design/lab-visual-polish did, so merges to main never reached the site).
 on:
@@ -26,7 +26,7 @@ jobs:
         run: |
           mkdir -p _site
           cp -R dist/. _site/
-          cp dist/home.html _site/index.html   # the home screen: small world first, Eden lab, first Lab
+          cp dist/world.html _site/index.html   # the small world is the app; frozen test worlds live under /frozen/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site

@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createEden, edenStep, EDEN_DEFAULTS } from '../dist/eden.js';
-import { noise2, seedKey, STREAMS, clamp } from '../dist/sim.js';
-import { LAYERS, KINDS, SOURCE, TEMPERAMENT, HUMAN_ATTRIBUTES, CHANNELS, temperament, plasticity, attributesOf, beingsOf } from '../dist/being.js';
+import { createEden, edenStep, EDEN_DEFAULTS } from '../dist/frozen/eden.js';
+import { noise2, seedKey, STREAMS, clamp } from '../dist/frozen/sim.js';
+import { LAYERS, KINDS, SOURCE, TEMPERAMENT, HUMAN_ATTRIBUTES, CHANNELS, temperament, plasticity, attributesOf, beingsOf } from '../dist/frozen/being.js';
 
 const strip = w => JSON.parse(JSON.stringify(w));
 
@@ -80,10 +80,10 @@ test('A6 layers of existence: each kind holds the layers below it, spirit has no
   assert.equal(EDEN_DEFAULTS.tempters, 0);
 });
 
-import { develop, DEV, developmentSummary, traitsNow } from '../dist/being.js';
-import { normalizeSetup } from '../dist/lab16-setup.js';
-import { runToEnd } from '../dist/lab16-run.js';
-import { summarizeEden, buildEdenReport, reportMarkdown, twinSetups } from '../dist/lab16-report.js';
+import { develop, DEV, developmentSummary, traitsNow } from '../dist/frozen/being.js';
+import { normalizeSetup } from '../dist/frozen/lab16-setup.js';
+import { runToEnd } from '../dist/frozen/lab16-run.js';
+import { summarizeEden, buildEdenReport, reportMarkdown, twinSetups } from '../dist/frozen/lab16-report.js';
 
 test('D2 development off is the original world; on, the same seed gives the same history', () => {
   assert.equal(EDEN_DEFAULTS.traitDevelopment, false);
@@ -132,8 +132,8 @@ test('D5 the report describes development only when it is on', () => {
   assert.equal(normalizeSetup({ world: 'lab', traitDev: true }).traitDev, false);
 });
 
-import { LIFE_STAGES, LIFE, lifeStage, wakeDrain, healFactor, illnessFactor, ageHazard, pregnancyExtra } from '../dist/being.js';
-import { DEFAULTS } from '../dist/sim.js';
+import { LIFE_STAGES, LIFE, lifeStage, wakeDrain, healFactor, illnessFactor, ageHazard, pregnancyExtra } from '../dist/frozen/being.js';
+import { DEFAULTS } from '../dist/frozen/sim.js';
 
 test('L1 the body changing with age is off by default, and off is the original world', () => {
   assert.equal(EDEN_DEFAULTS.lifeCourse, false);
@@ -197,7 +197,7 @@ test('L5 rest shares by stage come close to real sleep shares, and the report sh
   assert.equal(normalizeSetup({ world: 'lab', lifeCourse: true }).lifeCourse, false);
 });
 
-import { createRun, stepRun, LIFE_SNAP_KEYS } from '../dist/lab16-run.js';
+import { createRun, stepRun, LIFE_SNAP_KEYS } from '../dist/frozen/lab16-run.js';
 
 test('S1 the deceiver can be switched off: no one is tempted, no fall, and on is the original world', () => {
   assert.equal(EDEN_DEFAULTS.serpent, true);
@@ -228,8 +228,8 @@ test('S2 the life record follows every creature without touching the world', () 
   function c0(w) { return w.creatures[0].memories.length; }
 });
 
-import { registerMap, MAPS, path as findPath, onLand, mapOf } from '../dist/sim.js';
-import { setDefaultClock } from '../dist/clock.js';
+import { registerMap, MAPS, path as findPath, onLand, mapOf } from '../dist/frozen/sim.js';
+import { setDefaultClock } from '../dist/frozen/clock.js';
 setDefaultClock('legacy'); // these tests pin the original (pre-17 Nov) behaviour; tests/clock.test.mjs covers the real clock
 
 test('M1 a world can name its own map; with none it is the original island, unchanged', () => {

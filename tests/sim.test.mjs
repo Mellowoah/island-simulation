@@ -1,5 +1,5 @@
-import test from'node:test';import assert from'node:assert/strict';import{createWorld,step,command,metrics,serialize,deserialize,path}from'../dist/sim.js';
-import { setDefaultClock } from '../dist/clock.js';
+import test from'node:test';import assert from'node:assert/strict';import{createWorld,step,command,metrics,serialize,deserialize,path}from'../dist/frozen/sim.js';
+import { setDefaultClock } from '../dist/frozen/clock.js';
 setDefaultClock('legacy'); // these tests pin the original (pre-17 Nov) behaviour; tests/clock.test.mjs covers the real clock
 test('repeatability and mid-action save restore',()=>{const a=createWorld(41);step(a,137);const b=deserialize(serialize(a));step(a,333);step(b,333);assert.equal(serialize(a),serialize(b));});
 test('food accounting reconciles',()=>{const s=createWorld(55);command(s,{type:'food',x:13,y:13});step(s,4000);const l=s.ledger;assert.ok(Math.abs(l.initial+l.regenerated+l.gifted-l.consumed-s.patches.reduce((a,p)=>a+p.stock,0))<1e-6);assert.ok(l.consumed>0);assert.ok(s.patches.every(p=>p.stock>=0));});

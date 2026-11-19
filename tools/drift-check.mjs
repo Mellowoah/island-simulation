@@ -3,8 +3,8 @@
 // reporting rules, and flags code changes that the theory/decision docs have not caught up with.
 // Usage: node tools/drift-check.mjs   (exit code 1 if anything drifted)
 import { execSync } from 'node:child_process';
-import { createWorld, step, metrics, DAY } from '../dist/sim.js';
-import { createEden, edenStep, edenMetrics, EDEN_DEFAULTS } from '../dist/eden.js';
+import { createWorld, step, metrics, DAY } from '../dist/frozen/sim.js';
+import { createEden, edenStep, edenMetrics, EDEN_DEFAULTS } from '../dist/frozen/eden.js';
 
 const out = [];
 const check = (id, statement, ok, detail = '') => out.push({ id, statement, ok: !!ok, detail });
@@ -33,7 +33,7 @@ const iv = edenMetrics(e).birthIntervals, mean = iv.length ? iv.reduce((a, b) =>
 check(10, 'Reproduction stays within natural-fertility statistics', EDEN_DEFAULTS.fecundability >= 0.15 && EDEN_DEFAULTS.fecundability <= 0.25 && EDEN_DEFAULTS.menarche === 15 && EDEN_DEFAULTS.menopause === 40 && (iv.length === 0 || mean >= EDEN_DEFAULTS.gestation + EDEN_DEFAULTS.postpartum), iv.length ? `mean birth interval ${mean.toFixed(2)} y` : 'no intervals yet');
 for (const s of all) { const l = s.ledger; check('L', 'Food ledger reconciles (Eden)', Math.abs(l.initial + l.regenerated + l.gifted - l.consumed - (l.withdrawn ?? 0) - (l.decayed ?? 0) - metrics(s).food) < 1e-6 * Math.max(1, l.initial + l.regenerated)); } // real clock: rotted food is booked as decayed
 
-const { senseRadius } = await import('../dist/eden.js');
+const { senseRadius } = await import('../dist/frozen/eden.js');
 { const t = createEden(41), c = t.creatures[0], full = t.config.perception; if (t.clock) t.tick = 6; /* real clock: noon, not night */ const o = c.energy; c.energy = 5; const low = senseRadius(t, c); c.energy = o;
   check(11, 'Senses depend on condition (maintain senses and life)', senseRadius(t, c) === full && low < full && low >= 1, `well ${full}, exhausted ${low}`); }
 check(12, 'Creator never overrules a choice that already meets a real need', all.every(s => s.creatures.every(c => !(c.decision?.guided && c.decision.guided.intended === 'drink' && c.decision.thirst >= s.eden.config.thirstGuide))));
@@ -60,9 +60,9 @@ check('I2', 'Island: new worlds use decorrelated randomness', createWorld(41).rn
 // Documentation freshness: Eden code must not change after THEORY-CHECK without the doc being updated.
 try {
   const last = f => Number(execSync(`git log -1 --format=%ct -- ${f}`, { encoding: 'utf8' }).trim() || 0);
-  const dirty = execSync('git status --porcelain dist/eden.js docs/THEORY-CHECK.md', { encoding: 'utf8' });
-  const edenNewer = last('dist/eden.js') > last('docs/THEORY-CHECK.md') || (/eden\.js/.test(dirty) && !/THEORY-CHECK/.test(dirty));
-  check('D', 'THEORY-CHECK.md updated with every Eden code change', !edenNewer, edenNewer ? 'dist/eden.js changed after docs/THEORY-CHECK.md' : '');
+  const dirty = execSync('git status --porcelain dist/frozen/eden.js docs/THEORY-CHECK.md', { encoding: 'utf8' });
+  const edenNewer = last('dist/frozen/eden.js') > last('docs/THEORY-CHECK.md') || (/eden\.js/.test(dirty) && !/THEORY-CHECK/.test(dirty));
+  check('D', 'THEORY-CHECK.md updated with every Eden code change', !edenNewer, edenNewer ? 'dist/frozen/eden.js changed after docs/THEORY-CHECK.md' : '');
 } catch { check('D', 'THEORY-CHECK.md freshness (git unavailable)', true, 'skipped'); }
 
 let failed = 0;

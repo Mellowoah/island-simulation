@@ -1,19 +1,19 @@
 // Island Lab 16-bit: setup config, run driver, report numbers and the renderer's read-only rule.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DAY } from '../dist/sim.js';
-import { createEden, edenStep, edenMetrics, EDEN_DEFAULTS } from '../dist/eden.js';
-import { createLab, labStep, labMetrics, serializeLab, deserializeLab } from '../dist/lab.js';
-import { SETUP_FIELDS, THEORY, PROPOSED, normalizeSetup, defaultSetup, fieldsFor, HELP } from '../dist/lab16-setup.js';
-import { createRun, stepRun, runToEnd, serializeRun, restoreTheoryRun, restoreLabRun, seriesOf, habitSpread, giftEaten, LAB_SAVE_KEY } from '../dist/lab16-run.js';
-import { summarizeEden, summarizeLab, judge, predictionsEden, buildEdenReport, buildLabReport, reportMarkdown, reportHTML, twinSetups, MARGIN } from '../dist/lab16-report.js';
-import { viewOfEden, viewOfLab } from '../dist/lab16-view.js';
-import { createPixelRenderer } from '../dist/lab16-render.js';
-import { paired, batchVerdict, batchSeeds, batchEden, batchLab, batchMarkdown, batchHTML, t95 } from '../dist/lab16-batch.js';
-import { barSample, hardshipEden, BAR_MARGIN } from '../dist/lab16-run.js';
-import { led } from '../dist/eden.js';
-import { niceMax, drawLineChart, chartSpecs } from '../dist/lab16-charts.js';
-import { setDefaultClock } from '../dist/clock.js';
+import { DAY } from '../dist/frozen/sim.js';
+import { createEden, edenStep, edenMetrics, EDEN_DEFAULTS } from '../dist/frozen/eden.js';
+import { createLab, labStep, labMetrics, serializeLab, deserializeLab } from '../dist/frozen/lab.js';
+import { SETUP_FIELDS, THEORY, PROPOSED, normalizeSetup, defaultSetup, fieldsFor, HELP } from '../dist/frozen/lab16-setup.js';
+import { createRun, stepRun, runToEnd, serializeRun, restoreTheoryRun, restoreLabRun, seriesOf, habitSpread, giftEaten, LAB_SAVE_KEY } from '../dist/frozen/lab16-run.js';
+import { summarizeEden, summarizeLab, judge, predictionsEden, buildEdenReport, buildLabReport, reportMarkdown, reportHTML, twinSetups, MARGIN } from '../dist/frozen/lab16-report.js';
+import { viewOfEden, viewOfLab } from '../dist/frozen/lab16-view.js';
+import { createPixelRenderer } from '../dist/frozen/lab16-render.js';
+import { paired, batchVerdict, batchSeeds, batchEden, batchLab, batchMarkdown, batchHTML, t95 } from '../dist/frozen/lab16-batch.js';
+import { barSample, hardshipEden, BAR_MARGIN } from '../dist/frozen/lab16-run.js';
+import { led } from '../dist/frozen/eden.js';
+import { niceMax, drawLineChart, chartSpecs } from '../dist/frozen/lab16-charts.js';
+import { setDefaultClock } from '../dist/frozen/clock.js';
 setDefaultClock('legacy'); // these tests pin the original (pre-17 Nov) behaviour; tests/clock.test.mjs covers the real clock
 
 const fakeCtx = () => new Proxy({}, { get: (t, k) => k in t ? t[k] : (...a) => {}, set: (t, k, v) => { t[k] = v; return true; } });

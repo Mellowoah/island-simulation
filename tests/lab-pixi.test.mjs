@@ -1,10 +1,10 @@
 // Presentation helpers and Canvas fallback must not write to the world, and saves stay compatible.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createLab, labStep, labCommand, serializeLab, deserializeLab, LAB_SAVE_FORMAT } from '../dist/lab.js';
-import { createRenderer, GLYPH, SHAPES } from '../dist/lab-render.js';
-import { creaturePresentation, dayNightTint, hash } from '../dist/lab-look.js';
-import { setDefaultClock } from '../dist/clock.js';
+import { createLab, labStep, labCommand, serializeLab, deserializeLab, LAB_SAVE_FORMAT } from '../dist/frozen/lab.js';
+import { createRenderer, GLYPH, SHAPES } from '../dist/frozen/lab-render.js';
+import { creaturePresentation, dayNightTint, hash } from '../dist/frozen/lab-look.js';
+import { setDefaultClock } from '../dist/frozen/clock.js';
 setDefaultClock('legacy'); // these tests pin the original (pre-17 Nov) behaviour; tests/clock.test.mjs covers the real clock
 
 const fakeCtx = () => new Proxy({}, { get: (t, k) => k in t ? t[k] : (...a) => {}, set: (t, k, v) => { t[k] = v; return true; } });

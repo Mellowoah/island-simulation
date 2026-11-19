@@ -1,3 +1,3 @@
-import fs from'node:fs';import{runSeed,aggregate,PLAN}from'../dist/experiment.js';
+import fs from'node:fs';import{runSeed,aggregate,PLAN}from'../dist/frozen/experiment.js';
 const variants=[['baseline',{},20],['no-learning',{learning:0},20],['low-exploration',{exploration:4},20],['high-exploration',{exploration:12},20],['low-regeneration',{regenA:.144,regenB:.128},20],['high-regeneration',{regenA:.216,regenB:.192},20],['rule-policy',{policy:'rule'},20]];
 fs.mkdirSync('results',{recursive:true});const summary=[];for(const[name,config,count]of variants){const rows=[];for(let i=0;i<count;i++)rows.push(...runSeed(PLAN.seeds[i],config,false));fs.writeFileSync(`results/${name}.json`,JSON.stringify({plan:PLAN,config,seeds:PLAN.seeds.slice(0,count),rows}));const item={name,config,seeds:count,summary:aggregate(rows)};summary.push(item);console.log(name,count,'seeds completed');}fs.writeFileSync('results/summary.json',JSON.stringify(summary,null,2));

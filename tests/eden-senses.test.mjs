@@ -1,9 +1,9 @@
 // Eden step 1: senses and needs (docs/ROADMAP.md, docs/EDEN-DESIGN.md "Senses and needs").
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DAY, metrics } from '../dist/sim.js';
-import { createEden, edenStep, senseRadius } from '../dist/eden.js';
-import { setDefaultClock } from '../dist/clock.js';
+import { DAY, metrics } from '../dist/frozen/sim.js';
+import { createEden, edenStep, senseRadius } from '../dist/frozen/eden.js';
+import { setDefaultClock } from '../dist/frozen/clock.js';
 setDefaultClock('legacy'); // these tests pin the original (pre-17 Nov) behaviour; tests/clock.test.mjs covers the real clock
 
 test('Sight depends on condition: full when well, shrinking with hunger, thirst, tiredness or harm, never below 1', () => {

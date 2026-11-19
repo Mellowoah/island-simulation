@@ -2,10 +2,10 @@
 // are matched with the rates that wear it down, and energy follows one law for every body (clock.js, energy.js).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { makeClock, clockOf, hourOf, isNight, sleepTime, ticksUntilWake, dateOf, bodyRates, RATES, PAIRS, growPatch, decayFor, eatKcal, burnKcal, storedKcal, LEGACY_EDEN, LEGACY_ISLAND } from '../dist/clock.js';
-import * as EN from '../dist/energy.js';
-import { createEden, edenStep } from '../dist/eden.js';
-import { practise, forget } from '../dist/body.js';
+import { makeClock, clockOf, hourOf, isNight, sleepTime, ticksUntilWake, dateOf, bodyRates, RATES, PAIRS, growPatch, decayFor, eatKcal, burnKcal, storedKcal, LEGACY_EDEN, LEGACY_ISLAND } from '../dist/frozen/clock.js';
+import * as EN from '../dist/frozen/energy.js';
+import { createEden, edenStep } from '../dist/frozen/eden.js';
+import { practise, forget } from '../dist/frozen/body.js';
 
 const C = { ...makeClock(60), real: true };
 const near = (a, b, tol, msg) => assert.ok(Math.abs(a - b) <= tol, `${msg}: ${a} vs ${b} (±${tol})`);
@@ -54,7 +54,7 @@ test('K5 walking costs by mass moved: a mother carrying her baby pays for its we
 });
 
 // A body left without food (or water), resting: how long until the store runs out.
-import * as BODY from '../dist/body.js';
+import * as BODY from '../dist/frozen/body.js';
 test('K6 PAIR food: without food a woman lasts 30-70 days and a lean man less; without water an adult lasts 2-5 days, a baby less', () => {
   const mk = (age, sex, what) => fastDaysOn(createEden(41, {}, { clock: 'real', god: false }), age, sex, what);
   const woman = mk(30, 'F', 'food'), man = mk(30, 'M', 'food');
