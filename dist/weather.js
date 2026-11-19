@@ -8,6 +8,7 @@
 // emptied by evaporation, which follows a Hargreaves-type potential evaporation. Water holes: stores filled from their
 // catchment and emptied by evaporation. Moon and tides from their periods. Every number is in the register
 // (clock.js RATES) or marked as an assumption here; the water books must balance (weatherLedger).
+import { airDay, CLIMATE } from './atmosphere.js';
 import { R, clockOf, dateOf, hourOf } from './clock.js';
 import { noise2, seedKey, STREAMS } from './sim.js';
 import { rainOf, useWeather } from './savanna.js';
@@ -29,10 +30,7 @@ export const WET_SHARE_BY_MONTH = {
   Oct: 0.08,
 };
 // Hottest at the end of the dry season (Oct), coolest mid-year (Jul); degrees C (assumption, Eyasi basin).
-const T_MEAN_MAX = 30,
-  T_SWING = 2.5,
-  T_RANGE = 13,
-  T_WET_COOL = 3;
+// (temperatures now come from the measured climate: atmosphere.js, Layer 1)
 const MONTH_KEYS = Object.keys(WET_SHARE_BY_MONTH);
 
 // Water holes as stores (mm of water over their own area). catch: how much of the rain on its catchment reaches it
@@ -71,8 +69,8 @@ export function makeWeather(s) {
     day: -1,
     wet: false,
     rain: 0,
-    tmax: T_MEAN_MAX,
-    tmin: T_MEAN_MAX - T_RANGE,
+    tmax: CLIMATE.tmax[10], // November
+    tmin: CLIMATE.tmin[10],
     pet: 5,
     soil: 0.5 * R('soilMaxMm'),
     recent: new Float32Array(365),
@@ -125,11 +123,12 @@ export function weatherDay(s) {
   const pWet = W.wet ? pi + rho * (1 - pi) : pi * (1 - rho);
   W.wet = u(s, day, 0) < pWet;
   W.rain = W.wet ? gamma(s, day, R('rainGammaShape'), (R('rainPerWetDay') * Math.sqrt(Y)) / R('rainGammaShape')) : 0;
-  // temperature: a seasonal cycle peaking in October (frac 11.5/12), cooler on wet days, a little noise
-  const season = Math.cos(2 * Math.PI * (frac - 11.5 / 12)),
-    noise = (u(s, day, 1) + u(s, day, 2) - 1) * 2;
-  W.tmax = T_MEAN_MAX + T_SWING * season - (W.wet ? T_WET_COOL : 0) + noise;
-  W.tmin = W.tmax - T_RANGE + (W.wet ? 4 : 0);
+  // the air (Layer 1, atmosphere.js): the measured Lake Eyasi climate for the date, a persistent day-to-day
+  // anomaly, and today's rain; the world's month index counts from November, the climate's from January
+  const calMonth = (mi + 10) % 12, inMonth = frac * 12 - Math.floor(frac * 12);
+  W.air = airDay(W.air ?? null, W.wet, pi, calMonth, inMonth, k => u(s, day, k));
+  W.tmax = W.air.tmax;
+  W.tmin = W.air.tmin;
   // potential evaporation, mm/day (Hargreaves form: 0.0023 Ra (Tmean + 17.8) sqrt(Tmax - Tmin), Ra ~ 15 mm/day
   // near the equator); about 5-6 mm/day here, as measured for East African savanna
   const tmean = (W.tmax + W.tmin) / 2;
