@@ -1,8 +1,0 @@
-Lab first look: seeds 61-80, 3 days, default settings. Descriptive only; no prediction was written before this run.
-base     alive 23.8 | knowledge spread 87% | mean trust 51.9 | messages 1159 | false told 0 | proved false 0.0
-noComm   alive 23.9 | knowledge spread 78% | mean trust 50.0 | messages 0 | false told 0 | proved false 0.0
-false25  alive 23.9 | knowledge spread 84% | mean trust 45.2 | messages 1139 | false told 316 | proved false 127.8
-knowledge spread, communication on - off: +9.67 ± 2.31 points
-alive, 25% false - 0%: +0.10 ± 0.37
-mean trust, 25% false - 0%: -6.64 ± 0.39
-real	0m44.584s

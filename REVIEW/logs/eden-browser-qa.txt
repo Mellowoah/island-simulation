@@ -1,8 +1,0 @@
-PASS  Eden dialog explains the world and offers entry
-PASS  entering Eden shows guided phase — Eden · guided by the Creator · 13% of choices led · 1 times at the tree, no one has eaten · 24 living · 0 born
-PASS  Eden button becomes Leave Eden; powers disabled
-PASS  inspector shows sex, age, curiosity, serpent and guidance — Food sources known: 1 / 2 | Gathering skill: berries 1% · roots 0% | Female · age 18 | Sight 4 tiles · water known: 1/3 | Curiosity 65% · heard the serpent 1× · belief in its claim 15% | Warning remembered: yes · led by the Creator 7×
-PASS  inspector can show a choice the Creator overrode
-PASS  Save is blocked inside Eden
-PASS  Leave Eden returns to the island — D1 · 00:11 vs D1 · 00:11
-PASS  no page errors — none
