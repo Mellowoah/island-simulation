@@ -1,39 +1,702 @@
-import{W,H,land,noise,createWorld,step,command,metrics,serialize,deserialize,DEFAULTS,clamp}from'./sim.js';import{createEden,edenStep,edenMetrics}from'./eden.js';
-const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let world=createWorld(41),selected=0,paused=false,speed=1,giving=false,zoom=1,pan={x:0,y:0},previousWorld=null,labResult=null,worker=null,lastUI=0;
-const canvas=$('world'),ctx=canvas.getContext('2d'),pc=$('portrait').getContext('2d');let cw=0,ch=0,scale=1,ox=0,oy=0;
-const palette=['#e8bd83','#c9b5ea','#b7d49c','#e3a49a','#a4cbe0','#e7d794'];
-function toast(s){$('toast').textContent=s;$('toast').classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>$('toast').classList.remove('show'),3500);}
-function clock(t){return`D${Math.floor(t/1440)+1} · ${String(Math.floor(t%1440/60)).padStart(2,'0')}:${String(t%60).padStart(2,'0')}`;}
-function apply(c){try{command(world,c);update();}catch(e){toast(e.message);}}
-function setPaused(v){paused=v;$('pause').textContent=v?'▶':'Ⅱ';$('pause').ariaLabel=v?'Resume simulation':'Pause simulation';$('status').textContent=v?'PAUSED':'LIVE';}
-const INSPECTING='Viewing another world (an experiment branch or Eden). Return to your island first.';function save(key='island-save'){if(previousWorld){if(key==='island-save')toast(INSPECTING);return false;}try{localStorage.setItem(key,serialize(world));$('saved').textContent='Saved · '+clock(world.tick);return true;}catch{toast('Browser save failed. Export a backup.');return false;}}
-function download(name,text,type='application/json'){const a=document.createElement('a'),url=URL.createObjectURL(new Blob([text],{type}));a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
-function loadText(text){const next=deserialize(text);world=next;selected=0;setPaused(true);update();toast('World restored and paused.');}
-function resize(){const r=canvas.getBoundingClientRect();cw=Math.round(r.width);ch=Math.round(r.height);const dpr=Math.min(2,devicePixelRatio||1);canvas.width=cw*dpr;canvas.height=ch*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.imageSmoothingEnabled=false;}
+import {
+  W,
+  H,
+  land,
+  noise,
+  createWorld,
+  step,
+  command,
+  metrics,
+  serialize,
+  deserialize,
+  DEFAULTS,
+  clamp,
+} from './sim.js';
+import { createEden, edenStep, edenMetrics } from './eden.js';
+const $ = id => document.getElementById(id),
+  esc = s =>
+    String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+let world = createWorld(41),
+  selected = 0,
+  paused = false,
+  speed = 1,
+  giving = false,
+  zoom = 1,
+  pan = { x: 0, y: 0 },
+  previousWorld = null,
+  labResult = null,
+  worker = null,
+  lastUI = 0;
+const canvas = $('world'),
+  ctx = canvas.getContext('2d'),
+  pc = $('portrait').getContext('2d');
+let cw = 0,
+  ch = 0,
+  scale = 1,
+  ox = 0,
+  oy = 0;
+const palette = ['#e8bd83', '#c9b5ea', '#b7d49c', '#e3a49a', '#a4cbe0', '#e7d794'];
+function toast(s) {
+  $('toast').textContent = s;
+  $('toast').classList.add('show');
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => $('toast').classList.remove('show'), 3500);
+}
+function clock(t) {
+  return `D${Math.floor(t / 1440) + 1} · ${String(Math.floor((t % 1440) / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
+}
+function apply(c) {
+  try {
+    command(world, c);
+    update();
+  } catch (e) {
+    toast(e.message);
+  }
+}
+function setPaused(v) {
+  paused = v;
+  $('pause').textContent = v ? '▶' : 'Ⅱ';
+  $('pause').ariaLabel = v ? 'Resume simulation' : 'Pause simulation';
+  $('status').textContent = v ? 'PAUSED' : 'LIVE';
+}
+const INSPECTING = 'Viewing another world (an experiment branch or Eden). Return to your island first.';
+function save(key = 'island-save') {
+  if (previousWorld) {
+    if (key === 'island-save') toast(INSPECTING);
+    return false;
+  }
+  try {
+    localStorage.setItem(key, serialize(world));
+    $('saved').textContent = 'Saved · ' + clock(world.tick);
+    return true;
+  } catch {
+    toast('Browser save failed. Export a backup.');
+    return false;
+  }
+}
+function download(name, text, type = 'application/json') {
+  const a = document.createElement('a'),
+    url = URL.createObjectURL(new Blob([text], { type }));
+  a.href = url;
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function loadText(text) {
+  const next = deserialize(text);
+  world = next;
+  selected = 0;
+  setPaused(true);
+  update();
+  toast('World restored and paused.');
+}
+function resize() {
+  const r = canvas.getBoundingClientRect();
+  cw = Math.round(r.width);
+  ch = Math.round(r.height);
+  const dpr = Math.min(2, devicePixelRatio || 1);
+  canvas.width = cw * dpr;
+  canvas.height = ch * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.imageSmoothingEnabled = false;
+}
 new ResizeObserver(resize).observe(canvas);
-function sprite(c,x,y,g=ctx,size=1,bob=0){g.save();g.translate(Math.round(x),Math.round(y+bob));g.scale(size,size);g.fillStyle='#253e35';g.fillRect(-5,4,11,3);g.fillStyle=c.alive?palette[c.id%palette.length]:'#7b8782';g.fillRect(-4,-7,8,11);g.fillRect(-5,-4,10,6);g.fillRect(-3,4,2,3);g.fillRect(2,4,2,3);g.fillRect(-3,-9,2,3);const ears=Math.floor(c.id/6)%4;if(ears===0||ears===3)g.fillRect(2,-9,2,3);if(ears===1||ears===3)g.fillRect(-1,-10,2,3);g.fillStyle='#172c31';g.fillRect(-2,-4,1,2);g.fillRect(2,-4,1,2);if(!c.alive){g.fillRect(-3,-5,3,1);g.fillRect(1,-5,3,1);}g.restore();}
-function tree(x,y,fruit=false){ctx.fillStyle='#705943';ctx.fillRect(x-1,y-3,3,9);ctx.fillStyle='#385f43';ctx.fillRect(x-8,y-13,16,10);ctx.fillStyle='#4e7b4a';ctx.fillRect(x-6,y-18,12,15);ctx.fillStyle='#6a9455';ctx.fillRect(x-3,y-19,7,5);if(fruit){ctx.fillStyle='#e8bf79';for(const[a,b]of[[-4,-10],[3,-13],[4,-5]])ctx.fillRect(x+a,y+b,2,2);}}
-function draw(now){if(!cw)return;ctx.clearRect(0,0,cw,ch);ctx.fillStyle='#1b3e4b';ctx.fillRect(0,0,cw,ch);scale=Math.min(cw/(W*12),ch/(H*12))*zoom;ox=(cw-W*12*scale)/2+pan.x;oy=(ch-H*12*scale)/2+pan.y;ctx.save();ctx.translate(ox,oy);ctx.scale(scale,scale);for(let y=-10;y<H+10;y++)for(let x=-10;x<W+10;x++){ctx.fillStyle= noise(3,x,y)>.6?'#214754':'#1d414f';ctx.fillRect(x*12,y*12,12,12);if(noise(9,x,y)>.85){ctx.fillStyle='#315766';ctx.fillRect(x*12+(paused?0:Math.floor(now/600)%3),y*12+6,5,1);}}
- for(let y=0;y<H;y++)for(let x=0;x<W;x++){if(!land(x,y,world.bridge))continue;const edge=[[1,0],[-1,0],[0,1],[0,-1]].some(([a,b])=>!land(x+a,y+b,world.bridge));ctx.fillStyle=edge?'#c5b980':['#6c8e58','#72945c','#688754'][Math.floor(noise(5,x,y)*3)];ctx.fillRect(x*12,y*12,12,12);if(!edge&&noise(17,x,y)>.5){ctx.fillStyle='#91aa6c';ctx.fillRect(x*12+3,y*12+4,1,3);ctx.fillRect(x*12+4,y*12+3,1,2);}}
- if(world.bridge){ctx.fillStyle='#b89a6a';ctx.fillRect(17*12,13*12,36,12);ctx.fillStyle='#765d43';for(let x=17*12;x<20*12;x+=4)ctx.fillRect(x,13*12,1,12);}else{ctx.fillStyle='#aa926b';ctx.fillRect(17*12+8,13*12,4,12);ctx.fillRect(19*12,13*12,4,12);}
- for(const[x,y]of[[6,8],[8,7],[11,7],[7,11],[9,12],[13,6],[14,8],[25,7],[28,9],[29,17],[26,18],[10,18],[7,17]])tree(x*12+6,y*12+6);
- for(const p of world.patches){const x=p.x*12+6,y=p.y*12+6;if(!p.gift){if(p.field){ctx.fillStyle='#6b4f33';ctx.fillRect(x-6,y-5,12,11);ctx.fillStyle=world.tick>=p.readyTick&&p.stock>0?'#c8d27a':'#8a6a45';for(let i=-4;i<5;i+=4)ctx.fillRect(x+i,y-4,1,9);}else if(p.id==='a')tree(x,y,true);else{ctx.fillStyle='#526f44';ctx.fillRect(x-7,y-5,14,11);ctx.fillStyle='#bad17d';for(let i=-5;i<7;i+=4){ctx.fillRect(x+i,y-5,2,8);ctx.fillRect(x+i-1,y-3,4,2);}}ctx.fillStyle='#142b30cc';ctx.fillRect(x-24,y+11,49,13);ctx.fillStyle='#e3e8cb';ctx.font='7px system-ui';ctx.textAlign='center';if(!p.field)ctx.fillText(p.name,x,y+20);}else if(p.stock>0){ctx.fillStyle='#e7bb77';ctx.fillRect(x-4,y-3,4,4);ctx.fillRect(x+1,y,4,4);ctx.fillRect(x-3,y+3,3,3);}}
- if(world.mode==='eden'){for(const w of world.eden.springs){const x=w.x*12,y=w.y*12;ctx.fillStyle='#3b84b8';ctx.fillRect(x+1,y+2,10,8);ctx.fillStyle='#8fd0f0';ctx.fillRect(x+3,y+4,4,1);ctx.fillRect(x+5,y+7,4,1);ctx.fillStyle='#142b30cc';ctx.fillRect(x-14,y+12,40,11);ctx.fillStyle='#cfe8f6';ctx.font='6px system-ui';ctx.textAlign='center';ctx.fillText(w.name,x+6,y+20);}}
- if(world.mode==='eden'){const E=world.eden,x=E.tree.x*12+6,y=E.tree.y*12+6;ctx.fillStyle='#5b3e2b';ctx.fillRect(x-2,y-4,4,11);ctx.fillStyle='#2f5a3a';ctx.fillRect(x-10,y-17,20,14);ctx.fillStyle='#3f7a46';ctx.fillRect(x-7,y-21,14,18);ctx.fillStyle='#d9534f';for(const[a,b]of[[-6,-12],[4,-15],[5,-7],[-3,-6],[0,-18]])ctx.fillRect(x+a,y+b,2,2);if(E.phase==='released'||(E.serpentSpoke&&world.tick-E.serpentSpoke.tick<90)){ctx.fillStyle='#7fbf4d';for(const[a,b]of[[7,-2],[8,-3],[9,-2],[10,-1],[11,-2],[12,-3]])ctx.fillRect(x+a,y+b,1,2);}ctx.fillStyle='#142b30cc';ctx.fillRect(x-30,y+11,61,13);ctx.fillStyle='#f0c9c4';ctx.font='7px system-ui';ctx.textAlign='center';ctx.fillText('Tree of knowledge',x,y+20);}
- for(const c of [...world.creatures].sort((a,b)=>a.y-b.y)){sprite(c,c.x*12+6,c.y*12+6,ctx,c.eden&&world.tick-c.eden.born<15*1440?.45:.7,paused||!c.alive?0:Math.sin(now/140+c.id)*.6);if(c.id===selected){ctx.strokeStyle='#ffe0a1';ctx.lineWidth=1;ctx.strokeRect(c.x*12-1,c.y*12-3,14,17);ctx.fillStyle='#152e36';ctx.fillRect(c.x*12-9,c.y*12-17,32,11);ctx.fillStyle='#efe2c0';ctx.textAlign='center';ctx.font='8px system-ui';ctx.fillText(c.name,c.x*12+6,c.y*12-9);}}
- ctx.restore();}
-function update(){const m=metrics(world),c=world.creatures[selected];$('clock').textContent=world.mode==='eden'?`YEAR ${Math.floor(world.tick/1440)+1}`:clock(world.tick);$('seedlabel').textContent='SEED '+world.seed;$('alive').textContent=m.alive+' / '+world.creatures.length;$('hunger').textContent=m.medianHunger===null?'—':Math.round(m.medianHunger)+' / 100';$('food').textContent=Math.round(m.food);$('known').textContent=m.knownSources.toFixed(1)+' / creature';$('name').textContent=c.name;$('identity').textContent='Creature '+String(c.id+1).padStart(2,'0')+(c.alive?' · living':' · deceased');$('action').textContent=c.alive?({gather:'Seeking / gathering food',explore:'Exploring the island',rest:'Resting to recover energy',cultivate:'Tilling a field',drink:'Going to water / drinking',craft:'Making '+(c.action?.item==='tool'?'a tool':'clothing')}[c.action?.type]??'Observing nearby ground'):'Died · '+clock(c.death.tick);$('needs').innerHTML=[['Hunger',c.hunger,''],['Energy',c.energy,'energy'],...(c.eden?[['Thirst',c.eden.thirst,''],['Health',c.eden.health,'energy']]:[])].map(([l,v,k])=>`<div class="meterlabel"><span>${l}</span><span>${Math.round(v)} / 100</span></div><div class="meter ${k}"><div style="width:${v}%"></div></div>`).join('');$('knowledge').innerHTML=`Food sources known: <b>${['a','b'].filter(k=>c.known[k]).length} / 2</b><br>Gathering skill: berries ${Math.round(c.skills.a*100)}% · roots ${Math.round(c.skills.b*100)}%`+(c.eden?`<br>${c.eden.sex==='F'?'Female':'Male'} · age ${Math.floor((world.tick-c.eden.born)/1440)}${c.eden.mother!==null?` · child of ${esc(world.creatures[c.eden.mother].name)} and ${esc(world.creatures[c.eden.father].name)}`:''}${c.eden.children.length?` · ${c.eden.children.length} child${c.eden.children.length>1?'ren':''}`:''}${c.eden.pregnant?' · expecting':''}<br>Sight ${c.eden.sight} tiles · water known: ${Object.keys(c.eden.water).length}/${world.eden.springs.length}<br>Curiosity ${Math.round(c.eden.curiosity*100)}% · heard the serpent ${c.eden.hearings}× · belief in its claim ${Math.round(c.eden.credence*100)}%<br>Warning remembered: ${c.eden.warning?'yes':'no'} · led by the Creator ${c.eden.guided}×${c.eden.clothed?' · clothed':''}${c.eden.tool?' · has a tool':''}`:'');
- const d=c.decision;$('decision').innerHTML=d?`<p class="muted">At ${clock(d.tick)} · hunger ${d.hunger.toFixed(1)} · energy ${d.energy.toFixed(1)}${d.emergency?' · emergency rest override':''}</p>`+(d.guided?`<p class="green">Its own choice: ${esc(d.guided.intended)}. ${esc(d.guided.reason)} This was not its own decision.</p>`:d.tree?`<p class="green">At the tree it chose: ${esc(d.selected)} (chance ${(d.tree.P*100).toFixed(1)}%, its draw ${d.tree.draw.toFixed(3)}).</p>`:d.own?'<p class="muted">Its own choice; no one leads it now.</p>':'')+d.options.map(o=>`<div class="option"><b>${o.type===d.selected&&(o.patch??null)===d.patch?'→ ':''}${esc(o.type)}${o.patch?' · '+esc(world.patches.find(p=>p.id===o.patch)?.name):''}</b> ${o.score.toFixed(1)}<span>${esc(o.reason)}</span></div>`).join(''):'<p class="muted">The first decision has not occurred yet.</p>';$('memories').innerHTML=c.memories.slice(-4).reverse().map(e=>`<div class="memory"><time>${clock(e.tick)}</time>${esc(e.text)}</div>`).join('')||'<p class="muted">No recorded experiences yet.</p>';$('events').innerHTML=world.events.slice(-4).reverse().map(e=>`<div class="event"><time>${clock(e.tick)}</time><span>${esc(e.text)}</span></div>`).join('');$('bridge').disabled=world.bridge;$('reveal').disabled=!c.alive||world.mode==='eden';$('give').disabled=world.mode==='eden';$('bridge').disabled=world.bridge||world.mode==='eden';$('eden').textContent=world.mode==='eden'?'Leave Eden':'Eden';if(world.mode==='eden'){const em=edenMetrics(world);$('hint').textContent=em.phase==='guided'?`Eden · guided by the Creator · ${Math.round(em.guidedShare*100)}% of choices led · ${em.deliberations} times at the tree, no one has eaten · ${em.population} living · ${em.births} born`:`Eden · released ${clock(em.fallTick)} by ${world.creatures[em.firstEater].name} · ${em.population} living · ${em.births} born · ${em.deaths} died · fields ${em.fields}`;}pc.clearRect(0,0,48,48);sprite(c,24,28,pc,2);}
-$('pause').onclick=()=>setPaused(!paused);$('speed').onclick=()=>{speed=speed===1?4:1;$('speed').textContent=speed+'×';};$('fit').onclick=()=>{zoom=1;pan={x:0,y:0};};$('plus').onclick=()=>zoom=clamp(zoom*1.25,1,3);$('minus').onclick=()=>{zoom=clamp(zoom/1.25,1,3);if(zoom===1)pan={x:0,y:0};};$('next').onclick=()=>{selected=(selected+1)%world.creatures.length;update();};$('give').onclick=()=>{giving=!giving;$('give').classList.toggle('active',giving);$('hint').textContent=giving?'Tap dry land to place 40 food. Tap the button to cancel.':'Tap a creature. See the world through its eyes.';};$('bridge').onclick=()=>apply({type:'bridge'});$('reveal').onclick=()=>apply({type:'reveal',id:selected});$('save').onclick=()=>{if(save())toast('World saved. Export for a portable backup.');};$('load').onclick=()=>{if(previousWorld)return toast(INSPECTING);try{const s=localStorage.getItem('island-save');if(!s)throw Error('No saved world yet');loadText(s);}catch(e){toast(e.message);}};$('export').onclick=()=>download(previousWorld?'Island-experiment-branch.json':'Island-save.json',serialize(world));$('import').onclick=()=>previousWorld?toast(INSPECTING):$('file').click();$('file').onchange=async e=>{try{const f=e.target.files[0];if(!f)return;if(f.size>5000000)throw Error('Save too large');loadText(await f.text());}catch(e){toast(e.message);}finally{$('file').value='';}};$('reset').onclick=()=>{if(previousWorld)return toast(INSPECTING);if(!confirm('Start a fresh run? Export first if you want to keep this world.'))return;save('island-before-reset');world=createWorld(world.seed);selected=0;setPaused(true);update();};
-for(const [id,dialog]of[['help','helpDialog'],['lab','labDialog'],['model','modelDialog'],['eden','edenDialog']])$(id).onclick=()=>{setPaused(true);$(dialog).showModal();};$('eden').onclick=()=>{if(world.mode==='eden'){if(previousWorld){loadText(previousWorld);previousWorld=null;}$('hint').textContent='Tap a creature. See the world through its eyes.';return;}setPaused(true);$('edenDialog').showModal();};$('enterEden').onclick=()=>{if(!previousWorld)previousWorld=serialize(world);world=createEden(world.seed);selected=0;$('edenDialog').close();setPaused(false);update();};document.querySelectorAll('dialog .close,dialog .close-action').forEach(b=>b.onclick=()=>b.closest('dialog').close());$('config').innerHTML='<table>'+Object.entries(DEFAULTS).map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('')+'</table>';
-const pointers=new Map();let start=null,moved=false,pinch=0;
-canvas.onpointerdown=e=>{canvas.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});start={x:e.clientX,y:e.clientY};moved=false;if(pointers.size===2){const[a,b]=[...pointers.values()];pinch=Math.hypot(a.x-b.x,a.y-b.y);}};
-canvas.onpointermove=e=>{if(!pointers.has(e.pointerId))return;const old=pointers.get(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===2){const[a,b]=[...pointers.values()],dist=Math.hypot(a.x-b.x,a.y-b.y);if(pinch)zoom=clamp(zoom*dist/pinch,1,3);pinch=dist;moved=true;}else if(start&&Math.hypot(e.clientX-start.x,e.clientY-start.y)>5){pan.x+=e.clientX-old.x;pan.y+=e.clientY-old.y;moved=true;}};
-canvas.onpointerup=e=>{const tap=!moved&&pointers.size===1;pointers.delete(e.pointerId);if(!tap)return;const r=canvas.getBoundingClientRect(),x=(e.clientX-r.left-ox)/scale/12,y=(e.clientY-r.top-oy)/scale/12;if(giving){apply({type:'food',x:Math.floor(x),y:Math.floor(y)});return;}const closest=[...world.creatures].sort((a,b)=>Math.hypot(a.x+.5-x,a.y+.5-y)-Math.hypot(b.x+.5-x,b.y+.5-y))[0];if(Math.hypot(closest.x+.5-x,closest.y+.5-y)<2){selected=closest.id;update();}};canvas.onpointercancel=e=>pointers.delete(e.pointerId);canvas.onwheel=e=>{e.preventDefault();zoom=clamp(zoom*(e.deltaY<0?1.1:.9),1,3);},{passive:false};
-function endRun(){$('run').disabled=false;$('pilot').disabled=false;$('cancel').hidden=true;worker?.terminate();worker=null;}
-function run(pilot){if(worker)return;const seed=Number($('seedInput').value);if(!Number.isInteger(seed)||seed<1||seed>999999){toast('Choose a seed from 1 to 999999');return;}$('run').disabled=true;$('pilot').disabled=true;$('cancel').hidden=false;$('progress').textContent='Calculating independent worlds…';worker=new Worker('./experiment-worker.js',{type:'module'});worker.onerror=()=>{endRun();$('progress').textContent='Experiment failed. Previous results are preserved.';};worker.onmessage=({data})=>{if(data.type==='progress')$('progress').textContent=`Seed ${data.index}/${data.total} · ${data.branch} · ${data.condition}`;else if(data.type==='error'){endRun();$('progress').textContent=data.message;}else{labResult=data;endRun();$('resultsExport').disabled=false;$('progress').textContent=`Completed ${data.rows.length} branch outcomes. Calculated from model v${data.plan.version}. No winner assigned.`;renderResults();}};worker.postMessage({seed,pilot});}
-function renderResults(){const r=labResult,show=r.rows.some(x=>x.snapshot);$('results').innerHTML='<div class="tablewrap"><table><thead><tr><th>Branch / follow-up</th><th>Alive</th><th>Hunger*</th><th>Known</th><th>Gifted</th><th>Recovered</th>'+(show?'<th></th>':'')+'</tr></thead><tbody>'+r.summary.map((v,i)=>`<tr><td>${esc(v.key)}</td><td>${v.aliveMean.toFixed(1)}${v.runs>1?` (${v.aliveMin}–${v.aliveMax})`:''}</td><td>${v.hungerMean===null?'—':v.hungerMean.toFixed(1)} <small>(${v.hungerAllMean.toFixed(1)} incl. dead)</small></td><td>${v.knownMean.toFixed(1)} <small>(${v.knownAllMean.toFixed(1)} incl. dead)</small></td><td>${Math.round(v.giftedMean)}${v.giftLeftAtBranchMean?` (${Math.round(v.giftLeftAtBranchMean)} left at day 10)`:''}</td><td>${v.disturbed?v.recovered+' / '+v.runs+(v.recoveredTemporarily?` <small>(+${v.recoveredTemporarily} temporary)</small>`:''):'n/a'}</td>${show?`<td><button data-inspect="${i}">Inspect</button></td>`:''}</tr>`).join('')+'</tbody></table></div><p class="muted">*Median hunger among survivors, then in brackets with each death counted as 100; averaged across seeds when applicable. Known = food sources per survivor, then counting each death as 0. Alive range is shown for multi-seed runs. Gifted food still on the ground at day 10 stays available afterwards. Recovered = median hunger, counting each death as 100, rose above the matched no-disturbance run and then returned to its day-10 level and stayed there to day 15. Deaths can never count as recovery, and temporary dips are shown separately.</p>';$('results').querySelectorAll('[data-inspect]').forEach(b=>b.onclick=()=>{try{if(!previousWorld)previousWorld=serialize(world);const row=r.rows[Number(b.dataset.inspect)];loadText(row.snapshot);$('return').hidden=false;$('labDialog').close();$('hint').textContent=`Experiment: ${row.branch} / ${row.condition}`;}catch(e){toast(e.message);}});}
-$('run').onclick=()=>run(false);$('pilot').onclick=()=>run(true);$('cancel').onclick=()=>{endRun();$('progress').textContent='Run cancelled. Earlier completed results are preserved.';};$('resultsExport').onclick=()=>download('Island-experiment-results.json',JSON.stringify(labResult));$('return').onclick=()=>{if(previousWorld){loadText(previousWorld);previousWorld=null;$('return').hidden=true;$('labDialog').close();$('hint').textContent='Tap a creature. See the world through its eyes.';}};
-let last=performance.now(),acc=0,frames=0,fpsStart=last;
-function frame(now){const dt=Math.min(250,now-last);last=now;if(!paused&&!document.hidden){acc+=dt*speed;let n=Math.floor(acc/100);if(n){(world.mode==='eden'?edenStep:step)(world,n);acc-=n*100;}}else acc=0;draw(now);if(now-lastUI>250){update();lastUI=now;}frames++;if(now-fpsStart>2000){$('fps').textContent=Math.round(frames*1000/(now-fpsStart))+' FPS';frames=0;fpsStart=now;}requestAnimationFrame(frame);}document.addEventListener('visibilitychange',()=>{if(document.hidden){setPaused(true);save('island-autosave');}});window.addEventListener('pagehide',()=>save('island-autosave'));if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});try{const t=localStorage.getItem('island-autosave');if(t){try{world=deserialize(t);setPaused(true);$('saved').textContent='Restored · '+clock(world.tick);toast('Your island was restored, paused.');}catch{localStorage.setItem('island-autosave-rejected',t);localStorage.removeItem('island-autosave');toast('The automatic save could not be restored; a fresh island started. It was kept aside.');}}}catch{}update();requestAnimationFrame(frame);
+function sprite(c, x, y, g = ctx, size = 1, bob = 0) {
+  g.save();
+  g.translate(Math.round(x), Math.round(y + bob));
+  g.scale(size, size);
+  g.fillStyle = '#253e35';
+  g.fillRect(-5, 4, 11, 3);
+  g.fillStyle = c.alive ? palette[c.id % palette.length] : '#7b8782';
+  g.fillRect(-4, -7, 8, 11);
+  g.fillRect(-5, -4, 10, 6);
+  g.fillRect(-3, 4, 2, 3);
+  g.fillRect(2, 4, 2, 3);
+  g.fillRect(-3, -9, 2, 3);
+  const ears = Math.floor(c.id / 6) % 4;
+  if (ears === 0 || ears === 3) g.fillRect(2, -9, 2, 3);
+  if (ears === 1 || ears === 3) g.fillRect(-1, -10, 2, 3);
+  g.fillStyle = '#172c31';
+  g.fillRect(-2, -4, 1, 2);
+  g.fillRect(2, -4, 1, 2);
+  if (!c.alive) {
+    g.fillRect(-3, -5, 3, 1);
+    g.fillRect(1, -5, 3, 1);
+  }
+  g.restore();
+}
+function tree(x, y, fruit = false) {
+  ctx.fillStyle = '#705943';
+  ctx.fillRect(x - 1, y - 3, 3, 9);
+  ctx.fillStyle = '#385f43';
+  ctx.fillRect(x - 8, y - 13, 16, 10);
+  ctx.fillStyle = '#4e7b4a';
+  ctx.fillRect(x - 6, y - 18, 12, 15);
+  ctx.fillStyle = '#6a9455';
+  ctx.fillRect(x - 3, y - 19, 7, 5);
+  if (fruit) {
+    ctx.fillStyle = '#e8bf79';
+    for (const [a, b] of [
+      [-4, -10],
+      [3, -13],
+      [4, -5],
+    ])
+      ctx.fillRect(x + a, y + b, 2, 2);
+  }
+}
+function draw(now) {
+  if (!cw) return;
+  ctx.clearRect(0, 0, cw, ch);
+  ctx.fillStyle = '#1b3e4b';
+  ctx.fillRect(0, 0, cw, ch);
+  scale = Math.min(cw / (W * 12), ch / (H * 12)) * zoom;
+  ox = (cw - W * 12 * scale) / 2 + pan.x;
+  oy = (ch - H * 12 * scale) / 2 + pan.y;
+  ctx.save();
+  ctx.translate(ox, oy);
+  ctx.scale(scale, scale);
+  for (let y = -10; y < H + 10; y++)
+    for (let x = -10; x < W + 10; x++) {
+      ctx.fillStyle = noise(3, x, y) > 0.6 ? '#214754' : '#1d414f';
+      ctx.fillRect(x * 12, y * 12, 12, 12);
+      if (noise(9, x, y) > 0.85) {
+        ctx.fillStyle = '#315766';
+        ctx.fillRect(x * 12 + (paused ? 0 : Math.floor(now / 600) % 3), y * 12 + 6, 5, 1);
+      }
+    }
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++) {
+      if (!land(x, y, world.bridge)) continue;
+      const edge = [
+        [1, 0],
+        [-1, 0],
+        [0, 1],
+        [0, -1],
+      ].some(([a, b]) => !land(x + a, y + b, world.bridge));
+      ctx.fillStyle = edge ? '#c5b980' : ['#6c8e58', '#72945c', '#688754'][Math.floor(noise(5, x, y) * 3)];
+      ctx.fillRect(x * 12, y * 12, 12, 12);
+      if (!edge && noise(17, x, y) > 0.5) {
+        ctx.fillStyle = '#91aa6c';
+        ctx.fillRect(x * 12 + 3, y * 12 + 4, 1, 3);
+        ctx.fillRect(x * 12 + 4, y * 12 + 3, 1, 2);
+      }
+    }
+  if (world.bridge) {
+    ctx.fillStyle = '#b89a6a';
+    ctx.fillRect(17 * 12, 13 * 12, 36, 12);
+    ctx.fillStyle = '#765d43';
+    for (let x = 17 * 12; x < 20 * 12; x += 4) ctx.fillRect(x, 13 * 12, 1, 12);
+  } else {
+    ctx.fillStyle = '#aa926b';
+    ctx.fillRect(17 * 12 + 8, 13 * 12, 4, 12);
+    ctx.fillRect(19 * 12, 13 * 12, 4, 12);
+  }
+  for (const [x, y] of [
+    [6, 8],
+    [8, 7],
+    [11, 7],
+    [7, 11],
+    [9, 12],
+    [13, 6],
+    [14, 8],
+    [25, 7],
+    [28, 9],
+    [29, 17],
+    [26, 18],
+    [10, 18],
+    [7, 17],
+  ])
+    tree(x * 12 + 6, y * 12 + 6);
+  for (const p of world.patches) {
+    const x = p.x * 12 + 6,
+      y = p.y * 12 + 6;
+    if (!p.gift) {
+      if (p.field) {
+        ctx.fillStyle = '#6b4f33';
+        ctx.fillRect(x - 6, y - 5, 12, 11);
+        ctx.fillStyle = world.tick >= p.readyTick && p.stock > 0 ? '#c8d27a' : '#8a6a45';
+        for (let i = -4; i < 5; i += 4) ctx.fillRect(x + i, y - 4, 1, 9);
+      } else if (p.id === 'a') tree(x, y, true);
+      else {
+        ctx.fillStyle = '#526f44';
+        ctx.fillRect(x - 7, y - 5, 14, 11);
+        ctx.fillStyle = '#bad17d';
+        for (let i = -5; i < 7; i += 4) {
+          ctx.fillRect(x + i, y - 5, 2, 8);
+          ctx.fillRect(x + i - 1, y - 3, 4, 2);
+        }
+      }
+      ctx.fillStyle = '#142b30cc';
+      ctx.fillRect(x - 24, y + 11, 49, 13);
+      ctx.fillStyle = '#e3e8cb';
+      ctx.font = '7px system-ui';
+      ctx.textAlign = 'center';
+      if (!p.field) ctx.fillText(p.name, x, y + 20);
+    } else if (p.stock > 0) {
+      ctx.fillStyle = '#e7bb77';
+      ctx.fillRect(x - 4, y - 3, 4, 4);
+      ctx.fillRect(x + 1, y, 4, 4);
+      ctx.fillRect(x - 3, y + 3, 3, 3);
+    }
+  }
+  if (world.mode === 'eden') {
+    for (const w of world.eden.springs) {
+      const x = w.x * 12,
+        y = w.y * 12;
+      ctx.fillStyle = '#3b84b8';
+      ctx.fillRect(x + 1, y + 2, 10, 8);
+      ctx.fillStyle = '#8fd0f0';
+      ctx.fillRect(x + 3, y + 4, 4, 1);
+      ctx.fillRect(x + 5, y + 7, 4, 1);
+      ctx.fillStyle = '#142b30cc';
+      ctx.fillRect(x - 14, y + 12, 40, 11);
+      ctx.fillStyle = '#cfe8f6';
+      ctx.font = '6px system-ui';
+      ctx.textAlign = 'center';
+      ctx.fillText(w.name, x + 6, y + 20);
+    }
+  }
+  if (world.mode === 'eden') {
+    const E = world.eden,
+      x = E.tree.x * 12 + 6,
+      y = E.tree.y * 12 + 6;
+    ctx.fillStyle = '#5b3e2b';
+    ctx.fillRect(x - 2, y - 4, 4, 11);
+    ctx.fillStyle = '#2f5a3a';
+    ctx.fillRect(x - 10, y - 17, 20, 14);
+    ctx.fillStyle = '#3f7a46';
+    ctx.fillRect(x - 7, y - 21, 14, 18);
+    ctx.fillStyle = '#d9534f';
+    for (const [a, b] of [
+      [-6, -12],
+      [4, -15],
+      [5, -7],
+      [-3, -6],
+      [0, -18],
+    ])
+      ctx.fillRect(x + a, y + b, 2, 2);
+    if (E.phase === 'released' || (E.serpentSpoke && world.tick - E.serpentSpoke.tick < 90)) {
+      ctx.fillStyle = '#7fbf4d';
+      for (const [a, b] of [
+        [7, -2],
+        [8, -3],
+        [9, -2],
+        [10, -1],
+        [11, -2],
+        [12, -3],
+      ])
+        ctx.fillRect(x + a, y + b, 1, 2);
+    }
+    ctx.fillStyle = '#142b30cc';
+    ctx.fillRect(x - 30, y + 11, 61, 13);
+    ctx.fillStyle = '#f0c9c4';
+    ctx.font = '7px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText('Tree of knowledge', x, y + 20);
+  }
+  for (const c of [...world.creatures].sort((a, b) => a.y - b.y)) {
+    sprite(
+      c,
+      c.x * 12 + 6,
+      c.y * 12 + 6,
+      ctx,
+      c.eden && world.tick - c.eden.born < 15 * 1440 ? 0.45 : 0.7,
+      paused || !c.alive ? 0 : Math.sin(now / 140 + c.id) * 0.6,
+    );
+    if (c.id === selected) {
+      ctx.strokeStyle = '#ffe0a1';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(c.x * 12 - 1, c.y * 12 - 3, 14, 17);
+      ctx.fillStyle = '#152e36';
+      ctx.fillRect(c.x * 12 - 9, c.y * 12 - 17, 32, 11);
+      ctx.fillStyle = '#efe2c0';
+      ctx.textAlign = 'center';
+      ctx.font = '8px system-ui';
+      ctx.fillText(c.name, c.x * 12 + 6, c.y * 12 - 9);
+    }
+  }
+  ctx.restore();
+}
+function update() {
+  const m = metrics(world),
+    c = world.creatures[selected];
+  $('clock').textContent = world.mode === 'eden' ? `YEAR ${Math.floor(world.tick / 1440) + 1}` : clock(world.tick);
+  $('seedlabel').textContent = 'SEED ' + world.seed;
+  $('alive').textContent = m.alive + ' / ' + world.creatures.length;
+  $('hunger').textContent = m.medianHunger === null ? '—' : Math.round(m.medianHunger) + ' / 100';
+  $('food').textContent = Math.round(m.food);
+  $('known').textContent = m.knownSources.toFixed(1) + ' / creature';
+  $('name').textContent = c.name;
+  $('identity').textContent = 'Creature ' + String(c.id + 1).padStart(2, '0') + (c.alive ? ' · living' : ' · deceased');
+  $('action').textContent = c.alive
+    ? ({
+        gather: 'Seeking / gathering food',
+        explore: 'Exploring the island',
+        rest: 'Resting to recover energy',
+        cultivate: 'Tilling a field',
+        drink: 'Going to water / drinking',
+        craft: 'Making ' + (c.action?.item === 'tool' ? 'a tool' : 'clothing'),
+      }[c.action?.type] ?? 'Observing nearby ground')
+    : 'Died · ' + clock(c.death.tick);
+  $('needs').innerHTML = [
+    ['Hunger', c.hunger, ''],
+    ['Energy', c.energy, 'energy'],
+    ...(c.eden
+      ? [
+          ['Thirst', c.eden.thirst, ''],
+          ['Health', c.eden.health, 'energy'],
+        ]
+      : []),
+  ]
+    .map(
+      ([l, v, k]) =>
+        `<div class="meterlabel"><span>${l}</span><span>${Math.round(v)} / 100</span></div><div class="meter ${k}"><div style="width:${v}%"></div></div>`,
+    )
+    .join('');
+  $('knowledge').innerHTML =
+    `Food sources known: <b>${['a', 'b'].filter(k => c.known[k]).length} / 2</b><br>Gathering skill: berries ${Math.round(c.skills.a * 100)}% · roots ${Math.round(c.skills.b * 100)}%` +
+    (c.eden
+      ? `<br>${c.eden.sex === 'F' ? 'Female' : 'Male'} · age ${Math.floor((world.tick - c.eden.born) / 1440)}${c.eden.mother !== null ? ` · child of ${esc(world.creatures[c.eden.mother].name)} and ${esc(world.creatures[c.eden.father].name)}` : ''}${c.eden.children.length ? ` · ${c.eden.children.length} child${c.eden.children.length > 1 ? 'ren' : ''}` : ''}${c.eden.pregnant ? ' · expecting' : ''}<br>Sight ${c.eden.sight} tiles · water known: ${Object.keys(c.eden.water).length}/${world.eden.springs.length}<br>Curiosity ${Math.round(c.eden.curiosity * 100)}% · heard the serpent ${c.eden.hearings}× · belief in its claim ${Math.round(c.eden.credence * 100)}%<br>Warning remembered: ${c.eden.warning ? 'yes' : 'no'} · led by the Creator ${c.eden.guided}×${c.eden.clothed ? ' · clothed' : ''}${c.eden.tool ? ' · has a tool' : ''}`
+      : '');
+  const d = c.decision;
+  $('decision').innerHTML = d
+    ? `<p class="muted">At ${clock(d.tick)} · hunger ${d.hunger.toFixed(1)} · energy ${d.energy.toFixed(1)}${d.emergency ? ' · emergency rest override' : ''}</p>` +
+      (d.guided
+        ? `<p class="green">Its own choice: ${esc(d.guided.intended)}. ${esc(d.guided.reason)} This was not its own decision.</p>`
+        : d.tree
+          ? `<p class="green">At the tree it chose: ${esc(d.selected)} (chance ${(d.tree.P * 100).toFixed(1)}%, its draw ${d.tree.draw.toFixed(3)}).</p>`
+          : d.own
+            ? '<p class="muted">Its own choice; no one leads it now.</p>'
+            : '') +
+      d.options
+        .map(
+          o =>
+            `<div class="option"><b>${o.type === d.selected && (o.patch ?? null) === d.patch ? '→ ' : ''}${esc(o.type)}${o.patch ? ' · ' + esc(world.patches.find(p => p.id === o.patch)?.name) : ''}</b> ${o.score.toFixed(1)}<span>${esc(o.reason)}</span></div>`,
+        )
+        .join('')
+    : '<p class="muted">The first decision has not occurred yet.</p>';
+  $('memories').innerHTML =
+    c.memories
+      .slice(-4)
+      .reverse()
+      .map(e => `<div class="memory"><time>${clock(e.tick)}</time>${esc(e.text)}</div>`)
+      .join('') || '<p class="muted">No recorded experiences yet.</p>';
+  $('events').innerHTML = world.events
+    .slice(-4)
+    .reverse()
+    .map(e => `<div class="event"><time>${clock(e.tick)}</time><span>${esc(e.text)}</span></div>`)
+    .join('');
+  $('bridge').disabled = world.bridge;
+  $('reveal').disabled = !c.alive || world.mode === 'eden';
+  $('give').disabled = world.mode === 'eden';
+  $('bridge').disabled = world.bridge || world.mode === 'eden';
+  $('eden').textContent = world.mode === 'eden' ? 'Leave Eden' : 'Eden';
+  if (world.mode === 'eden') {
+    const em = edenMetrics(world);
+    $('hint').textContent =
+      em.phase === 'guided'
+        ? `Eden · guided by the Creator · ${Math.round(em.guidedShare * 100)}% of choices led · ${em.deliberations} times at the tree, no one has eaten · ${em.population} living · ${em.births} born`
+        : `Eden · released ${clock(em.fallTick)} by ${world.creatures[em.firstEater].name} · ${em.population} living · ${em.births} born · ${em.deaths} died · fields ${em.fields}`;
+  }
+  pc.clearRect(0, 0, 48, 48);
+  sprite(c, 24, 28, pc, 2);
+}
+$('pause').onclick = () => setPaused(!paused);
+$('speed').onclick = () => {
+  speed = speed === 1 ? 4 : 1;
+  $('speed').textContent = speed + '×';
+};
+$('fit').onclick = () => {
+  zoom = 1;
+  pan = { x: 0, y: 0 };
+};
+$('plus').onclick = () => (zoom = clamp(zoom * 1.25, 1, 3));
+$('minus').onclick = () => {
+  zoom = clamp(zoom / 1.25, 1, 3);
+  if (zoom === 1) pan = { x: 0, y: 0 };
+};
+$('next').onclick = () => {
+  selected = (selected + 1) % world.creatures.length;
+  update();
+};
+$('give').onclick = () => {
+  giving = !giving;
+  $('give').classList.toggle('active', giving);
+  $('hint').textContent = giving
+    ? 'Tap dry land to place 40 food. Tap the button to cancel.'
+    : 'Tap a creature. See the world through its eyes.';
+};
+$('bridge').onclick = () => apply({ type: 'bridge' });
+$('reveal').onclick = () => apply({ type: 'reveal', id: selected });
+$('save').onclick = () => {
+  if (save()) toast('World saved. Export for a portable backup.');
+};
+$('load').onclick = () => {
+  if (previousWorld) return toast(INSPECTING);
+  try {
+    const s = localStorage.getItem('island-save');
+    if (!s) throw Error('No saved world yet');
+    loadText(s);
+  } catch (e) {
+    toast(e.message);
+  }
+};
+$('export').onclick = () =>
+  download(previousWorld ? 'Island-experiment-branch.json' : 'Island-save.json', serialize(world));
+$('import').onclick = () => (previousWorld ? toast(INSPECTING) : $('file').click());
+$('file').onchange = async e => {
+  try {
+    const f = e.target.files[0];
+    if (!f) return;
+    if (f.size > 5000000) throw Error('Save too large');
+    loadText(await f.text());
+  } catch (e) {
+    toast(e.message);
+  } finally {
+    $('file').value = '';
+  }
+};
+$('reset').onclick = () => {
+  if (previousWorld) return toast(INSPECTING);
+  if (!confirm('Start a fresh run? Export first if you want to keep this world.')) return;
+  save('island-before-reset');
+  world = createWorld(world.seed);
+  selected = 0;
+  setPaused(true);
+  update();
+};
+for (const [id, dialog] of [
+  ['help', 'helpDialog'],
+  ['lab', 'labDialog'],
+  ['model', 'modelDialog'],
+  ['eden', 'edenDialog'],
+])
+  $(id).onclick = () => {
+    setPaused(true);
+    $(dialog).showModal();
+  };
+$('eden').onclick = () => {
+  if (world.mode === 'eden') {
+    if (previousWorld) {
+      loadText(previousWorld);
+      previousWorld = null;
+    }
+    $('hint').textContent = 'Tap a creature. See the world through its eyes.';
+    return;
+  }
+  setPaused(true);
+  $('edenDialog').showModal();
+};
+$('enterEden').onclick = () => {
+  if (!previousWorld) previousWorld = serialize(world);
+  world = createEden(world.seed);
+  selected = 0;
+  $('edenDialog').close();
+  setPaused(false);
+  update();
+};
+document
+  .querySelectorAll('dialog .close,dialog .close-action')
+  .forEach(b => (b.onclick = () => b.closest('dialog').close()));
+$('config').innerHTML =
+  '<table>' +
+  Object.entries(DEFAULTS)
+    .map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`)
+    .join('') +
+  '</table>';
+const pointers = new Map();
+let start = null,
+  moved = false,
+  pinch = 0;
+canvas.onpointerdown = e => {
+  canvas.setPointerCapture(e.pointerId);
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  start = { x: e.clientX, y: e.clientY };
+  moved = false;
+  if (pointers.size === 2) {
+    const [a, b] = [...pointers.values()];
+    pinch = Math.hypot(a.x - b.x, a.y - b.y);
+  }
+};
+canvas.onpointermove = e => {
+  if (!pointers.has(e.pointerId)) return;
+  const old = pointers.get(e.pointerId);
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pointers.size === 2) {
+    const [a, b] = [...pointers.values()],
+      dist = Math.hypot(a.x - b.x, a.y - b.y);
+    if (pinch) zoom = clamp((zoom * dist) / pinch, 1, 3);
+    pinch = dist;
+    moved = true;
+  } else if (start && Math.hypot(e.clientX - start.x, e.clientY - start.y) > 5) {
+    pan.x += e.clientX - old.x;
+    pan.y += e.clientY - old.y;
+    moved = true;
+  }
+};
+canvas.onpointerup = e => {
+  const tap = !moved && pointers.size === 1;
+  pointers.delete(e.pointerId);
+  if (!tap) return;
+  const r = canvas.getBoundingClientRect(),
+    x = (e.clientX - r.left - ox) / scale / 12,
+    y = (e.clientY - r.top - oy) / scale / 12;
+  if (giving) {
+    apply({ type: 'food', x: Math.floor(x), y: Math.floor(y) });
+    return;
+  }
+  const closest = [...world.creatures].sort(
+    (a, b) => Math.hypot(a.x + 0.5 - x, a.y + 0.5 - y) - Math.hypot(b.x + 0.5 - x, b.y + 0.5 - y),
+  )[0];
+  if (Math.hypot(closest.x + 0.5 - x, closest.y + 0.5 - y) < 2) {
+    selected = closest.id;
+    update();
+  }
+};
+canvas.onpointercancel = e => pointers.delete(e.pointerId);
+((canvas.onwheel = e => {
+  e.preventDefault();
+  zoom = clamp(zoom * (e.deltaY < 0 ? 1.1 : 0.9), 1, 3);
+}),
+  { passive: false });
+function endRun() {
+  $('run').disabled = false;
+  $('pilot').disabled = false;
+  $('cancel').hidden = true;
+  worker?.terminate();
+  worker = null;
+}
+function run(pilot) {
+  if (worker) return;
+  const seed = Number($('seedInput').value);
+  if (!Number.isInteger(seed) || seed < 1 || seed > 999999) {
+    toast('Choose a seed from 1 to 999999');
+    return;
+  }
+  $('run').disabled = true;
+  $('pilot').disabled = true;
+  $('cancel').hidden = false;
+  $('progress').textContent = 'Calculating independent worlds…';
+  worker = new Worker('./experiment-worker.js', { type: 'module' });
+  worker.onerror = () => {
+    endRun();
+    $('progress').textContent = 'Experiment failed. Previous results are preserved.';
+  };
+  worker.onmessage = ({ data }) => {
+    if (data.type === 'progress')
+      $('progress').textContent = `Seed ${data.index}/${data.total} · ${data.branch} · ${data.condition}`;
+    else if (data.type === 'error') {
+      endRun();
+      $('progress').textContent = data.message;
+    } else {
+      labResult = data;
+      endRun();
+      $('resultsExport').disabled = false;
+      $('progress').textContent =
+        `Completed ${data.rows.length} branch outcomes. Calculated from model v${data.plan.version}. No winner assigned.`;
+      renderResults();
+    }
+  };
+  worker.postMessage({ seed, pilot });
+}
+function renderResults() {
+  const r = labResult,
+    show = r.rows.some(x => x.snapshot);
+  $('results').innerHTML =
+    '<div class="tablewrap"><table><thead><tr><th>Branch / follow-up</th><th>Alive</th><th>Hunger*</th><th>Known</th><th>Gifted</th><th>Recovered</th>' +
+    (show ? '<th></th>' : '') +
+    '</tr></thead><tbody>' +
+    r.summary
+      .map(
+        (v, i) =>
+          `<tr><td>${esc(v.key)}</td><td>${v.aliveMean.toFixed(1)}${v.runs > 1 ? ` (${v.aliveMin}–${v.aliveMax})` : ''}</td><td>${v.hungerMean === null ? '—' : v.hungerMean.toFixed(1)} <small>(${v.hungerAllMean.toFixed(1)} incl. dead)</small></td><td>${v.knownMean.toFixed(1)} <small>(${v.knownAllMean.toFixed(1)} incl. dead)</small></td><td>${Math.round(v.giftedMean)}${v.giftLeftAtBranchMean ? ` (${Math.round(v.giftLeftAtBranchMean)} left at day 10)` : ''}</td><td>${v.disturbed ? v.recovered + ' / ' + v.runs + (v.recoveredTemporarily ? ` <small>(+${v.recoveredTemporarily} temporary)</small>` : '') : 'n/a'}</td>${show ? `<td><button data-inspect="${i}">Inspect</button></td>` : ''}</tr>`,
+      )
+      .join('') +
+    '</tbody></table></div><p class="muted">*Median hunger among survivors, then in brackets with each death counted as 100; averaged across seeds when applicable. Known = food sources per survivor, then counting each death as 0. Alive range is shown for multi-seed runs. Gifted food still on the ground at day 10 stays available afterwards. Recovered = median hunger, counting each death as 100, rose above the matched no-disturbance run and then returned to its day-10 level and stayed there to day 15. Deaths can never count as recovery, and temporary dips are shown separately.</p>';
+  $('results')
+    .querySelectorAll('[data-inspect]')
+    .forEach(
+      b =>
+        (b.onclick = () => {
+          try {
+            if (!previousWorld) previousWorld = serialize(world);
+            const row = r.rows[Number(b.dataset.inspect)];
+            loadText(row.snapshot);
+            $('return').hidden = false;
+            $('labDialog').close();
+            $('hint').textContent = `Experiment: ${row.branch} / ${row.condition}`;
+          } catch (e) {
+            toast(e.message);
+          }
+        }),
+    );
+}
+$('run').onclick = () => run(false);
+$('pilot').onclick = () => run(true);
+$('cancel').onclick = () => {
+  endRun();
+  $('progress').textContent = 'Run cancelled. Earlier completed results are preserved.';
+};
+$('resultsExport').onclick = () => download('Island-experiment-results.json', JSON.stringify(labResult));
+$('return').onclick = () => {
+  if (previousWorld) {
+    loadText(previousWorld);
+    previousWorld = null;
+    $('return').hidden = true;
+    $('labDialog').close();
+    $('hint').textContent = 'Tap a creature. See the world through its eyes.';
+  }
+};
+let last = performance.now(),
+  acc = 0,
+  frames = 0,
+  fpsStart = last;
+function frame(now) {
+  const dt = Math.min(250, now - last);
+  last = now;
+  if (!paused && !document.hidden) {
+    acc += dt * speed;
+    let n = Math.floor(acc / 100);
+    if (n) {
+      (world.mode === 'eden' ? edenStep : step)(world, n);
+      acc -= n * 100;
+    }
+  } else acc = 0;
+  draw(now);
+  if (now - lastUI > 250) {
+    update();
+    lastUI = now;
+  }
+  frames++;
+  if (now - fpsStart > 2000) {
+    $('fps').textContent = Math.round((frames * 1000) / (now - fpsStart)) + ' FPS';
+    frames = 0;
+    fpsStart = now;
+  }
+  requestAnimationFrame(frame);
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    setPaused(true);
+    save('island-autosave');
+  }
+});
+window.addEventListener('pagehide', () => save('island-autosave'));
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
+try {
+  const t = localStorage.getItem('island-autosave');
+  if (t) {
+    try {
+      world = deserialize(t);
+      setPaused(true);
+      $('saved').textContent = 'Restored · ' + clock(world.tick);
+      toast('Your island was restored, paused.');
+    } catch {
+      localStorage.setItem('island-autosave-rejected', t);
+      localStorage.removeItem('island-autosave');
+      toast('The automatic save could not be restored; a fresh island started. It was kept aside.');
+    }
+  }
+} catch {}
+update();
+requestAnimationFrame(frame);

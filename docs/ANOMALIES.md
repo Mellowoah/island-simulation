@@ -19,3 +19,6 @@ Fixed, for the record (each was a code error found by tracing a mismatch, 17 Nov
 ## A8 — inheritance pulls back to the founders' mean (18 Nov 2026, found by the Price tool, idea 10)
 Children's traits regress toward a fixed 1 (body) or 0.5 (mind), not toward the population as it now is: child = 1 + h(midparent − 1) + noise. So whatever selection moves, transmission moves back: the population cannot evolve away from where it started. Seen as transmission +0.014 ± 0.004 on body mass while parents average below 1. Standard quantitative genetics (breeding value = midparent breeding value + Mendelian noise of half the additive variance; phenotype = breeding value + environment) would let means move. Not changed: a modelling decision.
 **Resolved 18 Nov 2026** (Robert approved): breeding values with Mendelian noise; see THEORY-CHECK 'Inheritance fixed (A8)'.
+
+## A9 — some islands are chaotic (19 Nov 2026)
+Island 4 (seed 4) over 10 years: with feelings off, changing news blur from 0.29 to 0.31 gives 13 or 48 survivors; with fear on, 2, 51 or 70 depending on fear weight. Small causes, large effects: results must come from many islands (ensembles), never from one. Open: why seed 4 is fragile (thirst and starvation both high even in its best runs).

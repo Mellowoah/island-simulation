@@ -1,1 +1,22 @@
-import{runSeed,aggregate,PLAN}from'./experiment.js';self.onmessage=({data})=>{try{const seeds=data.pilot?PLAN.seeds:[data.seed];let rows=[];for(let i=0;i<seeds.length;i++)rows.push(...runSeed(seeds[i],{},!data.pilot,p=>self.postMessage({type:'progress',index:i+1,total:seeds.length,...p})));self.postMessage({type:'complete',plan:PLAN,rows,summary:aggregate(rows),created:new Date().toISOString()});}catch(e){self.postMessage({type:'error',message:e.message});}};
+import { runSeed, aggregate, PLAN } from './experiment.js';
+self.onmessage = ({ data }) => {
+  try {
+    const seeds = data.pilot ? PLAN.seeds : [data.seed];
+    let rows = [];
+    for (let i = 0; i < seeds.length; i++)
+      rows.push(
+        ...runSeed(seeds[i], {}, !data.pilot, p =>
+          self.postMessage({ type: 'progress', index: i + 1, total: seeds.length, ...p }),
+        ),
+      );
+    self.postMessage({
+      type: 'complete',
+      plan: PLAN,
+      rows,
+      summary: aggregate(rows),
+      created: new Date().toISOString(),
+    });
+  } catch (e) {
+    self.postMessage({ type: 'error', message: e.message });
+  }
+};

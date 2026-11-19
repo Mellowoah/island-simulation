@@ -289,11 +289,13 @@ test('Y26 moonlight: waxing moon lights the evening, full moon the whole night, 
   assert.equal(dark, R('nightPace')); assert.ok(W.nightPaceOf({ ...s, tick: s.tick + 18 }) > dark);
 });
 
-test('Y27 water news is a binary noisy channel: retold water news carries hops, is checked on arrival, and carries some information', async () => {
+test('Y27 water news (honest test, after the 18 Nov audit): over a full year, beliefs built from news by Bayes beat simply assuming water, and the news carries real information', async () => {
   const { waterNewsBits } = await import('../dist/w-social.js');
-  const s = createWorld2(63); stepWorld(s, 24 * 150);
+  const s = createWorld2(63); stepWorld(s, 24 * 365); // a full year: the dry season is when holes change
   const heard = s.people.flatMap(q => Object.values(q.waters)).filter(k => k.hops > 0); assert.ok(heard.length > 0);
-  const b = waterNewsBits(s); assert.ok(b && b.checks > 10); assert.ok(b.right > 0.5 && b.right < 1, `right ${b.right}`); assert.ok(b.bits >= 0 && b.bits <= 1);
+  const b = waterNewsBits(s); assert.ok(b && b.checks > 100);
+  assert.ok(b.believedRight > b.baseRate + 0.01, `believed right ${b.believedRight} against base rate ${b.baseRate}`);
+  assert.ok(b.bits > 0.03 && b.bits < 1, `bits ${b.bits}`);
 });
 
 test('Y28 per-run overrides: any register number can be set for a run and put back exactly', async () => {
@@ -302,4 +304,30 @@ test('Y28 per-run overrides: any register number can be set for a run and put ba
   const base = run(); setRate('forageBase', RATES.forageBase.value * 3); assert.equal(R('forageBase'), RATES.forageBase.value * 3);
   const changed = run(); clearRates(); assert.notEqual(changed, base); assert.equal(run(), base);
   assert.throws(() => setRate('noSuchRate', 1));
+});
+
+test('F1 fear (feelings stage 1): pain teaches fear; safe hours build safety on top without erasing fear; safety fades back; a new harm reinstates', async () => {
+  const F = await import('../dist/feelings.js');
+  const s = { config: { feelings: true }, tick: 0 }, p = { body: { age: 25 }, mind: { caution: 0.5 } };
+  F.harmed(s, p, 'dark', 15); const f1 = F.fearOf(p).dark.F; assert.ok(f1 > 0.1, `fear ${f1}`);
+  for (let i = 0; i < 200; i++) F.safeHour(s, p, 'dark', 1);
+  assert.equal(F.fearOf(p).dark.F, f1, 'safe hours never lower the fear memory'); assert.ok(F.fearLevel(p, 'dark') < 0.1, 'but expressed fear falls');
+  for (let d = 0; d < 365; d++) F.fearDay(p); assert.ok(F.fearLevel(p, 'dark') > 0.5 * f1, 'spontaneous recovery: safety fades back');
+  for (let i = 0; i < 200; i++) F.safeHour(s, p, 'dark', 1); const before = F.fearLevel(p, 'dark'); F.harmed(s, p, 'dark', 15); assert.ok(F.fearLevel(p, 'dark') > 2 * before && F.fearLevel(p, 'dark') > 0.5 * f1, 'reinstatement after one new harm');
+});
+
+test('F2 fear: children learn faster than adults; prepared cues faster; told fear moves the hearer toward the teller both ways', async () => {
+  const F = await import('../dist/feelings.js');
+  const s = { config: { feelings: true }, tick: 0 }, kid = { body: { age: 6 }, mind: { caution: 0.5 } }, adult = { body: { age: 40 }, mind: { caution: 0.5 } };
+  F.harmed(s, kid, 'dark', 8); F.harmed(s, adult, 'dark', 8); assert.ok(F.fearOf(kid).dark.F > F.fearOf(adult).dark.F);
+  const calm = { body: { age: 30 }, mind: { caution: 0.5 } }, scared = { body: { age: 30 }, mind: { caution: 0.5 } }; F.harmed(s, scared, 'dark', 20);
+  const hearer = { body: { age: 8 }, mind: { caution: 0.5 } }; F.toldFear(scared, hearer, 0.9); const up = F.fearLevel(hearer, 'dark'); assert.ok(up > 0);
+  for (let i = 0; i < 50; i++) F.toldFear(calm, hearer, 0.9); assert.ok(F.fearLevel(hearer, 'dark') < up, 'a calm teller brings safety (vicarious extinction)');
+  assert.equal(F.feelingsOn({ config: {} }), true, 'on by default (checked 19 Nov)'); assert.equal(F.feelingsOn({ config: { feelings: false } }), false);
+});
+
+test('F3 plasticity(age) matches personality consistency by age (Roberts and DelVecchio 2000): about .31 child, .54 college, .64 at 30, .74 at 50+', async () => {
+  const { plasticity } = await import('../dist/being.js');
+  const r = a => 1 / (1 + 2.23 * 7 * plasticity(a) ** 2); // 7-year retest: stable part against change of variance P(a)^2 per year
+  for (const [a, want] of [[8, 0.31], [20, 0.54], [30, 0.64], [55, 0.74]]) assert.ok(Math.abs(r(a) - want) < 0.1, `age ${a}: ${r(a).toFixed(2)} vs ${want}`);
 });

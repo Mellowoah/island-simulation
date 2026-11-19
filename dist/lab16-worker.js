@@ -5,7 +5,14 @@ self.onmessage = e => {
   const { job, setup, endTick } = e.data;
   try {
     let last = 0;
-    const run = runToEnd(setup, endTick, p => { if (p - last >= 0.05) { last = p; self.postMessage({ job, progress: p }); } });
+    const run = runToEnd(setup, endTick, p => {
+      if (p - last >= 0.05) {
+        last = p;
+        self.postMessage({ job, progress: p });
+      }
+    });
     self.postMessage({ job, summary: run.kind === 'lab' ? summarizeLab(run) : summarizeEden(run) });
-  } catch (err) { self.postMessage({ job, error: String(err?.message ?? err) }); }
+  } catch (err) {
+    self.postMessage({ job, error: String(err?.message ?? err) });
+  }
 };
