@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Island</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="art/favicon-32.png">
+  <link rel="apple-touch-icon" href="art/apple-touch-icon.png">
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      margin: 0; min-height: 100vh;
+      background: radial-gradient(circle at 30% 0%, #1f3263, #0c1226 70%);
+      color: #e8ecf8; font: 16px/1.5 ui-monospace, "SF Mono", Menlo, monospace;
+      padding: max(20px, env(safe-area-inset-top)) 18px 40px;
+    }
+    main { max-width: 560px; margin: 0 auto; }
+    .logo { display: block; width: 100%; max-width: 360px; margin: 0 auto 8px; image-rendering: pixelated; }
+    h1 { font-size: 30px; letter-spacing: 4px; color: #ffd257; margin: 6px 0 2px; text-shadow: 3px 3px 0 #7a4b00; }
+    .sub { color: #b9c3e6; margin: 0 0 22px; }
+    a.card {
+      display: block; text-decoration: none; color: inherit;
+      background: #182657; border: 3px solid #e8ecf8; border-radius: 6px;
+      box-shadow: 0 0 0 3px #0c1226, 6px 6px 0 #070b18;
+      padding: 16px 16px 14px; margin: 0 0 18px;
+    }
+    a.card.first { border-color: #ffd257; }
+    a.card:active { transform: translate(2px, 2px); box-shadow: 0 0 0 3px #0c1226, 3px 3px 0 #070b18; }
+    .tag { font-size: 12px; letter-spacing: 2px; color: #ffd257; }
+    .card h2 { font-size: 20px; margin: 4px 0 6px; letter-spacing: 1px; }
+    .card p { margin: 0; color: #c9d1ee; font-size: 14px; }
+    .go { display: inline-block; margin-top: 10px; color: #ffd257; }
+    footer { color: #8d97bd; font-size: 12px; margin-top: 26px; }
+  </style>
+</head>
+<body>
+<main>
+  <img class="logo" src="art/logo.png" alt="Island">
+  <h1>ISLAND</h1>
+  <p class="sub">Worlds for testing the theory. Nothing is scripted: you set the conditions; the people and creatures choose.</p>
+
+  <a class="card first" href="world.html">
+    <div class="tag">NEWEST · THE FULL WORLD</div>
+    <h2>The small world</h2>
+    <p>A Hadza-like island on a real clock: weather and water, seasons, a map no one has explored, plants and animals,
+      hunting, fire, camps and sharing, learning, news and trust, inheritance and fear.</p>
+    <span class="go">Open →</span>
+  </a>
+
+  <a class="card" href="lab.html">
+    <div class="tag">THE THEORY TEST</div>
+    <h2>Eden test lab</h2>
+    <p>The warning, guidance, the deceiver and release. Runs the predictions (T1–T5, P1–P5) on many islands at once,
+      with life records for every creature.</p>
+    <span class="go">Open →</span>
+  </a>
+
+  <a class="card" href="lab-classic.html">
+    <div class="tag">15 NOV LAB</div>
+    <h2>The first Lab island</h2>
+    <p>Creatures acting from what they know, need and trust; false information and messages; save and reload.</p>
+    <span class="go">Open →</span>
+  </a>
+
+  <footer>All three run in your browser. Work in progress: see the project docs for what each world models and how it was checked.</footer>
+</main>
+</body>
+</html>

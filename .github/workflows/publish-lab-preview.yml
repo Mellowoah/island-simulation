@@ -1,4 +1,4 @@
-name: Publish Island Lab (live site from main)
+name: Publish Island (live site from main)
 # The live site is main: every merge to main publishes it. Design branches no longer publish over it
 # (before 19 Nov 2026 only design/lab-visual-polish did, so merges to main never reached the site).
 on:
@@ -26,8 +26,7 @@ jobs:
         run: |
           mkdir -p _site
           cp -R dist/. _site/
-          cp dist/lab.html _site/index.html
-          sed -i 's|href="lab.html"|href="index.html"|' _site/world.html
+          cp dist/home.html _site/index.html   # the home screen: small world first, Eden lab, first Lab
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
