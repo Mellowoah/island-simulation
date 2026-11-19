@@ -37,7 +37,8 @@ git push -q origin HEAD || { echo "STOP: committed but the push failed"; exit 1;
 # No lost lines: what GitHub now holds must equal this commit exactly, file for file and line for line
 # (Robert, 19 Nov: GitHub has limits; never lose a line of code).
 branch=$(git rev-parse --abbrev-ref HEAD)
-git fetch -q origin "$branch" || { echo "STOP: could not read back from GitHub"; exit 1; }
+git fetch -q origin "+refs/heads/$branch:refs/remotes/origin/$branch" || { echo "STOP: could not read back from GitHub"; exit 1; }
+[ "$(git ls-remote origin "refs/heads/$branch" | cut -f1)" = "$(git rev-parse HEAD)" ] || { echo "STOP: GitHub's branch is not at this commit"; exit 1; }
 if [ "$(git rev-parse HEAD^{tree})" != "$(git rev-parse "origin/$branch^{tree}")" ]; then
   echo "STOP: GitHub's copy differs from this commit"; git diff --stat HEAD "origin/$branch"; exit 1
 fi
