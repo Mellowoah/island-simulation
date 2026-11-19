@@ -742,6 +742,10 @@ export const RATES = {
   sunshineWet:   { value: 0.3, low: 0.1, high: 0.5, unit: 'n/N', dist: 'uniform', src: 'assumption: share of possible sunshine on a rain day' },
   tempPeakLagH:  { value: 1.5, low: 1, high: 2.5, unit: 'h after solar noon', dist: 'uniform', src: 'Parton and Logan 1981: the day sine peaks about 1.5-2 h after solar noon (fitted lag)' },
   tempNightDecay: { value: 2.2, low: 1.5, high: 4, unit: 'e-folds per night', dist: 'uniform', src: 'Parton and Logan 1981: night cooling coefficient about 2.2 for air temperature' },
+  // Layer 2, water (water.js)
+  curveNumber:   { value: 75, low: 60, high: 85, unit: 'SCS curve number (average wetness)', dist: 'uniform', src: 'USDA TR-55 (1986) tables: brush and grass mixtures and herbaceous range in fair condition on soils of groups B-C give about 65-80; semi-arid savanna with sandy and rocky soils' },
+  groundwaterDays: { value: 120, low: 30, high: 365, unit: 'days', dist: 'loguniform', src: 'assumption: time constant of the groundwater store (linear reservoir); baseflow recession constants of weeks to months are typical of small semi-arid catchments (Brutsaert 2005)' },
+  catchScale:    { value: 12, low: 4, high: 36, unit: 'x', dist: 'loguniform', src: 'NOT YET USED (Layer 2 not wired; see THEORY-CHECK). Measured 19 Nov 2026 (10 years, island 1: old inflow 1.17 mm/day per unit catch, runoff plus seepage 0.098): set so that water holes receive on average what they did before the runoff physics (19 Nov 2026), keeping their checked behaviour (rivers dry in most years) while the timing now follows runoff and seepage' },
   newsFlipPerHop: {
     value: 0.05,
     low: 0.01,

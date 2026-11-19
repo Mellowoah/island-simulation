@@ -34,6 +34,12 @@ export function julianDay(year, month, day, hour = 12, zone = SITE.zone) {
 
 export const JD_START = julianDay(2026, 11, 1, 6); // tick 0: 06:00 EAT, 1 November 2026
 
+// Day of the year (1..366) for a Julian day, in the zone's local date
+export function dayOfYearJd(jd, zone = SITE.zone) {
+  const d = new Date((jd - 2440587.5) * 864e5 + zone * 36e5);
+  return Math.floor((d - Date.UTC(d.getUTCFullYear(), 0, 1)) / 864e5) + 1;
+}
+
 // Julian day of a world tick
 export const jdOfTick = (tick, hoursPerTick = 1) => JD_START + (tick * hoursPerTick) / 24;
 
