@@ -23,6 +23,7 @@
 //      judging and fading      what a creature learned to like or avoid fades unless it keeps being borne out
 //      nurture and nature      traits move with others and with what happens, and are pulled back to what was inborn
 
+import { elevation as sunElevation, jdOfTick } from './sun.js';
 export const REAL_MINUTES = 60;
 export const START_HOUR = 6; // tick 0 is 06:00
 export const DAYS_PER_YEAR = 365;
@@ -65,14 +66,17 @@ export const isNight = (C, tick) => {
   const h = hourOf(C, tick);
   return h < SUNRISE || h >= SUNSET;
 };
-// Darkness, for what light changes (walking pace, falls, how far one sees, fear of the dark): judged at the middle
-// of the step, and dark only beyond civil twilight (about 22 minutes near the equator, Hadza latitude ~3.5 S), when
-// there is not enough light to walk by. isNight stays the day's schedule (sleep, plans). Before 19 Nov 2026 the
-// world used isNight here, so with hour steps the whole 06:00-07:00 hour counted as full night.
-export const TWILIGHT_H = 0.37;
+// Darkness, for what light changes (walking pace, falls, how far one sees, fear of the dark). It comes from the
+// sun (Layer 0, sun.js): dark when the sun's centre is more than 6 degrees below the horizon (past civil
+// twilight) at the middle of the step, so it follows the real sunrise and sunset through the year. isNight stays
+// the day's schedule (sleep, plans). One answer per tick and step length is kept, as every person asks.
+let darkKey = null, darkVal = false;
 export const isDark = (C, tick) => {
-  const h = (hourOf(C, tick) + C.hours / 2) % 24;
-  return h < SUNRISE - TWILIGHT_H || h >= SUNSET + TWILIGHT_H;
+  const key = tick * 1e3 + C.hours;
+  if (key === darkKey) return darkVal;
+  darkKey = key;
+  darkVal = sunElevation(jdOfTick(tick + 0.5, C.hours)) < -6;
+  return darkVal;
 };
 // Foragers fall asleep about 3.3 hours after sunset and wake before sunrise (Yetish et al. 2015).
 export const SLEEP_FROM = SUNSET + 3.3,
