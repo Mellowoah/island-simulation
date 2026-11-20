@@ -12,7 +12,7 @@ const { setRate } = await import(ROOT + '/dist/clock.js');
 for (const [k, v] of Object.entries(JSON.parse(process.argv[5] ?? '{}'))) setRate(k, v); // optional register overrides
 const s = createWorld2(seed, cfg),
   C = clockOf(s);
-const month = Array.from({ length: 12 }, () => ({ tmax: 0, tmin: 0, holes: 0, dark: 0, n: 0 }));
+const month = Array.from({ length: 12 }, () => ({ tmax: 0, tmin: 0, holes: 0, dark: 0, green: 0, n: 0 }));
 
 // Late dry season (Sep-Oct): share of days each river or stream pool holds water, by catchment size
 const pools = s.waters.filter(w => ['river', 'pools'].includes(w.kind)),
@@ -30,6 +30,19 @@ function lateBySize() {
   return { small: m(r.slice(0, half)), large: m(r.slice(half)) };
 }
 
+// Plants (Layer 4): each year's growth, peak standing grass (green and dead) and rain; monthly green grass
+const plantYears = [];
+let py = { grown: 0, rain: 0, peak: 0 };
+function samplePlants(d) {
+  const P = s.plants;
+  if (!P) return;
+  py.peak = Math.max(py.peak, P.green + P.dead);
+  if (d % 365 === 364) {
+    plantYears.push({ grown: P.grownTotal - py.grown, rain: s.weatherLedger.rain - py.rain, peak: py.peak });
+    py = { grown: P.grownTotal, rain: s.weatherLedger.rain, peak: 0 };
+  }
+}
+
 function sampleDay(d) {
   const m = month[Math.floor((d % 365) / 30.42) % 12],
     seasonal = s.waters.filter(w => isFinite(w.level));
@@ -37,6 +50,7 @@ function sampleDay(d) {
   for (let h = 0; h < 24; h++) dark += isDark(C, s.tick + h) ? 1 : 0;
   m.tmax += s.weather.tmax;
   m.tmin += s.weather.tmin;
+  m.green += s.plants?.green ?? 0;
   m.holes += seasonal.length ? seasonal.filter(w => w.active).length / seasonal.length : 1;
   m.dark += dark / 24;
   m.n++;
@@ -46,6 +60,7 @@ for (let d = 0; d < 365 * years; d++) {
   sampleDay(d);
   sampleLate(d);
   stepWorld(s, 24);
+  samplePlants(d);
 }
 const avg = k => month.map(m => +(m[k] / m.n).toFixed(3));
 const wl = weatherLedger(s);
@@ -58,6 +73,8 @@ console.log(
     books: { soil: wl.soilError, holes: wl.holeError, ground: wl.groundError ?? 0, channels: wl.channelError ?? 0 },
     tmax: avg('tmax'),
     tmin: avg('tmin'),
+    green: avg('green'),
+    plantYears,
     holes: avg('holes'),
     dark: avg('dark'),
     lateBySize: lateBySize(),

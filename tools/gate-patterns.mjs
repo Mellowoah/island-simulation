@@ -7,6 +7,7 @@ export const TESTS = {
   air: ['tests/atmosphere.test.mjs'],
   water: ['tests/water.test.mjs'],
   terrain: ['tests/land.test.mjs'],
+  plants: ['tests/plants.test.mjs'],
 };
 
 // Months in the gate's results run from November (the world starts on 1 November)
@@ -41,6 +42,24 @@ export const PATTERNS = {
     return {
       ok,
       detail: `river and stream pools wet in Sep-Oct: small catchments ${small.toFixed(2)}, large ${large.toFixed(2)}; ${w.detail}`,
+    };
+  },
+  // Layer 4: grass grown from transpired water against Deshmukh (1984), measured across East and southern Africa:
+  // peak herb biomass (g/m2) = 0.8488 x rain (mm) - 19.58. Peak standing grass within 25% of it on average, the
+  // year's growth at least the peak (peak standing crop underestimates production), and green grass gone late in
+  // the dry season (Sep-Oct under a fifth of the wet season's)
+  plants(rs) {
+    const ys = rs.flatMap(r => r.plantYears),
+      desh = y => 0.8488 * y.rain - 19.58;
+    const peak = mean(ys.map(y => y.peak / desh(y))),
+      grown = mean(ys.map(y => y.grown / desh(y)));
+    const g = byMonth(rs, 'green'),
+      wet = mean(g.slice(1, 7)),
+      late = mean([g[10], g[11]]);
+    const ok = peak > 0.75 && peak < 1.25 && grown >= peak && late < 0.2 * wet;
+    return {
+      ok,
+      detail: `peak standing / Deshmukh ${peak.toFixed(2)}, growth / Deshmukh ${grown.toFixed(2)}, green Sep-Oct ${late.toFixed(0)} against wet season ${wet.toFixed(0)} g/m2`,
     };
   },
   water(rs) {

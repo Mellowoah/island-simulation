@@ -178,6 +178,7 @@ function waterDayReal(s, W, day) {
   L.soilEvap += f.evap;
   L.soilRunoff += f.quick + f.recharge;
   W.soil = f.soil;
+  W.aet = f.evap; // the day's actual evapotranspiration, read by the plants (Layer 4)
   const ch = reservoirDay(W.channel ?? 0, f.quick, R('channelDays')),
     g = reservoirDay(W.ground ?? 0, f.recharge, R('groundwaterDays'));
   L.quick = (L.quick ?? 0) + f.quick;
@@ -262,6 +263,7 @@ function waterDayStandIn(s, W, day) {
   soil -= off;
   L.soilRunoff += off;
   W.soil = soil;
+  W.aet = ev;
   W.yearSum += W.rain - W.recent[day % 365];
   W.recent[day % 365] = W.rain;
   // water holes: catchment inflow (more when the ground is wet), evaporation, spill when full

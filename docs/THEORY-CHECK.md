@@ -458,3 +458,23 @@ Robert approved fixing both water problems the land exposed.
   rise is real: physical runoff leaves less water than the fitted number did); terrain passed (5.8 -> 5.5).
 - Old paths proven unchanged against the last save (land stand-in a781c050f8219ff4; land and water stand-in
   754db016e0756aac). Fingerprint, everything real: .
+
+## 20 Nov 2026: Layer 4 (plants), first part: the herb layer grows from transpired water
+
+- Found: the food patches (w-food.js makeFood) are sized from the Hadza density (0.24 people/km2) x the land x a
+  year's need. That builds the answer in. Layer 4 is to replace it with food grown from the plants.
+- plants.js: each day, growth above ground (g/m2) = actual evapotranspiration (mm, from the water layer) x the
+  share through plants (0.51; Schlesinger and Jasechko 2014) x 1000 / the transpiration ratio (300 g water per g
+  dry matter, C4 grasses 250-350; Larcher) x the above-ground share (0.53; Nairobi savanna, Kinyamario, ORNL
+  DAAC). Green grass cures once the soil has lost its readily available water (FAO-56 p = 0.5) over about two
+  weeks; dead grass is removed with a half-life of about six months (assumptions, in the register).
+- Independent check, nothing fitted: Deshmukh (1984), East and southern Africa, peak herb biomass (kg/ha) =
+  8.488 x rain (mm) - 195.8. Across 6 islands x 3 years: peak standing grass / Deshmukh 0.97 (by year
+  0.70-1.50), the year's growth / Deshmukh 1.09 (peak standing crop underestimates production, as the Nairobi
+  work found). Green grass about 93 g/m2 in the wet season and 3 g/m2 in Sep-Oct.
+- Gate passed. Plants stay a stand-in on the switchboard: food is still scripted. With the plants on or off the
+  island is identical (fingerprint c4ffeb745a9ff88e both ways), because nothing reads them yet.
+- Water gate re-run after weather.js began to hand the day's evapotranspiration upward (W.aet): passed.
+- Books: grass grown = green + dead + removed, exactly (test P3).
+- Next: grow the foods from the plants (berries and fruit from woody plants, tubers, seeds), each with a measured
+  edible yield, and remove the density from makeFood. Needs woody-plant growth and published yields.
