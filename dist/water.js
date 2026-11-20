@@ -26,8 +26,10 @@ export const psychrometric = P => 0.000665 * P;
 
 // FAO Penman-Monteith reference evaporation for a day, mm/day (eq. 6). Rn in MJ/m2/day, G = 0 for a day.
 export function penmanMonteith({ tmax, tmin, ea, wind, Rn, P }) {
-  const T = (tmax + tmin) / 2, es = (satVapour(tmax) + satVapour(tmin)) / 2;
-  const D = vapourSlope(T), g = psychrometric(P);
+  const T = (tmax + tmin) / 2,
+    es = (satVapour(tmax) + satVapour(tmin)) / 2;
+  const D = vapourSlope(T),
+    g = psychrometric(P);
   const top = 0.408 * D * Rn + (g * 900 * wind * Math.max(0, es - ea)) / (T + 273);
   return Math.max(0, top / (D + g * (1 + 0.34 * wind)));
 }
@@ -35,7 +37,8 @@ export function penmanMonteith({ tmax, tmin, ea, wind, Rn, P }) {
 // Net radiation for a day, MJ/m2/day, from the air (Layer 1) and the sun (Layer 0) on day of year J at jd
 export function netRadiation(air, jd, J, site = SITE) {
   const Ra = dailyRa(sunAt(jd).dec, J, site);
-  const Rs = angstromShare(air.sunshine) * Ra, Rso = clearSkyShare(site) * Ra;
+  const Rs = angstromShare(air.sunshine) * Ra,
+    Rso = clearSkyShare(site) * Ra;
   return netShortwave(Rs) - netLongwave(air.tmax, air.tmin, air.ea, Rs / Rso);
 }
 
@@ -48,13 +51,28 @@ export function referenceET(air, jd, J, site = SITE) {
 // Curve number for the day's soil wetness w (0 dry .. 1 full): dry (I) and wet (III) conditions from the
 // average (II) number (Chow et al. 1988 eqs. 5.5.4-5), straight-line between them
 export function curveNumber(cn2, w) {
-  const dry = (4.2 * cn2) / (10 - 0.058 * cn2), wet = (23 * cn2) / (10 + 0.13 * cn2);
+  const dry = (4.2 * cn2) / (10 - 0.058 * cn2),
+    wet = (23 * cn2) / (10 + 0.13 * cn2);
   return w < 0.5 ? dry + (cn2 - dry) * (w / 0.5) : cn2 + (wet - cn2) * ((w - 0.5) / 0.5);
 }
 
+// Curve numbers by land cover (average wetness), from TR-55 (USDA 1986): Table 2-2d, arid and semiarid
+// rangelands, hydrologic soil group B (sandy soils over granite and gneiss, as around Eyasi; assumption) in fair
+// condition (30-70% ground cover): herbaceous 71, desert shrub (thorn bush and woodland) 72.
+// Bare rock sheds nearly all rain: impervious, 98 (Table 2-2a). River beds are loose sand (the losing streams of
+// weather.js): soil group A, whose only arid-table row is desert shrub, poor cover (under 30%): 63. A catchment's
+// number is the area-weighted mean of its covers (TR-55 composite curve number).
+export const CN_BY_COVER = { grass: 71, shore: 71, woodland: 72, rock: 98, river: 63 };
+// Pans form on clay (which is why they hold water): around them, hydrologic soil group D in fair condition:
+// herbaceous 89, desert shrub 86 (same tables).
+export const CN_BY_COVER_CLAY = { grass: 89, shore: 89, woodland: 86, rock: 98, river: 63 };
+export const compositeCN = (shares, table = CN_BY_COVER) =>
+  Object.entries(shares).reduce((t, [c, s]) => t + s * table[c], 0);
+
 // Runoff from a day's rain P (mm) with curve number CN (SCS TR-55)
 export function runoff(P, CN) {
-  const S = 25400 / CN - 254, Ia = 0.2 * S;
+  const S = 25400 / CN - 254,
+    Ia = 0.2 * S;
   return P > Ia ? (P - Ia) ** 2 / (P + 0.8 * S) : 0;
 }
 
@@ -62,7 +80,8 @@ export function runoff(P, CN) {
 // down to groundwater (the HBV soil routine: Bergstrom 1976, 1992), the rest wets the soil; evaporation by how
 // full the soil is (FAO-56 water stress, straight-line); anything over the soil's capacity also drains down.
 export function soilDay(soil, rain, et0, Smax, cn2) {
-  const quick = runoff(rain, curveNumber(cn2, soil / Smax)), into = rain - quick;
+  const quick = runoff(rain, curveNumber(cn2, soil / Smax)),
+    into = rain - quick;
   let s = soil + into;
   const evap = Math.min(s, (et0 * Math.min(s, Smax)) / Smax);
   s -= evap;
@@ -73,7 +92,8 @@ export function soilDay(soil, rain, et0, Smax, cn2) {
 // A linear reservoir for a day: inflow in, outflow = store over its time constant (days). Used twice, as in the
 // HBV response routine: the stream channels (runoff, drains in days to weeks) and groundwater (recharge, months).
 export function reservoirDay(store, inflow, days) {
-  const g = store + inflow, out = g / days;
+  const g = store + inflow,
+    out = g / days;
   return { store: g - out, out };
 }
 

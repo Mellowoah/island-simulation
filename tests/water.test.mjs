@@ -41,3 +41,9 @@ test('W5 every function in the water module is under 30 lines', () => {
     if (start >= 0 && l === '}') { assert.ok(i - start + 1 < 30, `function at line ${start + 1}`); start = -1; }
   });
 });
+
+test('W6 TR-55 composite curve numbers: one cover gives its table value; a mix is the area-weighted mean', () => {
+  assert.equal(W.compositeCN({ grass: 1 }), 71);
+  assert.equal(W.compositeCN({ grass: 1 }, W.CN_BY_COVER_CLAY), 89);
+  assert.equal(W.compositeCN({ grass: 0.5, rock: 0.5 }), (71 + 98) / 2);
+});

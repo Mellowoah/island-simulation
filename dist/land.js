@@ -61,6 +61,37 @@ function accumulate(down) {
 
 export const FLOW = { down: DOWN, ...accumulate(DOWN) };
 
+// Land cover upstream of every tile: for each kind of ground, how many tiles of it drain through the tile
+const COVERS = ['grass', 'woodland', 'shore', 'rock', 'river'];
+function coverUpstream(down) {
+  const n = TW * TH,
+    order = upstreamFirst(down),
+    out = {};
+  for (const c of COVERS) {
+    const sum = Float32Array.from({ length: n }, (_, i) => (regionAt(i % TW, (i / TW) | 0) === c ? 1 : 0));
+    for (const i of order) if (down[i] >= 0) sum[down[i]] += sum[i];
+    out[c] = sum;
+  }
+  return out;
+}
+const COVER = coverUpstream(DOWN);
+
+// Share of each kind of ground in the catchment of a tile (land only), and over the whole island
+export function catchmentCover(x, y) {
+  const i = y * TW + x,
+    total = COVERS.reduce((t, c) => t + COVER[c][i], 0) || 1;
+  return Object.fromEntries(COVERS.map(c => [c, COVER[c][i] / total]));
+}
+export function islandCover() {
+  const count = Object.fromEntries(COVERS.map(c => [c, 0]));
+  for (let i = 0; i < TW * TH; i++) {
+    const r = regionAt(i % TW, (i / TW) | 0);
+    if (r in count) count[r]++;
+  }
+  const total = COVERS.reduce((t, c) => t + count[c], 0);
+  return Object.fromEntries(COVERS.map(c => [c, count[c] / total]));
+}
+
 // Catchment area (km2) that drains through a tile, and the mean distance (km) its water travels to get there
 export const catchmentKm2 = (x, y) => FLOW.area[y * TW + x] * TILE_KM * TILE_KM;
 export const flowLengthKm = (x, y) => FLOW.meanLen[y * TW + x];

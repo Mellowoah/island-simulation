@@ -432,3 +432,29 @@ Robert approved fixing both water problems the land exposed.
   within 0.21 deg C of the record in every month.
 - Day and night temperature are now both driven by the sun's energy (Layer 0 to Layer 1), anchored to the
   measured monthly means. Fingerprint, everything real: 711d9a635cfb7d95.
+
+## 20 Nov 2026: curve numbers from land cover (TR-55); the last fitted water number retired
+
+- Goal check: the small world as close to ours as possible, each layer built from measured physics, the output of
+  each layer the environment of the next, nothing tuned to a wanted result. curveNumber (85) was the last number
+  fitted to a pattern; it is now retired (kept only for the stand-in land path).
+- Curve numbers come from what covers the ground (TR-55, USDA 1986, Table 2-2d arid and semiarid rangelands,
+  fair condition, 30-70% ground cover): soil group B (sandy soils over granite and gneiss, as around Eyasi;
+  assumption): herbaceous 71, desert shrub (thorn bush, woodland) 72; bare rock 98 (impervious, Table 2-2a);
+  river beds loose sand, group A, 63 (the only group-A arid row, desert shrub poor). Each catchment's number is
+  the area-weighted composite of its own cover (land.js catchmentCover); the island's number is 73.3.
+- Pans: pans form on clay (which is why they hold water and do not seep); around them soil group D: herbaceous
+  89, desert shrub 86.
+- Each hole now has its own stream: its own runoff by its own curve number at the island's soil wetness, through
+  its own channel reservoir (holeStream). Books: holeChannelError ~ 1e-11.
+- Missing physics found and added: rain falling on a pool's own open water (all kept). Without it, and with pans
+  scored on sandy ground, pans held water only 12% of wet-season days; with both, 89%.
+- A contradiction found and fixed: river-bed squares were first scored as impervious (98), against the losing,
+  sand-bed rivers of the water layer. This made tiny all-channel catchments wetter late in the dry season than
+  large ones and failed the land gate (small 0.56 against large 0.45). As sand (63): small 0.32, large 0.39.
+- Results (6 islands, 3 years): runoff 1.2% of rain, groundwater recharge 0.9% (measured semi-arid range 0.1-5%,
+  Scanlon et al. 2006); seasonal holes wet 0.81 in the wet season, 0.23 in Sep-Oct.
+- Gates: water passed (deaths per island 4.2 -> 5.5 against the old stand-in water; within the limit, and the
+  rise is real: physical runoff leaves less water than the fitted number did); terrain passed (5.8 -> 5.5).
+- Old paths proven unchanged against the last save (land stand-in a781c050f8219ff4; land and water stand-in
+  754db016e0756aac). Fingerprint, everything real: .

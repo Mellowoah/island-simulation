@@ -13,9 +13,9 @@ import { R, clockOf, dateOf, hourOf } from './clock.js';
 import { noise2, seedKey, STREAMS } from './sim.js';
 import { rainOf } from './rain-years.js';
 import { LAYERS } from './layers.js';
-import { referenceET, soilDay, reservoirDay } from './water.js';
+import { referenceET, soilDay, reservoirDay, runoff, curveNumber, compositeCN, CN_BY_COVER_CLAY } from './water.js';
 import { jdOfTick, dayOfYearJd } from './sun.js';
-import { catchmentKm2 } from './land.js';
+import { catchmentKm2, catchmentCover, islandCover } from './land.js';
 
 // Month order follows the clock (year starts 1 November). Share of days that are wet (assumption, shaped on the
 // bimodal rains near Lake Eyasi: short rains Nov-Dec, long rains Mar-May, a long dry season Jun-Oct).
@@ -107,6 +107,8 @@ function fillHoles(s) {
     const H = HOLES[w.kind] ?? HOLES.lake;
     w.level = H.start;
     w.catchKm2 = catchmentKm2(w.x, w.y);
+    w.cn = compositeCN(catchmentCover(w.x, w.y), w.kind === 'pan' ? CN_BY_COVER_CLAY : undefined);
+    w.channel = 0;
     w.active = !isFinite(w.level) || w.level > DRY_BELOW;
     if (isFinite(H.start)) s.weatherLedger.holeStart += H.start;
   }
@@ -162,13 +164,16 @@ export function weatherDay(s) {
   W.light = (1 - Math.cos(2 * Math.PI * W.moon)) / 2;
 }
 
-// Real water (Layer 2, water.js): FAO Penman-Monteith evaporation, soil with HBV percolation, the stream
-// channels and groundwater as two reservoirs feeding the holes. Every flow is in the books.
+// Real water (Layer 2, water.js): FAO Penman-Monteith evaporation, the soil with FAO-56 deep percolation, the
+// stream channels and groundwater as two reservoirs. Every flow is in the books. With the real land the
+// island's curve number comes from its land cover (TR-55 composite); before that, the provisional fitted one.
 function waterDayReal(s, W, day) {
-  const jd = jdOfTick(s.tick, clockOf(s).hours);
+  const jd = jdOfTick(s.tick, clockOf(s).hours),
+    soilBefore = W.soil;
   W.pet = referenceET(W.air, jd, dayOfYearJd(jd));
+  W.cn ??= landReal(s) ? compositeCN(islandCover()) : R('curveNumber');
   const L = s.weatherLedger,
-    f = soilDay(W.soil, W.rain, W.pet, R('soilMaxMm'), R('curveNumber'), R('percolationBeta'));
+    f = soilDay(W.soil, W.rain, W.pet, R('soilMaxMm'), W.cn);
   L.rain += W.rain;
   L.soilEvap += f.evap;
   L.soilRunoff += f.quick + f.recharge;
@@ -183,7 +188,7 @@ function waterDayReal(s, W, day) {
   W.ground = g.store;
   W.yearSum += W.rain - W.recent[day % 365];
   W.recent[day % 365] = W.rain;
-  holesDay(s, W, ch.out, g.out);
+  holesDay(s, W, ch.out, g.out, soilBefore);
 }
 
 // Water holes for a day (real water): stream and groundwater flow from the catchment in, evaporation out,
@@ -191,10 +196,27 @@ function waterDayReal(s, W, day) {
 // With the real land (Layer 3) each hole gathers from its own catchment: depth in = depth over the catchment x
 // catchment area / the pool's own area. Before that, a fitted multiple (catch x catchScale, provisional).
 const landReal = s => (s.config?.layers?.terrain ?? LAYERS.terrain.status) === 'real';
-function holesDay(s, W, stream, seep) {
-  const gather = landReal(s) ? w => (w.catchKm2 * 100) / R('holeAreaHa') : (w, H) => H.catch * R('catchScale');
-  W.bedSeep = landReal(s) ? R('poolBedSeepMm') : 0;
-  holeStep(s, W, (H, w) => (stream + seep * (H.ground ?? 1)) * gather(w, H));
+function holesDay(s, W, stream, seep, soilBefore) {
+  if (!landReal(s)) {
+    W.bedSeep = 0;
+    return holeStep(s, W, (H, w) => (stream + seep * (H.ground ?? 1)) * H.catch * R('catchScale'));
+  }
+  W.bedSeep = R('poolBedSeepMm');
+  const gather = w => (w.catchKm2 * 100) / R('holeAreaHa');
+  // plus the rain falling on the pool's own open water, all of which it keeps
+  holeStep(s, W, (H, w) => (holeStream(s, W, w, soilBefore) + seep * (H.ground ?? 1)) * gather(w) + W.rain);
+}
+
+// A hole's own stream (with the real land): the day's runoff from its own catchment, by its own curve number
+// (TR-55 composite of its land cover) at the island's soil wetness, through its own channel reservoir.
+function holeStream(s, W, w, soilBefore) {
+  const L = s.weatherLedger,
+    q = runoff(W.rain, curveNumber(w.cn, soilBefore / R('soilMaxMm')));
+  const ch = reservoirDay(w.channel, q, R('channelDays'));
+  w.channel = ch.store;
+  L.holeChannelIn = (L.holeChannelIn ?? 0) + q;
+  L.holeChannelOut = (L.holeChannelOut ?? 0) + ch.out;
+  return ch.out;
 }
 
 // One day for every water hole, real or stand-in: inflow (by kind of hole) in, evaporation out, spill when
@@ -306,6 +328,8 @@ export function weatherLedger(s) {
     holeError: L.holeIn - (holes - L.holeStart) - L.holeEvap - L.holeSpill - (L.holeBed ?? 0),
     channelError: (L.quick ?? 0) - (W.channel ?? 0) - (L.channelOut ?? 0), // channels start empty
     groundError: (L.recharge ?? 0) - (W.ground ?? 0) - (L.seep ?? 0), // groundwater starts empty
+    holeChannelError:
+      (L.holeChannelIn ?? 0) - s.waters.reduce((t, w) => t + (w.channel ?? 0), 0) - (L.holeChannelOut ?? 0),
   };
 }
 
