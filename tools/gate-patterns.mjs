@@ -8,6 +8,7 @@ export const TESTS = {
   water: ['tests/water.test.mjs'],
   terrain: ['tests/land.test.mjs'],
   plants: ['tests/plants.test.mjs'],
+  animals: ['tests/fauna.test.mjs'],
 };
 
 // Months in the gate's results run from November (the world starts on 1 November)
@@ -60,6 +61,19 @@ export const PATTERNS = {
     return {
       ok,
       detail: `peak standing / Deshmukh ${peak.toFixed(2)}, growth / Deshmukh ${grown.toFixed(2)}, green Sep-Oct ${late.toFixed(0)} against wet season ${wet.toFixed(0)} g/m2`,
+    };
+  },
+  // Layer 5: the herds eat a share of the grass that grew within what native large herbivores eat (1% in desert
+  // grassland to about 64% in mesic grassland; Joern and Raynor 2018), and their live mass lies within the range
+  // across African parks (10^2-10^4 kg/km2; Fritz and Duncan 1994)
+  animals(rs) {
+    const ys = rs.flatMap(r => r.plantYears),
+      share = mean(ys.map(y => y.eaten / y.grown));
+    const bio = mean(ys.map(y => y.herbivoreKgKm2)),
+      ok = share >= 0.01 && share <= 0.64 && bio >= 100 && bio <= 10000;
+    return {
+      ok,
+      detail: `herds ate ${(100 * share).toFixed(1)}% of the grass grown; herbivores ${bio.toFixed(0)} kg/km2`,
     };
   },
   water(rs) {

@@ -15,7 +15,8 @@ import {
   dateOf,
 } from './clock.js';
 import { isDark } from './sun.js';
-import { KCAL_PER_KM2, fishKcal } from './yields.js';
+import { KCAL_PER_KM2 } from './yields.js';
+import { FAUNA_KCAL_PER_KM2, fishKcal } from './fauna.js';
 import { LAYERS } from './layers.js';
 import * as EN from './energy.js';
 import { FOODS, rainOf, waterActive, landStep, returnRate, realFrac } from './savanna.js';
@@ -128,7 +129,9 @@ function yearlyTotals(sites) {
   const area = (food, region) =>
     region !== 'shore' ? (km2[region] ?? 0) : km2.shore * (food === 'shellfish' ? 1 - lakeShare : lakeShare);
   return (food, region) =>
-    food === 'fish' ? fishKcal(km2.lake ?? 0, km2.river ?? 0) : KCAL_PER_KM2[food]() * area(food, region);
+    food === 'fish'
+      ? fishKcal(km2.lake ?? 0, km2.river ?? 0)
+      : { ...KCAL_PER_KM2, ...FAUNA_KCAL_PER_KM2 }[food]() * area(food, region);
 }
 // Every food at every site of its ground; each region's yearly yield shared equally among that food's sites
 // there (fish: among all fish sites). No people density and no diet shares.

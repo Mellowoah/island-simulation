@@ -34,9 +34,3 @@ test('P4 grown food knows nothing of a people density: changing it changes no pa
     b.patches.map(p => [p.food, p.regen]),
   );
 });
-
-test('P5 fish follow Marshall (1984): 355 kg/ha at 1 km2, 200 at 10, falling with area', async () => {
-  const Y = await import('../dist/yields.js');
-  assert.ok(Math.abs(Y.lakeFishKgHa(1) - 355) < 1e-9 && Math.abs(Y.lakeFishKgHa(10) - 200) < 1e-9);
-  assert.ok(Y.lakeFishKgHa(34) < 200 && Y.lakeFishKgHa(34) > 112);
-});

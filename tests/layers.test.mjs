@@ -43,7 +43,7 @@ test('L3 a layer is real only with a gate: a passing record whose code hashes ma
 test('L4 every function in a real layer\'s files is under 30 lines', () => {
   for (const [, L] of Object.entries(LAYERS)) {
     if (L.status !== 'real' || L.rank < 0 || L.rank > 6) continue;
-    for (const f of L.files) {
+    for (const f of [...L.files, ...(L.real ?? [])]) {
       const lines = fs.readFileSync(new URL(f, D), 'utf8').split('\n');
       let start = -1;
       lines.forEach((l, i) => {

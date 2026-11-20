@@ -6,6 +6,8 @@ const { createWorld2, stepWorld } = await import(ROOT + '/dist/world.js');
 const { weatherLedger } = await import(ROOT + '/dist/weather.js');
 const { isDark } = await import(ROOT + '/dist/sun.js');
 const { clockOf } = await import(ROOT + '/dist/clock.js');
+const N = await import(ROOT + '/dist/nature.js');
+const T = await import(ROOT + '/dist/terrain.js');
 
 const [seed, years, cfg] = [+process.argv[2], +(process.argv[3] ?? 3), JSON.parse(process.argv[4] ?? '{}')];
 const { setRate } = await import(ROOT + '/dist/clock.js');
@@ -30,16 +32,26 @@ function lateBySize() {
   return { small: m(r.slice(0, half)), large: m(r.slice(half)) };
 }
 
+// Herbivores' live mass per km2 of land
+const herbivoreKgKm2 = () =>
+  Object.entries(N.SPECIES).reduce((t, [id, sp]) => t + s.animals[id].reduce((a, n) => a + n, 0) * sp.mass, 0) /
+  T.LAND_KM2;
 // Plants (Layer 4): each year's growth, peak standing grass (green and dead) and rain; monthly green grass
 const plantYears = [];
-let py = { grown: 0, rain: 0, peak: 0 };
+let py = { grown: 0, rain: 0, peak: 0, eaten: 0 };
 function samplePlants(d) {
   const P = s.plants;
   if (!P) return;
   py.peak = Math.max(py.peak, P.green + P.dead);
   if (d % 365 === 364) {
-    plantYears.push({ grown: P.grownTotal - py.grown, rain: s.weatherLedger.rain - py.rain, peak: py.peak });
-    py = { grown: P.grownTotal, rain: s.weatherLedger.rain, peak: 0 };
+    plantYears.push({
+      grown: P.grownTotal - py.grown,
+      rain: s.weatherLedger.rain - py.rain,
+      peak: py.peak,
+      eaten: (P.eatenTotal ?? 0) - py.eaten,
+      herbivoreKgKm2: herbivoreKgKm2(),
+    });
+    py = { grown: P.grownTotal, rain: s.weatherLedger.rain, peak: 0, eaten: P.eatenTotal ?? 0 };
   }
 }
 

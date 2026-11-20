@@ -508,3 +508,21 @@ Robert: "Remove hazda and implement our goal".
   (unchanged from before).
 - Other Hadza numbers still used as inputs (people layer, to be rebuilt): the Siler mortality fit, menarche and
   menopause ages, camp size at the start, daily energy use, sleep, day-range limits.
+
+## 20 Nov 2026: Layer 5 (animals) real: herds graze the grass that grew
+
+- fauna.js: herbivores eat in proportion to metabolic mass (mass^0.75; intake 0.09 kg dry matter per kg^0.75 a
+  day, approx., range 0.06-0.12). Each day the herds' need comes out of the plants layer's grass, green first then
+  dead (dry tissue is a large part of dry-season diets; McNaughton 1985). Short of grass they starve (a herd with
+  nothing lasts about 60 days, assumption). The land's carrying capacity follows the plants' own year in place of
+  the rain shortcut. Fish, shellfish and honey yields moved here from yields.js (identical fingerprint).
+- Result (6 islands, 3 years): herds eat 2.5% of the grass grown; herbivores 1,278 kg/km2. Both within the
+  measured ranges (native large herbivores eat 1-64% of ANPP, Joern and Raynor 2018; 10^2-10^4 kg/km2 across
+  African parks, Fritz and Duncan 1994). 2.5% is near the low end: densities still come from field counts made
+  where lions and people hold herds down, so on the island predators (implicit), not grass, set the numbers;
+  grass limits them only in drought. Predators of their own are the next step for this layer.
+- Gate passed (deaths per island 4.2 -> 4.2); plants gate re-run after the move: passed.
+- Safeguard fixed: the 30-line test (L4) checked only each layer's original files, not its new real files; it now
+  checks both (all pass). nature.js split: animalDay, law and wildfireDay into small functions, fingerprint
+  identical (eef4c2c7e0262054).
+- Still to tie in: wildfire fuel should come from the dead grass, not the rain ratio.
