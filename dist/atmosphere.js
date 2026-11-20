@@ -14,7 +14,7 @@
 // - Max Planck Institute fieldwork notes: the Eyasi dry season (June-Oct) is hot, dry and windy.
 // Every function is under 30 lines. The numbers marked "assumption" are in the register (clock.js).
 import { R } from './clock.js';
-import { sunTimes, SITE } from './sun.js';
+import { sunTimes, SITE, dailyRa, declinationFAO, angstromShare, netShortwave } from './sun.js';
 
 const F_TO_C = f => ((f - 32) * 5) / 9;
 // Lake Eyasi cell, Jan..Dec, deg F (1901-2009)
@@ -25,7 +25,8 @@ export const CLIMATE = { tmax: TMAX_F.map(F_TO_C), tmin: TMIN_F.map(F_TO_C) };
 // The climate mean on a day, smoothly between month midpoints; m = month 0..11, f = fraction through it
 export function climateOn(m, f) {
   const at = (arr, t) => {
-    const i = Math.floor(t), w = t - i;
+    const i = Math.floor(t),
+      w = t - i;
     return arr[((i % 12) + 12) % 12] * (1 - w) + arr[(((i + 1) % 12) + 12) % 12] * w;
   };
   const t = m + f - 0.5; // months measured from mid-January
@@ -44,27 +45,51 @@ const normal = (u1, u2) => Math.sqrt(-2 * Math.log(Math.max(1e-12, u1))) * Math.
 // One day's air. prev: yesterday's air (or null); wet: rain today; pi: this month's share of wet days;
 // m, f: month and fraction; u: k -> uniform. Wet and dry shifts balance (pi x wet + (1 - pi) x dry = 0), so each
 // month's mean stays on the measured climate whatever its share of wet days.
+// Day warming from the sun's energy: the day's net sunshine above or below the month's mean (FAO-56 eq. 21, 35
+// and 38), the share of it that heats the air (sensible heat; the rest evaporates water or warms the ground),
+// spread through the afternoon mixed layer (Stull 1988, An Introduction to Boundary Layer Meteorology):
+// dT = dRns x share / (rho x cp x depth). The mean sunshine is the month's own (its wet-day share), so the
+// departures average to zero and the measured monthly means hold. Replaces the fixed wet/dry shift.
+export function sunWarming(sunshine, meanSunshine, m, f) {
+  const J = Math.round(30.42 * (m + f)) + 1,
+    Ra = dailyRa(declinationFAO(J), J);
+  const dRns = netShortwave(Ra * (angstromShare(sunshine) - angstromShare(meanSunshine))); // MJ/m2/day
+  const rhoCp = ((pressureAt(SITE.elevation) * 1000) / (287.05 * 298)) * 1005; // J/m3/K, dry air near 25 C
+  return (dRns * 1e6 * R('sensibleShare')) / (rhoCp * R('mixedLayerM'));
+}
+
 export function airDay(prev, wet, pi, m, f, u) {
-  const c = climateOn(m, f), rho = R('tempPersistence'), sd = R('tempAnomalySd'), q = pi / Math.max(0.05, 1 - pi);
+  const c = climateOn(m, f),
+    rho = R('tempPersistence'),
+    sd = R('tempAnomalySd'),
+    q = pi / Math.max(0.05, 1 - pi);
   const a = rho * (prev?.anomaly ?? 0) + Math.sqrt(1 - rho * rho) * sd * normal(u(200), u(201));
-  const tmax = c.tmax + a + (wet ? -R('wetDayCoolMax') : q * R('wetDayCoolMax'));
+  const sunshine = wet ? R('sunshineWet') : R('sunshineDry'),
+    meanSun = pi * R('sunshineWet') + (1 - pi) * R('sunshineDry');
+  const tmax = c.tmax + a + sunWarming(sunshine, meanSun, m, f);
   const tmin = Math.min(tmax - 2, c.tmin + 0.5 * a + (wet ? R('wetDayWarmMin') : -q * R('wetDayWarmMin')));
   const dry = m >= 5 && m <= 9; // June-October
   const tdew = tmin - (wet ? 0 : dry ? R('dewDepressionDry') : R('dewDepressionWet'));
   const meanWind = dry ? R('windDryMs') : R('windWetMs');
-  const wind = meanWind * Math.sqrt(-Math.log(Math.max(1e-12, u(202)))) / 0.8862; // Weibull k = 2, mean meanWind
-  const sunshine = wet ? R('sunshineWet') : R('sunshineDry');
+  const wind = (meanWind * Math.sqrt(-Math.log(Math.max(1e-12, u(202))))) / 0.8862; // Weibull k = 2, mean meanWind
   return { tmax, tmin, anomaly: a, ea: satVapour(tdew), wind, sunshine, pressure: pressureAt(SITE.elevation) };
 }
 
 // Air temperature at a clock hour (Parton and Logan 1981): sine from sunrise to sunset peaking a lag after
 // solar noon, then an exponential fall from the sunset temperature toward the next morning's minimum
 export function tempAt(air, hour, times) {
-  const { rise, set } = times, lag = R('tempPeakLagH'), day = set - rise, k = R('tempNightDecay');
+  const { rise, set } = times,
+    lag = R('tempPeakLagH'),
+    day = set - rise,
+    k = R('tempNightDecay');
   const sine = h => air.tmin + (air.tmax - air.tmin) * Math.sin((Math.PI * (h - rise)) / (day + 2 * lag));
   if (hour >= rise && hour <= set) return sine(hour);
-  const tSet = sine(set), night = 24 - day, since = hour > set ? hour - set : hour + 24 - set;
-  return air.tmin + (tSet - air.tmin) * Math.exp((-k * since) / night) - ((tSet - air.tmin) * Math.exp(-k) * since) / night;
+  const tSet = sine(set),
+    night = 24 - day,
+    since = hour > set ? hour - set : hour + 24 - set;
+  return (
+    air.tmin + (tSet - air.tmin) * Math.exp((-k * since) / night) - ((tSet - air.tmin) * Math.exp(-k) * since) / night
+  );
 }
 
 // Relative humidity (0..1) at an air temperature, from the day's vapour pressure
@@ -72,7 +97,8 @@ export const humidityAt = (air, T) => Math.min(1, air.ea / satVapour(T));
 
 // Hourly air for the day containing jd: temperature and humidity at each clock hour 0..23
 export function airHours(air, jd) {
-  const times = sunTimes(jd), out = [];
+  const times = sunTimes(jd),
+    out = [];
   for (let h = 0; h < 24; h++) {
     const T = tempAt(air, h + 0.5, times);
     out.push({ T, rh: humidityAt(air, T) });

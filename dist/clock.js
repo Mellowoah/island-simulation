@@ -721,7 +721,9 @@ export const RATES = {
   // Layer 1, the atmosphere (atmosphere.js)
   tempPersistence: { value: 0.7, low: 0.5, high: 0.85, unit: 'day-to-day correlation', dist: 'uniform', src: 'assumption in the range found for daily temperature (Richardson 1981 WGEN: lag-1 correlations about 0.6-0.8)' },
   tempAnomalySd: { value: 1.2, low: 0.6, high: 2, unit: 'deg C', dist: 'uniform', src: 'assumption: spread of daily max temperature about the monthly mean near the equator (small seasonal and day-to-day swings)' },
-  wetDayCoolMax: { value: 2, low: 1, high: 4, unit: 'deg C', dist: 'uniform', src: 'assumption: rain days are cooler by day (clouds); dry days are warmer so the monthly mean holds (Richardson 1981 conditions temperature on wet and dry days)' },
+  sensibleShare: { value: 0.5, low: 0.3, high: 0.8, unit: 'share', dist: 'uniform', src: 'Share of extra net sunshine that heats the air (sensible heat), beta/(1+beta) for a Bowen ratio beta near 1 over semi-arid savanna (assumption within the measured range; Stull 1988).' },
+  mixedLayerM: { value: 1500, low: 1000, high: 2500, unit: 'm', dist: 'uniform', src: 'Depth of the afternoon convective mixed layer over dry tropical land, about 1-2 km (Stull 1988).' },
+  wetDayCoolMax: { value: 2, low: 1, high: 4, unit: 'deg C', dist: 'uniform', src: 'RETIRED 20 Nov 2026 (day temperature now from the energy balance, sunWarming in atmosphere.js). Was: assumption: rain days are cooler by day (clouds); dry days are warmer so the monthly mean holds (Richardson 1981 conditions temperature on wet and dry days)' },
   wetDayWarmMin: { value: 1, low: 0, high: 2, unit: 'deg C', dist: 'uniform', src: 'assumption: cloudy nights lose less heat (net longwave, FAO-56 eq. 39), so rain days have warmer nights' },
   dewDepressionDry: { value: 3, low: 2, high: 5, unit: 'deg C', dist: 'uniform', src: 'FAO-56 Annex 6: in arid and semi-arid places the dew point is about 2-4 deg C below Tmin; dry season' },
   dewDepressionWet: { value: 1, low: 0, high: 2, unit: 'deg C', dist: 'uniform', src: 'FAO-56 Annex 6: in humid conditions the dew point is near Tmin; wet season dry days' },

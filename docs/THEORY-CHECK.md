@@ -404,3 +404,18 @@ Robert approved fixing both water problems the land exposed.
 - waterSites split into four helpers for the 30-line rule; the sites are identical before and after (hash).
 - Fingerprints: all real ef56e330baf9fc6b; land stand-in 6febb3225f828d4c; land and water stand-in
   5bf2194c8c5470f5 (unchanged since Layer 2).
+
+## 20 Nov 2026: day temperature from the sun's energy (Layer 1)
+
+- The fixed wet/dry shift on the day's maximum (wetDayCoolMax, retired) is replaced by the energy balance
+  (atmosphere.js sunWarming): the day's net sunshine above or below the month's mean (FAO-56 eq. 21, 35, 38),
+  times the share that heats the air (sensibleShare 0.5, a Bowen ratio near 1), spread through the afternoon
+  mixed layer (mixedLayerM 1500 m; Stull 1988): dT = dRns x share / (rho cp h). Mean sunshine is the month's own,
+  so departures average to zero and the measured monthly means hold.
+- Cross-check: this gives wet days about 0.9 deg C below the mean and dry days about 1.1 above, a 2 deg C gap,
+  the same size as the old assumed shift, now derived rather than assumed.
+- Air gate re-run: passed; monthly mean max within 0.28 deg C of the record. Sun gate re-run after a comment
+  edit in sun.js: passed, dark 11.0 h every month.
+- Still statistical: the night minimum (wetDayWarmMin). Cloudy nights warmer by longwave (FAO-56 eq. 39) needs a
+  night-layer depth and ground heat flux; next.
+- Fingerprint, everything real: 90e5e57b88b992ff.

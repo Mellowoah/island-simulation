@@ -103,7 +103,7 @@ export function dailyRa(dec, J, site = SITE) {
   return k * (ws * Math.sin(phi) * Math.sin(d) + Math.cos(phi) * Math.cos(d) * Math.sin(ws));
 }
 
-// FAO-56's simple declination (eq. 24), deg; kept only so its worked example can be reproduced exactly
+// FAO-56's simple declination (eq. 24), deg: for its worked example, and for month-scale radiation in the air layer
 export const declinationFAO = J => deg(0.409 * Math.sin((2 * Math.PI * J) / 365 - 1.39));
 
 // Sunlight at the top of the air on level ground, W/m2: the solar constant over distance squared, times sin(elevation)
