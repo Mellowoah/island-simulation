@@ -13,7 +13,15 @@
 // One herb layer for the island for now: the water layer has one soil for the island. Every function < 30 lines.
 import { R } from './clock.js';
 
-export const newPlants = () => ({ green: 0, dead: 0, grownTotal: 0, removedTotal: 0, days: 0 });
+export const newPlants = () => ({
+  green: 0,
+  dead: 0,
+  grownTotal: 0,
+  removedTotal: 0,
+  days: 0,
+  recent: new Array(365).fill(0),
+  yearSum: 0,
+});
 
 // The day's growth above ground, g/m2, from the day's actual evapotranspiration (mm)
 export const growthFrom = aetMm =>
@@ -38,6 +46,12 @@ export function plantsDay(s) {
   P.green += grow - cure;
   P.dead += cure - gone;
   P.grownTotal += grow;
+  P.yearSum += grow - P.recent[P.days % 365];
+  P.recent[P.days % 365] = grow;
   P.removedTotal += gone;
   P.days++;
 }
+
+// This past year's growth against an average year's (meanHerbGrowth), once a full year has grown; null before.
+// The foods follow it (savanna.js): a poor growing year is a poor year for fruit and tubers too.
+export const plantYearRatio = s => (s.plants?.days >= 365 ? s.plants.yearSum / R('meanHerbGrowth') : null);

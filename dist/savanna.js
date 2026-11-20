@@ -17,6 +17,7 @@ import { registerMap, noise2, seedKey, STREAMS } from './sim.js';
 import { R, clockOf, body, growPatch } from './clock.js';
 import { rainOf } from './rain-years.js';
 import { rainYearRatio } from './weather.js';
+import { plantYearRatio } from './plants.js';
 // On the real clock (clock.js) every food has a half-life, and a patch left alone settles where growth equals decay
 // (no capMonths cap); one food unit is 500 kcal and one tick is an hour. Legacy worlds keep the numbers below.
 
@@ -369,7 +370,8 @@ export const realYear = (s, tick = s.tick) => Math.floor(tick / clockOf(s).year)
 function landStepReal(s, groundFactor) {
   const C = clockOf(s),
     f = realFrac(s),
-    rain = s.weather ? Math.max(0.1, Math.min(2.5, rainYearRatio(s))) : rainOf(s.seed, realYear(s));
+    grown = plantYearRatio(s), // with the real plants, after their first year: this year's growth drives the food
+    rain = s.weather ? Math.max(0.1, Math.min(2.5, grown ?? rainYearRatio(s))) : rainOf(s.seed, realYear(s));
   for (const p of s.patches) {
     if (!p.food) continue;
     // with weather: a patch picked below regrowHalf of its natural level regrows in proportion (overuse can deplete it)

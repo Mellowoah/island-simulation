@@ -24,3 +24,19 @@ test('P3 books: grass grown = green + dead + removed, over many wet and dry days
   assert.ok(grownTotal > 0 && removedTotal > 0);
   assert.ok(Math.abs(grownTotal - green - dead - removedTotal) < 1e-9 * grownTotal);
 });
+
+test('P4 grown food knows nothing of a people density: changing it changes no patch', async () => {
+  const { createWorld2 } = await import('../dist/world.js');
+  const a = createWorld2(1, { layers: { plants: 'real' } }),
+    b = createWorld2(1, { layers: { plants: 'real' }, density: 5 });
+  assert.deepEqual(
+    a.patches.map(p => [p.food, p.regen]),
+    b.patches.map(p => [p.food, p.regen]),
+  );
+});
+
+test('P5 fish follow Marshall (1984): 355 kg/ha at 1 km2, 200 at 10, falling with area', async () => {
+  const Y = await import('../dist/yields.js');
+  assert.ok(Math.abs(Y.lakeFishKgHa(1) - 355) < 1e-9 && Math.abs(Y.lakeFishKgHa(10) - 200) < 1e-9);
+  assert.ok(Y.lakeFishKgHa(34) < 200 && Y.lakeFishKgHa(34) > 112);
+});

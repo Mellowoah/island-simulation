@@ -478,3 +478,33 @@ Robert approved fixing both water problems the land exposed.
 - Books: grass grown = green + dead + removed, exactly (test P3).
 - Next: grow the foods from the plants (berries and fruit from woody plants, tubers, seeds), each with a measured
   edible yield, and remove the density from makeFood. Needs woody-plant growth and published yields.
+
+## 20 Nov 2026: the Hadza density removed from the food; food grown from measured yields (Layer 4 real)
+
+Robert: "Remove hazda and implement our goal".
+- Before: food patches were sized as 0.24 people/km2 (Hadza) x the land x a year's need x a diet share per food.
+  The island was told how many people it feeds (about 205). That built the answer in.
+- Now (dist/yields.js, w-food.js makeFoodGrown): every food at every food site of its own ground; each kind of
+  ground's yearly yield from field measurements, shared among its sites. No people density, no diet shares:
+  tubers //ekwa 5,200 kg/ha where it grows (Vincent 1985, in Wood et al. 2021), 146 kcal/100 g dry, ~78% water
+  (Schoeninger et al. 2001); berries 935 kg/ha fresh edible fruit in savanna woodland (KwaZulu-Natal 2022),
+  320 kcal/100 g dry (Crittenden et al. 2009); baobab 36.8 kg fruit per tree (Venter and Witkowski 2011), pulp
+  16.6%, seeds ~29% (as nuts); honey 6.8 wild colonies/km2 in Africa (Visick and Ratnieks 2023) x 5-8 kg a year;
+  fish by lake area (Marshall 1984: 147 kg/ha for the island's 34 km2 lake) and 43 kg/ha for rivers; shellfish
+  88 g AFDW/m2 rocky shore (Seys et al.).
+- Assumptions, in the register with ranges: share of land where //ekwa grows (0.1, the largest unknown), tuber
+  renewal (2 years), berry dry and edible shares (0.3, 0.5), baobab trees per ha (2; recorded 0-60), intertidal
+  share of shore (0.05), shellfish renewal (1 year).
+- Each year's food follows that year's plant growth (plants.js plantYearRatio, against the plants' own average,
+  514 g/m2, 24 island-years) in place of the rain shortcut; in the first year, the rain ratio.
+- Result: the land grows about 20.6 billion kcal a year, food for about 25,000 people (the stand-in: about 205).
+  Berries are about half of it and rest on the weakest numbers (a South African fruit plot and two assumptions).
+- Effect: deaths per island 5.5 -> 4.2 (6 islands, 3 years); nobody starved before or after; almost all deaths
+  are "Illness", which is a Hadza mortality curve (Siler fit) in the people layer: the next scripted input.
+- Tests: P4 (changing the people density changes no patch), P5 (Marshall's points). Y8 now looks for regrowth
+  learning across foods: with measured stocks tuber patches never fall below 64% of full, so tuber beliefs rightly
+  stay put while baobab, nuts and berries beliefs move. Y9 looks for a band split on four islands, not one.
+- Gate passed; plants are real. Fingerprints: all real eef4c2c7e0262054; plants stand-in c4ffeb745a9ff88e
+  (unchanged from before).
+- Other Hadza numbers still used as inputs (people layer, to be rebuilt): the Siler mortality fit, menarche and
+  menopause ages, camp size at the start, daily energy use, sleep, day-range limits.
