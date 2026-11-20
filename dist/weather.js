@@ -12,6 +12,9 @@ import { airDay, CLIMATE } from './atmosphere.js';
 import { R, clockOf, dateOf, hourOf } from './clock.js';
 import { noise2, seedKey, STREAMS } from './sim.js';
 import { rainOf } from './rain-years.js';
+import { LAYERS } from './layers.js';
+import { referenceET, soilDay, reservoirDay } from './water.js';
+import { jdOfTick, dayOfYearJd } from './sun.js';
 
 // Month order follows the clock (year starts 1 November). Share of days that are wet (assumption, shaped on the
 // bimodal rains near Lake Eyasi: short rains Nov-Dec, long rains Mar-May, a long dry season Jun-Oct).
@@ -36,12 +39,15 @@ const MONTH_KEYS = Object.keys(WET_SHARE_BY_MONTH);
 // Water holes as stores (mm of water over their own area). catch: how much of the rain on its catchment reaches it
 // (as a multiple of the rain falling on it); evap: share of potential evaporation it loses; max: depth when full.
 // Lakes and springs are fed from deep ground water and do not dry on these timescales (assumption).
+// ground (real water only): the share of groundwater seepage that reaches it, against stream flow (all of it):
+// rain-fed pans none, pools in seasonal streams a little, the river all (assumption from how semi-arid
+// drainages work: pans fill from runoff, rivers carry the baseflow).
 export const HOLES = {
   lake: { catch: 0, evap: 0, max: Infinity, start: Infinity, lasting: true },
   spring: { catch: 0, evap: 0, max: Infinity, start: Infinity, lasting: true },
-  river: { catch: 8, evap: 1.0, max: 700, start: 450 }, // a seasonal river: channel pools that seep and evaporate
-  pools: { catch: 7, evap: 0.8, max: 700, start: 450 },
-  pan: { catch: 4, evap: 1.0, max: 350, start: 120 },
+  river: { catch: 8, evap: 1.0, max: 700, start: 450, ground: 1 }, // a seasonal river: channel pools that seep and evaporate
+  pools: { catch: 7, evap: 0.8, max: 700, start: 450, ground: 0.3 },
+  pan: { catch: 4, evap: 1.0, max: 350, start: 120, ground: 0 },
 };
 const DRY_BELOW = 20; // mm: a hole with less than this is mud, not water
 
@@ -88,16 +94,25 @@ export function makeWeather(s) {
     holeSpill: 0,
     holeStart: 0,
   };
+  fillHoles(s);
+  pastYear(s.weather);
+}
+
+// Water holes start at their starting level, counted in the books
+function fillHoles(s) {
   for (const w of s.waters) {
     const H = HOLES[w.kind] ?? HOLES.lake;
     w.level = H.start;
     w.active = !isFinite(w.level) || w.level > DRY_BELOW;
     if (isFinite(H.start)) s.weatherLedger.holeStart += H.start;
   }
-  // a year of normal past rain, so the running totals start where an ordinary year would leave them
+}
+
+// A year of normal past rain, so the running totals start where an ordinary year would leave them
+function pastYear(W) {
   const m = R('rainPerWetDay');
-  for (let d = 0; d < 365; d++) s.weather.recent[d] = WET_SHARE_BY_MONTH[MONTH_KEYS[Math.floor((d / 365) * 12)]] * m;
-  s.weather.yearSum = s.weather.recent.reduce((a, b) => a + b, 0);
+  for (let d = 0; d < 365; d++) W.recent[d] = WET_SHARE_BY_MONTH[MONTH_KEYS[Math.floor((d / 365) * 12)]] * m;
+  W.yearSum = W.recent.reduce((a, b) => a + b, 0);
 }
 // Mean annual rain the month odds and mean amount imply (mm), before the year's swing.
 export function expectedAnnual() {
@@ -106,6 +121,18 @@ export function expectedAnnual() {
 }
 
 // One day of weather (call once a day).
+// Today's rain: wet or dry by a two-state chain (stationary share pi this month, raised or lowered by the year's
+// swing; persistence rho), then a gamma-distributed amount. Returns pi (the air needs it).
+function rainDay(s, W, day, month, year) {
+  const Y = rainOf(s.seed, year) ** R('yearSwingWeight'); // this year's swing (about 1 in an ordinary year), damped so daily chance and the year together give a realistic spread
+  const pi = Math.min(0.95, WET_SHARE_BY_MONTH[month] * Math.sqrt(Y)),
+    rho = R('wetPersistence');
+  const pWet = W.wet ? pi + rho * (1 - pi) : pi * (1 - rho);
+  W.wet = u(s, day, 0) < pWet;
+  W.rain = W.wet ? gamma(s, day, R('rainGammaShape'), (R('rainPerWetDay') * Math.sqrt(Y)) / R('rainGammaShape')) : 0;
+  return pi;
+}
+
 export function weatherDay(s) {
   const C = clockOf(s),
     day = Math.floor(s.tick / C.day),
@@ -115,20 +142,73 @@ export function weatherDay(s) {
   const frac = (((s.tick % C.year) + C.year) % C.year) / C.year,
     mi = Math.floor(frac * 12),
     month = MONTH_KEYS[mi];
-  const year = Math.floor(s.tick / C.year),
-    Y = rainOf(s.seed, year) ** R('yearSwingWeight'); // this year's swing (about 1 in an ordinary year), damped so daily chance and the year together give a realistic spread
-  // wet or dry: stationary share pi this month (raised or lowered by the year's swing), persistence rho
-  const pi = Math.min(0.95, WET_SHARE_BY_MONTH[month] * Math.sqrt(Y)),
-    rho = R('wetPersistence');
-  const pWet = W.wet ? pi + rho * (1 - pi) : pi * (1 - rho);
-  W.wet = u(s, day, 0) < pWet;
-  W.rain = W.wet ? gamma(s, day, R('rainGammaShape'), (R('rainPerWetDay') * Math.sqrt(Y)) / R('rainGammaShape')) : 0;
+  const pi = rainDay(s, W, day, month, Math.floor(s.tick / C.year));
   // the air (Layer 1, atmosphere.js): the measured Lake Eyasi climate for the date, a persistent day-to-day
   // anomaly, and today's rain; the world's month index counts from November, the climate's from January
   const calMonth = (mi + 10) % 12, inMonth = frac * 12 - Math.floor(frac * 12);
   W.air = airDay(W.air ?? null, W.wet, pi, calMonth, inMonth, k => u(s, day, k));
   W.tmax = W.air.tmax;
   W.tmin = W.air.tmin;
+  // water: the real layer (water.js) once it has passed its gate, else the stand-in below (dist/layers.js)
+  if ((s.config?.layers?.water ?? LAYERS.water.status) === 'real') waterDayReal(s, W, day);
+  else waterDayStandIn(s, W, day);
+  // the moon: synodic month 29.53 days; light at night from 0 (new) to 1 (full)
+  W.moon = (((day / 29.530589) % 1) + 1) % 1;
+  W.light = (1 - Math.cos(2 * Math.PI * W.moon)) / 2;
+}
+
+// Real water (Layer 2, water.js): FAO Penman-Monteith evaporation, soil with HBV percolation, the stream
+// channels and groundwater as two reservoirs feeding the holes. Every flow is in the books.
+function waterDayReal(s, W, day) {
+  const jd = jdOfTick(s.tick, clockOf(s).hours);
+  W.pet = referenceET(W.air, jd, dayOfYearJd(jd));
+  const L = s.weatherLedger, f = soilDay(W.soil, W.rain, W.pet, R('soilMaxMm'), R('curveNumber'), R('percolationBeta'));
+  L.rain += W.rain;
+  L.soilEvap += f.evap;
+  L.soilRunoff += f.quick + f.recharge;
+  W.soil = f.soil;
+  const ch = reservoirDay(W.channel ?? 0, f.quick, R('channelDays')), g = reservoirDay(W.ground ?? 0, f.recharge, R('groundwaterDays'));
+  L.quick = (L.quick ?? 0) + f.quick;
+  L.channelOut = (L.channelOut ?? 0) + ch.out;
+  L.recharge = (L.recharge ?? 0) + f.recharge;
+  L.seep = (L.seep ?? 0) + g.out;
+  W.channel = ch.store;
+  W.ground = g.store;
+  W.yearSum += W.rain - W.recent[day % 365];
+  W.recent[day % 365] = W.rain;
+  holesDay(s, W, ch.out, g.out);
+}
+
+// Water holes for a day (real water): stream and groundwater flow from the catchment in, evaporation out,
+// spill when full
+function holesDay(s, W, stream, seep) {
+  holeStep(s, W, H => (stream + seep * (H.ground ?? 1)) * H.catch * R('catchScale'));
+}
+
+// One day for every water hole, real or stand-in: inflow (by kind of hole) in, evaporation out, spill when
+// full, all in the books. Lakes and springs never dry.
+function holeStep(s, W, inflowOf) {
+  const L = s.weatherLedger;
+  for (const w of s.waters) {
+    const H = HOLES[w.kind] ?? HOLES.lake;
+    if (!isFinite(w.level)) {
+      w.active = true;
+      continue;
+    }
+    const inflow = inflowOf(H), evap = Math.min(w.level + inflow, W.pet * H.evap);
+    w.level += inflow - evap;
+    L.holeIn += inflow;
+    L.holeEvap += evap;
+    if (w.level > H.max) {
+      L.holeSpill += w.level - H.max;
+      w.level = H.max;
+    }
+    w.active = w.level > DRY_BELOW;
+  }
+}
+
+// Stand-in water (before Layer 2): Hargreaves evaporation, a soil bucket that overflows, holes fed by rain
+function waterDayStandIn(s, W, day) {
   // potential evaporation, mm/day (Hargreaves form: 0.0023 Ra (Tmean + 17.8) sqrt(Tmax - Tmin), Ra ~ 15 mm/day
   // near the equator); about 5-6 mm/day here, as measured for East African savanna
   const tmean = (W.tmax + W.tmin) / 2;
@@ -149,26 +229,7 @@ export function weatherDay(s) {
   W.recent[day % 365] = W.rain;
   // water holes: catchment inflow (more when the ground is wet), evaporation, spill when full
   const wetGround = 0.3 + (0.7 * soil) / Smax;
-  for (const w of s.waters) {
-    const H = HOLES[w.kind] ?? HOLES.lake;
-    if (!isFinite(w.level)) {
-      w.active = true;
-      continue;
-    }
-    const inflow = W.rain * H.catch * wetGround,
-      evap = Math.min(w.level + inflow, W.pet * H.evap);
-    w.level += inflow - evap;
-    L.holeIn += inflow;
-    L.holeEvap += evap;
-    if (w.level > H.max) {
-      L.holeSpill += w.level - H.max;
-      w.level = H.max;
-    }
-    w.active = w.level > DRY_BELOW;
-  }
-  // the moon: synodic month 29.53 days; light at night from 0 (new) to 1 (full)
-  W.moon = (((day / 29.530589) % 1) + 1) % 1;
-  W.light = (1 - Math.cos(2 * Math.PI * W.moon)) / 2;
+  holeStep(s, W, H => W.rain * H.catch * wetGround);
 }
 
 // Derived, shared measures
@@ -228,6 +289,8 @@ export function weatherLedger(s) {
   return {
     soilError: L.rain - (W.soil - L.soilStart) - L.soilEvap - L.soilRunoff,
     holeError: L.holeIn - (holes - L.holeStart) - L.holeEvap - L.holeSpill,
+    channelError: (L.quick ?? 0) - (W.channel ?? 0) - (L.channelOut ?? 0), // channels start empty
+    groundError: (L.recharge ?? 0) - (W.ground ?? 0) - (L.seep ?? 0), // groundwater starts empty
   };
 }
 

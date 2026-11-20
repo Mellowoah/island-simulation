@@ -74,8 +74,8 @@ export function sanity(s) {
   }
   if (s.weatherLedger) {
     const wl = weatherLedger(s);
-    if (Math.abs(wl.soilError) > 1e-3 || Math.abs(wl.holeError) > 1e-2)
-      add(`water books off: soil ${wl.soilError.toFixed(3)}, holes ${wl.holeError.toFixed(3)} mm`);
+    if (Math.abs(wl.soilError) > 1e-3 || Math.abs(wl.holeError) > 1e-2 || Math.abs(wl.groundError) > 1e-3 || Math.abs(wl.channelError) > 1e-3)
+      add(`water books off: soil ${wl.soilError.toFixed(3)}, holes ${wl.holeError.toFixed(3)}, ground ${wl.groundError.toFixed(3)}, channels ${wl.channelError.toFixed(3)} mm`);
   }
   for (const id in s.animals ?? {}) if (s.animals[id].some(n => !(n >= 0))) add(`${id}: negative or invalid numbers`);
   if (Math.abs(err) > 1e-6 * Math.max(1, L.consumed * 500)) add(`kcal ledger off by ${err.toFixed(1)}`);

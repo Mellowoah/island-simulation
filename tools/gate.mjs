@@ -31,7 +31,7 @@ const runIsland = (seed, cfg) => new Promise((ok, no) => {
 });
 
 const deathsOf = r => Object.values(r.deaths).reduce((a, b) => a + b, 0);
-const booksOk = r => Math.abs(r.books.soil) < 1e-3 && Math.abs(r.books.holes) < 1e-2 && Math.abs(r.books.ground) < 1e-3;
+const booksOk = r => Math.abs(r.books.soil) < 1e-3 && Math.abs(r.books.holes) < 1e-2 && Math.abs(r.books.ground) < 1e-3 && Math.abs(r.books.channels ?? 0) < 1e-3;
 
 function judge(before, after) {
   const fails = [];

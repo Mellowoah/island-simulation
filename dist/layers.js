@@ -11,14 +11,14 @@
 // (energy 0, atmosphere 1, water 2, terrain and soil 3, plants 4, animals 5, agents 6) is kept as `plan`.
 
 export const LAYERS = {
-  base: { rank: -1, plan: null, status: 'real', files: ['sim.js', 'streams.js', 'clock.js'],
+  base: { rank: -1, plan: null, status: 'real', files: ['sim.js', 'streams.js', 'clock.js', 'layers.js'],
     note: 'time, chance keys and the register of numbers; clock.js also reads the sun for darkness' },
   sun: { rank: 0, plan: 0, status: 'real', files: ['sun.js'], gate: 'admitted' },
   air: { rank: 1, plan: 1, status: 'real', files: ['atmosphere.js', 'rain-years.js'], gate: 'admitted' },
   terrain: { rank: 2, plan: 3, status: 'stand-in', files: ['terrain.js'],
     note: 'a fixed generated map; no erosion, sediment or nutrients yet' },
-  water: { rank: 3, plan: 2, status: 'stand-in', files: ['weather.js'], real: ['water.js'],
-    note: 'old soil bucket and hole rule; water.js is built and tested but not yet through its gate' },
+  water: { rank: 3, plan: 2, status: 'real', files: ['weather.js'], real: ['water.js'], toggle: 'config.layers.water',
+    note: 'FAO Penman-Monteith, SCS runoff, HBV percolation, stream channels and groundwater; gate passed 19 Nov 2026' },
   plants: { rank: 4, plan: 4, status: 'stand-in', files: ['savanna.js'],
     note: 'food patches that regrow; not yet growth from light, water and nutrients' },
   animals: { rank: 5, plan: 5, status: 'stand-in', files: ['nature.js'],

@@ -141,7 +141,7 @@ test('Y13 weather: wet-day share by month within 0.03 of target; annual rain wit
   M.forEach((m, i) => assert.ok(Math.abs(wet[i] / days[i] - WET_SHARE_BY_MONTH[m]) < 0.03, `${m} ${wet[i] / days[i]}`));
   const mean = annual.reduce((a, b) => a + b) / annual.length, cv = Math.sqrt(annual.reduce((a, b) => a + (b - mean) ** 2, 0) / annual.length) / mean, dry = annual.filter(a => a < 0.6 * mean).length / annual.length;
   assert.ok(Math.abs(mean / expectedAnnual() - 1) < 0.1, `mean ${mean}`); assert.ok(cv > 0.25 && cv < 0.4, `cv ${cv}`); assert.ok(dry > 0.03 && dry < 0.15, `drought share ${dry}`);
-  const L = weatherLedger(s); assert.ok(Math.abs(L.soilError) < 1e-3 && Math.abs(L.holeError) < 1e-2, JSON.stringify(L));
+  const L = weatherLedger(s); assert.ok(Math.abs(L.soilError) < 1e-3 && Math.abs(L.holeError) < 1e-2 && Math.abs(L.channelError) < 1e-3 && Math.abs(L.groundError) < 1e-3, JSON.stringify(L));
 });
 
 test('Y14 one temperature law: Arrhenius factor is 1 at 25 C, rises with warmth, gives Q10 of 2-3 across its register range', async () => {

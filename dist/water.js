@@ -11,6 +11,8 @@
 //   (P + 0.8 S), S = 25400 / CN - 254 mm; with antecedent moisture by Chow, Maidment and Mays (1988), eqs. 5.5.4-5.
 // - Groundwater as a linear reservoir (outflow = store / time constant): the standard baseflow model
 //   (e.g. Brutsaert 2005, Hydrology: An Introduction, ch. 10).
+// - Bergstrom, S. (1976) SMHI Report RHO 7; (1992) The HBV model, SMHI Reports Hydrology 4: percolation in
+//   proportion to (soil wetness)^beta, and a response routine of a fast and a slow linear reservoir.
 // Every function is under 30 lines.
 import { R } from './clock.js';
 import { satVapour, pressureAt } from './atmosphere.js';
@@ -56,19 +58,28 @@ export function runoff(P, CN) {
   return P > Ia ? (P - Ia) ** 2 / (P + 0.8 * S) : 0;
 }
 
-// The soil for a day: rain soaks in less what runs off; evaporation by how full the soil is (FAO-56 water
-// stress, straight-line); what the soil cannot hold drains down to groundwater. Returns the flows, mm.
-export function soilDay(soil, rain, et0, Smax, cn2) {
-  const quick = runoff(rain, curveNumber(cn2, soil / Smax));
-  let s = soil + rain - quick;
+// The soil for a day: rain less what runs off soaks in; of what soaks in, a share (soil wetness)^beta passes on
+// down to groundwater (the HBV soil routine: Bergstrom 1976, 1992), the rest wets the soil; evaporation by how
+// full the soil is (FAO-56 water stress, straight-line); anything over the soil's capacity also drains down.
+export function soilDay(soil, rain, et0, Smax, cn2, beta = 2) {
+  const quick = runoff(rain, curveNumber(cn2, soil / Smax)), into = rain - quick;
+  const perc = into * Math.min(1, soil / Smax) ** beta;
+  let s = soil + into - perc;
   const evap = Math.min(s, (et0 * s) / Smax);
   s -= evap;
-  const recharge = Math.max(0, s - Smax);
-  return { soil: s - recharge, quick, evap, recharge };
+  const over = Math.max(0, s - Smax);
+  return { soil: s - over, quick, evap, recharge: perc + over };
 }
 
-// Groundwater for a day: recharge in, seepage out (store over its time constant, days)
+// A linear reservoir for a day: inflow in, outflow = store over its time constant (days). Used twice, as in the
+// HBV response routine: the stream channels (runoff, drains in days to weeks) and groundwater (recharge, months).
+export function reservoirDay(store, inflow, days) {
+  const g = store + inflow, out = g / days;
+  return { store: g - out, out };
+}
+
+// Groundwater for a day (a reservoir; kept under its first name for the tests)
 export function groundDay(store, recharge, days) {
-  const g = store + recharge, seep = g / days;
-  return { store: g - seep, seep };
+  const r = reservoirDay(store, recharge, days);
+  return { store: r.store, seep: r.out };
 }
