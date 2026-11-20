@@ -191,6 +191,8 @@ for (let k = 0; k < byElev.length * ROCK_SHARE; k++) grid[byElev[k]] = R.rock;
 // Hollows are filled first (priority-flood, Barnes et al. 2014), so every drop of water has a way out; then rivers
 // start at high springs and follow the steepest way down the filled surface.
 export const RIVERS = [];
+// Which tile each tile drains to (-1 at the lake and the sea); read by the land layer (land.js)
+export let DOWN;
 {
   const filled = new Float32Array(elev),
     done = new Uint8Array(TW * TH),
@@ -231,6 +233,7 @@ export const RIVERS = [];
       push(i);
     }
   const down = new Int32Array(TW * TH).fill(-1);
+  DOWN = down;
   while (heap.length) {
     const j = pop(),
       x = j % TW,

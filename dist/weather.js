@@ -15,6 +15,7 @@ import { rainOf } from './rain-years.js';
 import { LAYERS } from './layers.js';
 import { referenceET, soilDay, reservoirDay } from './water.js';
 import { jdOfTick, dayOfYearJd } from './sun.js';
+import { catchmentKm2 } from './land.js';
 
 // Month order follows the clock (year starts 1 November). Share of days that are wet (assumption, shaped on the
 // bimodal rains near Lake Eyasi: short rains Nov-Dec, long rains Mar-May, a long dry season Jun-Oct).
@@ -103,6 +104,7 @@ function fillHoles(s) {
   for (const w of s.waters) {
     const H = HOLES[w.kind] ?? HOLES.lake;
     w.level = H.start;
+    w.catchKm2 = catchmentKm2(w.x, w.y);
     w.active = !isFinite(w.level) || w.level > DRY_BELOW;
     if (isFinite(H.start)) s.weatherLedger.holeStart += H.start;
   }
@@ -145,7 +147,8 @@ export function weatherDay(s) {
   const pi = rainDay(s, W, day, month, Math.floor(s.tick / C.year));
   // the air (Layer 1, atmosphere.js): the measured Lake Eyasi climate for the date, a persistent day-to-day
   // anomaly, and today's rain; the world's month index counts from November, the climate's from January
-  const calMonth = (mi + 10) % 12, inMonth = frac * 12 - Math.floor(frac * 12);
+  const calMonth = (mi + 10) % 12,
+    inMonth = frac * 12 - Math.floor(frac * 12);
   W.air = airDay(W.air ?? null, W.wet, pi, calMonth, inMonth, k => u(s, day, k));
   W.tmax = W.air.tmax;
   W.tmin = W.air.tmin;
@@ -162,12 +165,14 @@ export function weatherDay(s) {
 function waterDayReal(s, W, day) {
   const jd = jdOfTick(s.tick, clockOf(s).hours);
   W.pet = referenceET(W.air, jd, dayOfYearJd(jd));
-  const L = s.weatherLedger, f = soilDay(W.soil, W.rain, W.pet, R('soilMaxMm'), R('curveNumber'), R('percolationBeta'));
+  const L = s.weatherLedger,
+    f = soilDay(W.soil, W.rain, W.pet, R('soilMaxMm'), R('curveNumber'), R('percolationBeta'));
   L.rain += W.rain;
   L.soilEvap += f.evap;
   L.soilRunoff += f.quick + f.recharge;
   W.soil = f.soil;
-  const ch = reservoirDay(W.channel ?? 0, f.quick, R('channelDays')), g = reservoirDay(W.ground ?? 0, f.recharge, R('groundwaterDays'));
+  const ch = reservoirDay(W.channel ?? 0, f.quick, R('channelDays')),
+    g = reservoirDay(W.ground ?? 0, f.recharge, R('groundwaterDays'));
   L.quick = (L.quick ?? 0) + f.quick;
   L.channelOut = (L.channelOut ?? 0) + ch.out;
   L.recharge = (L.recharge ?? 0) + f.recharge;
@@ -181,8 +186,12 @@ function waterDayReal(s, W, day) {
 
 // Water holes for a day (real water): stream and groundwater flow from the catchment in, evaporation out,
 // spill when full
+// With the real land (Layer 3) each hole gathers from its own catchment: depth in = depth over the catchment x
+// catchment area / the pool's own area. Before that, a fitted multiple (catch x catchScale, provisional).
+const landReal = s => (s.config?.layers?.terrain ?? LAYERS.terrain.status) === 'real';
 function holesDay(s, W, stream, seep) {
-  holeStep(s, W, H => (stream + seep * (H.ground ?? 1)) * H.catch * R('catchScale'));
+  const gather = landReal(s) ? w => (w.catchKm2 * 100) / R('holeAreaHa') : (w, H) => H.catch * R('catchScale');
+  holeStep(s, W, (H, w) => (stream + seep * (H.ground ?? 1)) * gather(w, H));
 }
 
 // One day for every water hole, real or stand-in: inflow (by kind of hole) in, evaporation out, spill when
@@ -195,7 +204,8 @@ function holeStep(s, W, inflowOf) {
       w.active = true;
       continue;
     }
-    const inflow = inflowOf(H), evap = Math.min(w.level + inflow, W.pet * H.evap);
+    const inflow = inflowOf(H, w),
+      evap = Math.min(w.level + inflow, W.pet * H.evap);
     w.level += inflow - evap;
     L.holeIn += inflow;
     L.holeEvap += evap;

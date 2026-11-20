@@ -6,6 +6,7 @@ export const TESTS = {
   sun: ['tests/sun.test.mjs'],
   air: ['tests/atmosphere.test.mjs'],
   water: ['tests/water.test.mjs'],
+  terrain: ['tests/land.test.mjs'],
 };
 
 // Months in the gate's results run from November (the world starts on 1 November)

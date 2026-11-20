@@ -363,3 +363,23 @@ Fixes after the first attempt (holes dried): (1) HBV soil routine (Bergstrom 199
 Measured by kind (island 1, 3 years): pans hold water Nov-Jul (43-81% of them) and are dry Aug-Oct; river and pools hold water all year (an open point: real seasonal river pools in the Eyasi basin dry in some years). Stream flow 0-0.22 mm/day, groundwater seepage 0.11-0.50 mm/day, peaking in May-June after the long rains.
 Gate (6 islands x 3 years, before = stand-in, after = real): passed. Holes with water 0.78 in the wet season and 0.51 in September-October (target >= 0.7 and 0.15-0.75); deaths per island 5.0 -> 4.2; no alarms; soil, hole, channel and groundwater books balanced. 3 islands x 5 years: no thirst or starvation deaths; score 1.903 (was 2.013).
 Then the 30-line rule (test L4) applied to weather.js as part of a real layer: makeWeather, weatherDay and the stand-in water split into small functions (fillHoles, pastYear, rainDay, one shared holeStep), proved behaviour-neutral by fingerprint for both paths (real 5964aac3c52cbdb6, stand-in 5bf2194c8c5470f5); that edit voided the gate, which was run again and passed with the same numbers. Also fixed: the water switch assumed every world has settings (a bare test world has none). Water is real; the stand-in stays callable for gates (config.layers.water = 'stand-in').
+
+## 20 Nov 2026: fitted water numbers marked provisional; Layer 3 (land) started, not yet real
+
+- curveNumber (85) and catchScale (8) are marked PROVISIONAL in the register and on the switchboard
+  (layers.js `provisional`; printed on every save). They were fitted to the seasonal water pattern while the
+  land was missing and are to be replaced, not kept.
+- dist/land.js: heights in metres (coast 1000 m, top 1900 m, like the Eyasi escarpment's 900 m rise), flow
+  accumulation (O'Callaghan and Mark 1984) over the map's own drainage directions (priority-flood, Barnes et al.
+  2014), so the drawn rivers lie exactly on the flow lines; catchment area and mean flow length per tile; slope;
+  lapse rate 6.5 deg C per km. Tests T1-T4 (tests/land.test.mjs).
+- With the land switched on (config.layers.terrain = 'real'), each hole gathers from its own catchment:
+  inflow depth = runoff depth x catchment area / pool area (holeAreaHa, 1 ha, an assumption measurable in the
+  field). This replaces catchScale. Old paths proven unchanged by fingerprint (5964aac3c52cbdb6 real water,
+  5bf2194c8c5470f5 stand-in water). Water gate re-run after the edit to weather.js: passed, same numbers.
+- Found, not yet fixed (needs Robert's decision): with real catchments, small-catchment pools now dry, but river
+  pools still never dry. Two causes in Layer 2: (1) groundwater recharge is 18% of rain, against 0.1-5% measured
+  for semi-arid land (Scanlon et al. 2006, Hydrological Processes 20: 3335-3370); (2) every river pool takes all
+  the groundwater seepage, but semi-arid seasonal rivers are mostly losing streams: the water table lies below the
+  bed, and groundwater comes out at springs and the lake, not in the channel. Even at 4% recharge, river pools stay
+  wet; with losing rivers they would dry where nothing else feeds them.
