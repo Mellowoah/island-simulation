@@ -12,7 +12,7 @@ const { setRate } = await import(ROOT + '/dist/clock.js');
 for (const [k, v] of Object.entries(JSON.parse(process.argv[5] ?? '{}'))) setRate(k, v); // optional register overrides
 const s = createWorld2(seed, cfg),
   C = clockOf(s);
-const month = Array.from({ length: 12 }, () => ({ tmax: 0, holes: 0, dark: 0, n: 0 }));
+const month = Array.from({ length: 12 }, () => ({ tmax: 0, tmin: 0, holes: 0, dark: 0, n: 0 }));
 
 // Late dry season (Sep-Oct): share of days each river or stream pool holds water, by catchment size
 const pools = s.waters.filter(w => ['river', 'pools'].includes(w.kind)),
@@ -36,6 +36,7 @@ function sampleDay(d) {
   let dark = 0;
   for (let h = 0; h < 24; h++) dark += isDark(C, s.tick + h) ? 1 : 0;
   m.tmax += s.weather.tmax;
+  m.tmin += s.weather.tmin;
   m.holes += seasonal.length ? seasonal.filter(w => w.active).length / seasonal.length : 1;
   m.dark += dark / 24;
   m.n++;
@@ -56,6 +57,7 @@ console.log(
     deaths: s.deaths ?? {},
     books: { soil: wl.soilError, holes: wl.holeError, ground: wl.groundError ?? 0, channels: wl.channelError ?? 0 },
     tmax: avg('tmax'),
+    tmin: avg('tmin'),
     holes: avg('holes'),
     dark: avg('dark'),
     lateBySize: lateBySize(),

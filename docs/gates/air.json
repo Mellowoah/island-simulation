@@ -6,13 +6,13 @@
  "years": 3,
  "tests": "# pass 5",
  "deaths": {
-  "before": 6.166666666666667,
-  "after": 6.166666666666667
+  "before": 4.833333333333333,
+  "after": 4.833333333333333
  },
- "pattern": "mean max minus measured, by month: -0.09 -0.07 0.22 -0.05 -0.12 -0.17 0.01 -0.00 0.28 0.00 -0.10 -0.10",
+ "pattern": "mean max minus measured, by month: -0.09 -0.07 0.22 -0.05 -0.12 -0.17 0.01 -0.00 0.28 0.00 -0.10 -0.10; mean min: -0.03 0.08 0.14 -0.12 0.04 -0.15 -0.13 0.21 0.18 -0.02 0.05 -0.06",
  "fails": [],
  "hashes": {
-  "atmosphere.js": "d7da330acf27dc82a1be80e019963de74c07efe67ff0ef028eb9a9ff32e4c3b1",
+  "atmosphere.js": "3be9b12926f400916c1037ce2a56a3c22b010558ef74ddc0300b3cbd4dbb21e4",
   "rain-years.js": "5ccdb00a90a0f68ebbcc4306d0d9c613ecc99bf204eea6400ae801d44429bbaf"
  },
  "toggle": "none: this layer was wired before the gate existed, so before and after run the same code"

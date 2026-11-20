@@ -419,3 +419,16 @@ Robert approved fixing both water problems the land exposed.
 - Still statistical: the night minimum (wetDayWarmMin). Cloudy nights warmer by longwave (FAO-56 eq. 39) needs a
   night-layer depth and ground heat flux; next.
 - Fingerprint, everything real: 90e5e57b88b992ff.
+
+## 20 Nov 2026: night temperature from the longwave balance (Layer 1)
+
+- The fixed wet/dry shift on the night minimum (wetDayWarmMin, retired) is replaced by the longwave balance
+  (atmosphere.js nightWarming): FAO-56 eq. 39 net longwave with the cloud factor from the day's sunshine, half of
+  it in the 12-hour equatorial night, part returned by the ground (groundNightShare 0.5, assumption), the rest
+  cooling the night layer (nightLayerM 200 m; Stull 1988). Vapour pressure from the month's minimum (FAO-56
+  eq. 48). Departures are from the month's mean sunshine, so the measured means hold.
+- Result: cloudy nights about 1.2 deg C warmer than the mean, clear nights about 1.5 colder.
+- The air gate now also checks night lows against the record. Passed: mean max within 0.28 deg C and mean min
+  within 0.21 deg C of the record in every month.
+- Day and night temperature are now both driven by the sun's energy (Layer 0 to Layer 1), anchored to the
+  measured monthly means. Fingerprint, everything real: 711d9a635cfb7d95.

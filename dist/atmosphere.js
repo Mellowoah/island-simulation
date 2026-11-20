@@ -14,7 +14,16 @@
 // - Max Planck Institute fieldwork notes: the Eyasi dry season (June-Oct) is hot, dry and windy.
 // Every function is under 30 lines. The numbers marked "assumption" are in the register (clock.js).
 import { R } from './clock.js';
-import { sunTimes, SITE, dailyRa, declinationFAO, angstromShare, netShortwave } from './sun.js';
+import {
+  sunTimes,
+  SITE,
+  dailyRa,
+  declinationFAO,
+  angstromShare,
+  netShortwave,
+  netLongwave,
+  clearSkyShare,
+} from './sun.js';
 
 const F_TO_C = f => ((f - 32) * 5) / 9;
 // Lake Eyasi cell, Jan..Dec, deg F (1901-2009)
@@ -58,16 +67,29 @@ export function sunWarming(sunshine, meanSunshine, m, f) {
   return (dRns * 1e6 * R('sensibleShare')) / (rhoCp * R('mixedLayerM'));
 }
 
+// Night warming from the longwave balance: clear nights lose more heat to the sky than cloudy ones (FAO-56
+// eq. 39, cloud factor from Rs/Rso). Half the day's longwave loss falls in the 12-hour equatorial night; the
+// ground gives back part of it (groundNightShare); the rest cools the shallow night layer (nightLayerM; Stull
+// 1988): dT = -dRnl x 0.5 x (1 - ground) / (rho x cp x depth). Measured from the month's mean sunshine, so the
+// measured monthly means hold. Vapour pressure from the month's minimum (FAO-56 eq. 48). Replaces a fixed shift.
+export function nightWarming(sunshine, meanSunshine, c) {
+  const ea = satVapour(c.tmin),
+    so = clearSkyShare(),
+    loss = s => netLongwave(c.tmax, c.tmin, ea, angstromShare(s) / so);
+  const dLoss = loss(sunshine) - loss(meanSunshine); // MJ/m2/day
+  const rhoCp = ((pressureAt(SITE.elevation) * 1000) / (287.05 * 290)) * 1005; // J/m3/K, air near 17 C
+  return (-dLoss * 0.5 * 1e6 * (1 - R('groundNightShare'))) / (rhoCp * R('nightLayerM'));
+}
+
 export function airDay(prev, wet, pi, m, f, u) {
   const c = climateOn(m, f),
     rho = R('tempPersistence'),
-    sd = R('tempAnomalySd'),
-    q = pi / Math.max(0.05, 1 - pi);
+    sd = R('tempAnomalySd');
   const a = rho * (prev?.anomaly ?? 0) + Math.sqrt(1 - rho * rho) * sd * normal(u(200), u(201));
   const sunshine = wet ? R('sunshineWet') : R('sunshineDry'),
     meanSun = pi * R('sunshineWet') + (1 - pi) * R('sunshineDry');
   const tmax = c.tmax + a + sunWarming(sunshine, meanSun, m, f);
-  const tmin = Math.min(tmax - 2, c.tmin + 0.5 * a + (wet ? R('wetDayWarmMin') : -q * R('wetDayWarmMin')));
+  const tmin = Math.min(tmax - 2, c.tmin + 0.5 * a + nightWarming(sunshine, meanSun, c));
   const dry = m >= 5 && m <= 9; // June-October
   const tdew = tmin - (wet ? 0 : dry ? R('dewDepressionDry') : R('dewDepressionWet'));
   const meanWind = dry ? R('windDryMs') : R('windWetMs');

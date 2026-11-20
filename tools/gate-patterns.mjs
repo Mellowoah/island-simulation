@@ -23,10 +23,12 @@ export const PATTERNS = {
   },
   // The world's air must sit on the measured climate: every month's mean max within 1 deg C
   air(rs) {
-    const t = byMonth(rs, 'tmax'),
-      off = t.map((x, i) => x - CLIMATE.tmax[calMonth(i)]);
-    const ok = off.every(o => Math.abs(o) < 1);
-    return { ok, detail: `mean max minus measured, by month: ${off.map(o => o.toFixed(2)).join(' ')}` };
+    const off = k => byMonth(rs, k).map((x, i) => x - CLIMATE[k][calMonth(i)]);
+    const hi = off('tmax'),
+      lo = off('tmin'),
+      ok = [...hi, ...lo].every(o => Math.abs(o) < 1);
+    const show = a => a.map(o => o.toFixed(2)).join(' ');
+    return { ok, detail: `mean max minus measured, by month: ${show(hi)}; mean min: ${show(lo)}` };
   },
   // Water holes: widespread in the wet season, scarcer late in the dry (O'Connell et al., the Tli'ika area)
   // Layer 3: in the late dry season, river and stream pools with small catchments are dry more often than those
