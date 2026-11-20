@@ -28,6 +28,7 @@ if node tools/page-files.mjs | grep -q MISSING; then
   echo "STOP: the page imports a missing file, nothing committed"
   exit 1
 fi
+node tools/layers-report.mjs || exit 1
 git add -A || exit 1
 git commit -qm "$1
 

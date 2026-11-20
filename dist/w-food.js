@@ -1,20 +1,7 @@
 // Island small world: food.js (split from world.js, build plan change 4; behaviour unchanged).
 import { noise2, seedKey, STREAMS, fieldPath, fieldDist, mapOf, path } from './sim.js';
-import {
-  R,
-  clockOf,
-  body,
-  eatKcal,
-  burnKcal,
-  storedKcal,
-  hourOf,
-  isNight,
-  isDark,
-  sleepTime,
-  REAL_MINUTES,
-  SLEEP_UNTIL,
-  dateOf,
-} from './clock.js';
+import { R, clockOf, body, eatKcal, burnKcal, storedKcal, hourOf, isNight, sleepTime, REAL_MINUTES, SLEEP_UNTIL, dateOf } from './clock.js';
+import { isDark } from './sun.js';
 import * as EN from './energy.js';
 import { FOODS, rainOf, waterActive, landStep, returnRate, realFrac } from './savanna.js';
 import { practise, forget } from './body.js';

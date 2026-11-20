@@ -14,7 +14,9 @@
 // Figures marked (approx.) are reasonable values not yet pinned to one source; they are listed in THEORY-CHECK.md.
 
 import { registerMap, noise2, seedKey, STREAMS } from './sim.js';
-import { clockOf, body, growPatch } from './clock.js';
+import { R, clockOf, body, growPatch } from './clock.js';
+import { rainOf } from './rain-years.js';
+import { rainYearRatio } from './weather.js';
 // On the real clock (clock.js) every food has a half-life, and a patch left alone settles where growth equals decay
 // (no capMonths cap); one food unit is 500 kcal and one tick is an hour. Legacy worlds keep the numbers below.
 
@@ -93,35 +95,8 @@ export const seasonOf = tick =>
 const fracOf = tick => (((tick % YEAR_TICKS) + YEAR_TICKS) % YEAR_TICKS) / YEAR_TICKS;
 // Yearly rain, relative to an ordinary year: a lognormal year-to-year swing (sd 0.4 in log terms, so a severe drought,
 // under 60% of normal rain, comes about one year in ten) times a slow 40-year wet/dry swing of +-20%. Fixed by the seed.
-export const CLIMATE = { yearSd: 0.4, swing: 0.2, swingYears: 40, drought: 0.6 };
-const rainCache = new Map();
-// set by weather.js when a world has weather (avoids an import cycle)
-let weatherRain = s => 1,
-  weatherRegrowHalf = () => 0.5;
-export const useWeather = (rainFn, halfFn) => {
-  weatherRain = rainFn;
-  weatherRegrowHalf = halfFn;
-};
-export function rainOf(seed, year) {
-  const key = seed + ':' + year;
-  if (rainCache.has(key)) return rainCache.get(key);
-  const k = seedKey(seed),
-    u = i => noise2(k, year + 1000, i, STREAMS.climate[0]);
-  const z = (u(0) + u(1) + u(2) + u(3) + u(4) + u(5) - 3) * Math.SQRT2; // approx. normal, sd 1
-  const phase = noise2(k, 0, 99, STREAMS.climate[0]) * 2 * Math.PI;
-  // exp(sd z) averages exp(sd^2 / 2), so divide that out: an ordinary year is 1.
-  const r = Math.max(
-    0.15,
-    Math.min(
-      2.5,
-      Math.exp(CLIMATE.yearSd * z - CLIMATE.yearSd ** 2 / 2) *
-        (1 + CLIMATE.swing * Math.sin((2 * Math.PI * year) / CLIMATE.swingYears + phase)),
-    ),
-  );
-  if (rainCache.size > 5000) rainCache.clear();
-  rainCache.set(key, r);
-  return r;
-}
+// Year-to-year rain now lives with the climate (rain-years.js, Layer 1); re-exported here for older callers.
+export { CLIMATE, rainOf } from './rain-years.js';
 export const yearOf = tick => Math.floor(tick / YEAR_TICKS);
 
 // ---------- Foods ----------
@@ -394,12 +369,12 @@ export const realYear = (s, tick = s.tick) => Math.floor(tick / clockOf(s).year)
 function landStepReal(s, groundFactor) {
   const C = clockOf(s),
     f = realFrac(s),
-    rain = s.weather ? Math.max(0.1, Math.min(2.5, weatherRain(s))) : rainOf(s.seed, realYear(s));
+    rain = s.weather ? Math.max(0.1, Math.min(2.5, rainYearRatio(s))) : rainOf(s.seed, realYear(s));
   for (const p of s.patches) {
     if (!p.food) continue;
     // with weather: a patch picked below regrowHalf of its natural level regrows in proportion (overuse can deplete it)
     const F = FOODS[p.food],
-      depleted = s.weather ? Math.min(1, (p.stock / p.capacity + 0.05) / weatherRegrowHalf()) : 1;
+      depleted = s.weather ? Math.min(1, (p.stock / p.capacity + 0.05) / R('regrowHalf')) : 1;
     const grow = p.regen * F.season(f) * F.norm * rainFactor(p.food, rain) * groundFactor * depleted;
     const { add, lost } = growPatch(p, grow);
     s.ledger.regenerated += add;

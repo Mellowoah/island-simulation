@@ -1,0 +1,19 @@
+{
+ "layer": "air",
+ "pass": true,
+ "date": "2026-11-20",
+ "islands": 6,
+ "years": 3,
+ "tests": "# pass 5",
+ "deaths": {
+  "before": 5,
+  "after": 5
+ },
+ "pattern": "mean max minus measured, by month: -0.11 -0.15 0.23 -0.01 -0.14 -0.25 0.01 -0.00 0.28 0.00 -0.10 -0.10",
+ "fails": [],
+ "hashes": {
+  "atmosphere.js": "935f2efd3b8853145af967b4a302dbecb0bbcceb42c7eda28b8d6ff057f2a592",
+  "rain-years.js": "5ccdb00a90a0f68ebbcc4306d0d9c613ecc99bf204eea6400ae801d44429bbaf"
+ },
+ "toggle": "none: this layer was wired before the gate existed, so before and after run the same code"
+}

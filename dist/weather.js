@@ -3,7 +3,7 @@
 //
 // Rain: a two-state Markov chain for wet and dry days (Richardson 1981; WGEN, Richardson and Wright 1984), with
 // month-by-month odds following the two rainy seasons of the East African savanna, and gamma-distributed amounts.
-// Year-to-year swings come from rainOf (savanna.js), so wet and dry years, and runs of them, are kept as before.
+// Year-to-year swings come from rainOf (rain-years.js), so wet and dry years, and runs of them, are kept as before.
 // Temperature: daily highs and lows by season, cooler on wet days. Soil: a bucket (Manabe 1969) filled by rain and
 // emptied by evaporation, which follows a Hargreaves-type potential evaporation. Water holes: stores filled from their
 // catchment and emptied by evaporation. Moon and tides from their periods. Every number is in the register
@@ -11,7 +11,7 @@
 import { airDay, CLIMATE } from './atmosphere.js';
 import { R, clockOf, dateOf, hourOf } from './clock.js';
 import { noise2, seedKey, STREAMS } from './sim.js';
-import { rainOf, useWeather } from './savanna.js';
+import { rainOf } from './rain-years.js';
 
 // Month order follows the clock (year starts 1 November). Share of days that are wet (assumption, shaped on the
 // bimodal rains near Lake Eyasi: short rains Nov-Dec, long rains Mar-May, a long dry season Jun-Oct).
@@ -231,8 +231,4 @@ export function weatherLedger(s) {
   };
 }
 
-// plants read the 12-month rain (so droughts carry over) and the depletion threshold from here
-useWeather(
-  s => rainYearRatio(s),
-  () => R('regrowHalf'),
-);
+// (plants read rainYearRatio and regrowHalf themselves: savanna.js imports weather.js, downhill)

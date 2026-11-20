@@ -1,0 +1,18 @@
+{
+ "layer": "sun",
+ "pass": true,
+ "date": "2026-11-20",
+ "islands": 6,
+ "years": 3,
+ "tests": "# pass 6",
+ "deaths": {
+  "before": 5,
+  "after": 5
+ },
+ "pattern": "dark hours a day by month 11.0 11.0 11.0 11.0 11.0 11.0 11.0 11.0 11.0 11.0 11.0 11.0",
+ "fails": [],
+ "hashes": {
+  "sun.js": "ecd689d3f035dbff1221192396f58da33d6be5ddc85da62e87309eec3eb98522"
+ },
+ "toggle": "none: this layer was wired before the gate existed, so before and after run the same code"
+}

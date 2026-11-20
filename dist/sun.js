@@ -132,3 +132,16 @@ export function netLongwave(tmax, tmin, ea, RsOverRso) {
   const cloud = 1.35 * Math.max(0.05, Math.min(1, RsOverRso)) - 0.35;
   return sigma * (0.34 - 0.14 * Math.sqrt(Math.max(0, ea))) * cloud;
 }
+
+// Darkness, for what light changes (walking pace, falls, how far one sees, fear of the dark). It comes from the
+// sun (Layer 0, sun.js): dark when the sun's centre is more than 6 degrees below the horizon (past civil
+// twilight) at the middle of the step, so it follows the real sunrise and sunset through the year. isNight stays
+// the day's schedule (sleep, plans). One answer per tick and step length is kept, as every person asks.
+let darkKey = null, darkVal = false;
+export const isDark = (C, tick) => {
+  const key = tick * 1e3 + C.hours;
+  if (key === darkKey) return darkVal;
+  darkKey = key;
+  darkVal = elevation(jdOfTick(tick + 0.5, C.hours)) < -6;
+  return darkVal;
+};
