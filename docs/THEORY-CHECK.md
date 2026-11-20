@@ -383,3 +383,24 @@ Then the 30-line rule (test L4) applied to weather.js as part of a real layer: m
   the groundwater seepage, but semi-arid seasonal rivers are mostly losing streams: the water table lies below the
   bed, and groundwater comes out at springs and the lake, not in the channel. Even at 4% recharge, river pools stay
   wet; with losing rivers they would dry where nothing else feeds them.
+
+## 20 Nov 2026 (later): losing rivers; FAO-56 deep percolation; Layer 3 (land) real
+
+Robert approved fixing both water problems the land exposed.
+- Deep percolation now follows FAO-56 (Allen et al. 1998, eq. 88): water drains below the roots only when the
+  root zone holds more than it can after the day's evaporation. The HBV percolation (and its fitted exponent
+  beta) is gone from the soil day. Diffuse recharge falls from 18% of rain to about 0%. Measured semi-arid
+  recharge is 0.1-5% (Scanlon et al. 2006), and most of it is focused, through channel beds; that focused part
+  is not yet credited to groundwater (catchments are nested, so the volumes need routing first). Open item.
+- Seasonal rivers are losing streams: no seasonal hole takes groundwater (ground share 0); groundwater comes
+  out at springs and the lake. With the real land, river and stream pools also seep into their sand beds
+  (poolBedSeepMm, 3 mm a day, an assumption measurable in the field; tested at 1 and 10); clay pans do not.
+- Result (6 islands, 3 years): river and stream pools wet in Sep-Oct, small catchments 0.32 against large 0.59;
+  seasonal holes wet 0.73 in the wet season and 0.24 in Sep-Oct. Rivers now dry in the late dry season, small
+  ones first, as Eyasi's seasonal rivers do; people are left with springs and the lake, as Hadza dry-season
+  camps are (Marlowe 2010, The Hadza, ch. 2).
+- Gates: water re-run and passed (deaths per island 5.0 -> 5.0); terrain passed (deaths 5.0 -> 4.3), so the land
+  is real. catchScale is retired; curveNumber (85) is still provisional.
+- waterSites split into four helpers for the 30-line rule; the sites are identical before and after (hash).
+- Fingerprints: all real ef56e330baf9fc6b; land stand-in 6febb3225f828d4c; land and water stand-in
+  5bf2194c8c5470f5 (unchanged since Layer 2).

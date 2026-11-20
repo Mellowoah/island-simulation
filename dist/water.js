@@ -61,14 +61,13 @@ export function runoff(P, CN) {
 // The soil for a day: rain less what runs off soaks in; of what soaks in, a share (soil wetness)^beta passes on
 // down to groundwater (the HBV soil routine: Bergstrom 1976, 1992), the rest wets the soil; evaporation by how
 // full the soil is (FAO-56 water stress, straight-line); anything over the soil's capacity also drains down.
-export function soilDay(soil, rain, et0, Smax, cn2, beta = 2) {
+export function soilDay(soil, rain, et0, Smax, cn2) {
   const quick = runoff(rain, curveNumber(cn2, soil / Smax)), into = rain - quick;
-  const perc = into * Math.min(1, soil / Smax) ** beta;
-  let s = soil + into - perc;
-  const evap = Math.min(s, (et0 * s) / Smax);
+  let s = soil + into;
+  const evap = Math.min(s, (et0 * Math.min(s, Smax)) / Smax);
   s -= evap;
   const over = Math.max(0, s - Smax);
-  return { soil: s - over, quick, evap, recharge: perc + over };
+  return { soil: s - over, quick, evap, recharge: over };
 }
 
 // A linear reservoir for a day: inflow in, outflow = store over its time constant (days). Used twice, as in the

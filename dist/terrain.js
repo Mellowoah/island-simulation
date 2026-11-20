@@ -349,6 +349,41 @@ export function foodSites() {
     }
   return out;
 }
+// Water sites, in this order (the order sets their ids): lakeshore, springs, river reaches, rain pans
+const touches = (x, y, r) => N4.some(([ax, ay]) => inside(x + ax, y + ay) && grid[(y + ay) * TW + x + ax] === r);
+function shoreSites(add) {
+  // lakeshore every ~8 tiles
+  for (let i = 0; i < TW * TH; i++) {
+    const x = i % TW,
+      y = (i / TW) | 0;
+    if (grid[i] === R.shore && touches(x, y, R.lake)) add(x, y, 'lake', 'Lakeshore', 8);
+  }
+}
+function springSites(add) {
+  // springs at the foot of the hills
+  for (let i = 0; i < TW * TH; i++) {
+    const x = i % TW,
+      y = (i / TW) | 0;
+    if (grid[i] !== R.rock && comp[i] === main && touches(x, y, R.rock) && hash(x, y, 808) < 0.08)
+      add(x, y, 'spring', 'Spring', 14);
+  }
+}
+function riverSites(add) {
+  // river: upper reaches run in the wet season; the last stretch before the lake or the sea keeps pools
+  for (const river of RIVERS)
+    river.forEach(([x, y], k) => {
+      if (k % 9 === 4)
+        add(x, y, k > river.length - 10 ? 'pools' : 'river', k > river.length - 10 ? 'River pools' : 'River', 6);
+    });
+}
+function panSites(add) {
+  // rain pans in the open grass
+  for (let i = 0; i < TW * TH; i++) {
+    const x = i % TW,
+      y = (i / TW) | 0;
+    if (grid[i] === R.grass && hash(x, y, 909) < 0.012) add(x, y, 'pan', 'Rain pan', 12);
+  }
+}
 export function waterSites() {
   const out = [],
     taken = [];
@@ -359,36 +394,6 @@ export function waterSites() {
       out.push({ x, y, kind, name });
     }
   };
-  // lakeshore every ~8 tiles
-  for (let i = 0; i < TW * TH; i++) {
-    const x = i % TW,
-      y = (i / TW) | 0;
-    if (grid[i] === R.shore && N4.some(([ax, ay]) => inside(x + ax, y + ay) && grid[(y + ay) * TW + x + ax] === R.lake))
-      add(x, y, 'lake', 'Lakeshore', 8);
-  }
-  // springs at the foot of the hills
-  for (let i = 0; i < TW * TH; i++) {
-    const x = i % TW,
-      y = (i / TW) | 0;
-    if (
-      grid[i] !== R.rock &&
-      comp[i] === main &&
-      N4.some(([ax, ay]) => inside(x + ax, y + ay) && grid[(y + ay) * TW + x + ax] === R.rock) &&
-      hash(x, y, 808) < 0.08
-    )
-      add(x, y, 'spring', 'Spring', 14);
-  }
-  // river: upper reaches run in the wet season; the last stretch before the lake or the sea keeps pools
-  for (const river of RIVERS)
-    river.forEach(([x, y], k) => {
-      if (k % 9 === 4)
-        add(x, y, k > river.length - 10 ? 'pools' : 'river', k > river.length - 10 ? 'River pools' : 'River', 6);
-    });
-  // rain pans in the open grass
-  for (let i = 0; i < TW * TH; i++) {
-    const x = i % TW,
-      y = (i / TW) | 0;
-    if (grid[i] === R.grass && hash(x, y, 909) < 0.012) add(x, y, 'pan', 'Rain pan', 12);
-  }
+  for (const sites of [shoreSites, springSites, riverSites, panSites]) sites(add);
   return out.map((w, i) => ({ ...w, id: 'v' + i, name: `${w.name} ${i + 1}` }));
 }

@@ -40,14 +40,16 @@ const MONTH_KEYS = Object.keys(WET_SHARE_BY_MONTH);
 // Water holes as stores (mm of water over their own area). catch: how much of the rain on its catchment reaches it
 // (as a multiple of the rain falling on it); evap: share of potential evaporation it loses; max: depth when full.
 // Lakes and springs are fed from deep ground water and do not dry on these timescales (assumption).
-// ground (real water only): the share of groundwater seepage that reaches it, against stream flow (all of it):
-// rain-fed pans none, pools in seasonal streams a little, the river all (assumption from how semi-arid
-// drainages work: pans fill from runoff, rivers carry the baseflow).
+// ground (real water only): the share of groundwater seepage that reaches it. None for every seasonal hole:
+// semi-arid seasonal rivers are losing streams, the water table lies below the bed, and groundwater comes out
+// at springs and the lake (Scanlon et al. 2006, Hydrological Processes 20: 3335-3370).
+// bed (with the real land): river and stream pools sit on sand beds and seep into them (poolBedSeepMm a day);
+// pans sit on clay and hold their water, which is why they are pans.
 export const HOLES = {
   lake: { catch: 0, evap: 0, max: Infinity, start: Infinity, lasting: true },
   spring: { catch: 0, evap: 0, max: Infinity, start: Infinity, lasting: true },
-  river: { catch: 8, evap: 1.0, max: 700, start: 450, ground: 1 }, // a seasonal river: channel pools that seep and evaporate
-  pools: { catch: 7, evap: 0.8, max: 700, start: 450, ground: 0.3 },
+  river: { catch: 8, evap: 1.0, max: 700, start: 450, ground: 0, bed: 1 }, // a seasonal river: channel pools that seep and evaporate
+  pools: { catch: 7, evap: 0.8, max: 700, start: 450, ground: 0, bed: 1 },
   pan: { catch: 4, evap: 1.0, max: 350, start: 120, ground: 0 },
 };
 const DRY_BELOW = 20; // mm: a hole with less than this is mud, not water
@@ -191,6 +193,7 @@ function waterDayReal(s, W, day) {
 const landReal = s => (s.config?.layers?.terrain ?? LAYERS.terrain.status) === 'real';
 function holesDay(s, W, stream, seep) {
   const gather = landReal(s) ? w => (w.catchKm2 * 100) / R('holeAreaHa') : (w, H) => H.catch * R('catchScale');
+  W.bedSeep = landReal(s) ? R('poolBedSeepMm') : 0;
   holeStep(s, W, (H, w) => (stream + seep * (H.ground ?? 1)) * gather(w, H));
 }
 
@@ -205,10 +208,12 @@ function holeStep(s, W, inflowOf) {
       continue;
     }
     const inflow = inflowOf(H, w),
-      evap = Math.min(w.level + inflow, W.pet * H.evap);
-    w.level += inflow - evap;
+      evap = Math.min(w.level + inflow, W.pet * H.evap),
+      bed = Math.min(w.level + inflow - evap, (W.bedSeep ?? 0) * (H.bed ?? 0));
+    w.level += inflow - evap - bed;
     L.holeIn += inflow;
     L.holeEvap += evap;
+    L.holeBed = (L.holeBed ?? 0) + bed;
     if (w.level > H.max) {
       L.holeSpill += w.level - H.max;
       w.level = H.max;
@@ -298,7 +303,7 @@ export function weatherLedger(s) {
   const holes = s.waters.reduce((n, w) => n + (isFinite(w.level) ? w.level : 0), 0);
   return {
     soilError: L.rain - (W.soil - L.soilStart) - L.soilEvap - L.soilRunoff,
-    holeError: L.holeIn - (holes - L.holeStart) - L.holeEvap - L.holeSpill,
+    holeError: L.holeIn - (holes - L.holeStart) - L.holeEvap - L.holeSpill - (L.holeBed ?? 0),
     channelError: (L.quick ?? 0) - (W.channel ?? 0) - (L.channelOut ?? 0), // channels start empty
     groundError: (L.recharge ?? 0) - (W.ground ?? 0) - (L.seep ?? 0), // groundwater starts empty
   };
