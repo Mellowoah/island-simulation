@@ -813,3 +813,12 @@ function of any height grid (the air layer stays below the land; the water layer
   where the moist layer spans a third of a vertical wavelength and windward rain is carried far upwind). Not tuned:
   reported. The independent exact check (O7) shows this is the theory, not a coding error. Next: look up measured
   moist stability and inflow wind in the rains rather than leave them assumptions.
+
+## 21 Nov 2026: rules 15-17, so the world keeps working while it grows
+
+Robert's concern: with the land scaled and every layer rebuilt, we might not end up with a working world. Three
+rules added: build beside, not over (15); the whole world works on every save (16, tests/world-works.test.mjs: 5 years
+on islands 42 and 43, no crash, people alive and having children, food and water books balanced, under 60 s an
+island-year, page code parses; passes today, about 3 minutes); time-box each layer to three saves, then measured data
+as input (17). Rain (Layer 1) is on save 1 of 3: save 1 was the physics (a23864c); next, measured moist stability and
+inflow wind.

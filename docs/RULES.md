@@ -20,3 +20,6 @@ https://claude.ai/artifact/SiFKyyUgYtuReWmqc7kMjM
 | 12 | General, not one place. Numbers come from the map and the register; nothing may break at large sizes. | tests/rules.test.mjs R1 (no spreading a list into Math.max/min) |
 | 13 | Rebuild in order. When the world changes, every layer is rebuilt and re-gated from the sun up, rules re-checked at each layer. | tools/gate.mjs per layer; docs/THEORY-CHECK.md |
 | 14 | Answer reviews with evidence. Tests run, fingerprints compared with main; findings become a rule or a test. | tools/fingerprint-all.mjs |
+| 15 | Build beside, not over. A changed world (the 10,000 km2 highland world) is built behind a switch next to the working one, which stays the default and live until the new one passes every check. | tests/world-works.test.mjs runs every world in its list |
+| 16 | The whole world works. Every save: each world runs 5 years on two islands with no crash, people alive and having children, food and water books balanced, under 60 s an island-year, and the page code parsing. | tests/world-works.test.mjs (blocks the save) |
+| 17 | Time-box each layer. Three saves per layer; if the physics cannot match its real-world checks in that time, use measured data as the input (still rule 3) and record why. The physics stays in the code to improve later. | Process; docs/THEORY-CHECK.md records each save against the box |
