@@ -549,3 +549,30 @@ Robert: "Remove hazda and implement our goal".
   burnt a year (not yet checked against a source). Correlation of fires with that year's mean dead grass 0.33
   (before 0.43; lower because fires now remove the fuel they are measured against).
 - Animals gate re-run: passed (deaths 4.8 -> 4.2, herds ate 2.5%). Plants stand-in path unchanged (c4ffeb745a9ff88e).
+
+## 20 Nov 2026 (night): every new assumption run across its range; should the island be larger?
+
+Robert approved the range runs, and asked whether to add land (journals and mathematics).
+- tools/ranges.mjs: 23 assumptions, each at its register low and high, 2 islands x 2 years (94 runs); every
+  layer's check applied to each (docs/ranges-2026-11-20.txt).
+- Failures, shown in full:
+  - Plants (peak standing under 0.75 of Deshmukh): transpirationShare 0.36 (0.60), aboveShare 0.4 (0.64),
+    litterHalfLifeDays 90 (0.66), transpirationRatio 350 (0.73). Growth is uncertain by about a third across the
+    measured ranges; the Deshmukh check rules out the low ends together.
+  - Water (Sep-Oct holes under 0.15): holeAreaHa 4 (0.14), poolBedSeepMm 10 (0.10).
+  - Land (small catchments drier than large): fails even at the base values in these short runs (0.32 against
+    0.29; the gate's 6 islands x 3 years gave 0.32 against 0.39). The pattern is real but weak: the gap is small
+    next to island-to-island noise. Not tuned; noted as fragile.
+- People: deaths (2.0 per island) and people alive (60.5) are the same in every one of the 94 runs. No assumption
+  in any layer changes who lives or dies, because food and water never run short and almost all deaths come from
+  the scripted Hadza illness curve. The environment does not yet reach the people: the strongest reason to do
+  Layer 6 next.
+- Island size. Now 850 km2 of land, 45 people in 3 bands at the start (0.05 per km2). The Hadza: about 1,000
+  people on about 4,000 km2, 0.24 per km2 in 1985 and 0.33 in 2000 (eHRAF, Marlowe 2010). A stable population of
+  about 150 is demographically viable (White 2017, JASSS 20(4) 9); older work put it near 500 (Wobst 1974);
+  isolated forager populations likely went extinct locally every few hundred years (Hamilton and Walker). At
+  measured forager densities the island would hold about 200-280 people, above 150. Land is not what limits the
+  island today; the starting number and the scripted deaths are. Recommendation: do not enlarge now; decide after
+  Layer 6, when density is a result. If networks and institutions (Layers 7-10) need more bands, a Hadza-sized
+  island (about 4,000 km2) is the measured reference, at about 4-5 times the computing and every gate re-run.
+- Burnt area (about a third of the land a year) still not checked against a source: none found for this rainfall.
