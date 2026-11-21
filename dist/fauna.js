@@ -84,9 +84,9 @@ export const PREDATORS = {
   hyena: { mass: 55, needKg: 3.9, group: 'hyenaGroup', prey: ['impala'] },
 };
 // Kills a day by one predator of each prey kind, given herds per km2 of each (type II over all its prey together)
-export function killsPerDay(P, herds) {
+export function killsPerDay(P, herds, group = R(P.group)) {
   const a = R('predatorSearchKm2'),
-    G = R(P.group),
+    G = Math.max(1, group),
     h = R('handleDays') + R('digestDays') / G;
   const total = herds.reduce((t, H) => t + H, 0),
     groupKills = (a * total) / (1 + a * total * h);
@@ -100,3 +100,35 @@ export const predatorChange = (n, fed, mass) => {
 };
 // Starting numbers from Carbone and Gittleman's ratio (the check then sees where the island takes them)
 export const startPredators = (preyKg, mass) => (0.009 * preyKg) / mass;
+
+// ---------- territories ----------
+// Prides and clans each hold a home range and hunt in it. Measured: lion pride ranges about 36-43 km2 where prey is
+// rich (Ishasha, Uganda) to 300-600 km2 where it is sparse; range shrinks as prey biomass rises (Loveridge et al.
+// 2009); spotted hyena clan territories 9 to over 1000 km2, smaller where prey is rich (East and Hofer 2013).
+// Ranges here are fixed in size (lionRangeKm2, hyenaRangeKm2: assumptions within those ranges); land between them is
+// hunted by nobody, so prey there is in a refuge until it moves.
+export const RANGE = { lion: 'lionRangeKm2', hyena: 'hyenaRangeKm2' };
+// Cells within r cells of a centre (square grid w x h), keeping only those `ok` allows
+export function cellsAround(c, r, w, h, ok) {
+  const out = [],
+    cx = c % w,
+    cy = Math.floor(c / w);
+  for (let y = Math.max(0, cy - r); y <= Math.min(h - 1, cy + r); y++)
+    for (let x = Math.max(0, cx - r); x <= Math.min(w - 1, cx + r); x++)
+      if ((x - cx) ** 2 + (y - cy) ** 2 <= r * r && ok(y * w + x)) out.push(y * w + x);
+  return out;
+}
+// Place ranges one by one on unclaimed habitat, each about areaKm2, none sharing a cell
+export function placeRanges(habitatCells, areaKm2, cellKm2, w, h) {
+  const r = Math.max(1, Math.round(Math.sqrt(areaKm2 / cellKm2 / Math.PI))),
+    free = new Set(habitatCells),
+    ranges = [];
+  for (const c of habitatCells) {
+    if (!free.has(c)) continue;
+    const cells = cellsAround(c, r, w, h, k => free.has(k));
+    if (cells.length * cellKm2 < areaKm2 / 2) continue;
+    cells.forEach(k => free.delete(k));
+    ranges.push(cells);
+  }
+  return ranges;
+}

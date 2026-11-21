@@ -38,6 +38,8 @@ import {
   killsPerDay,
   predatorChange,
   startPredators,
+  RANGE,
+  placeRanges,
 } from './fauna.js';
 
 const K = STREAMS.world[0];
@@ -173,39 +175,76 @@ export function animalDay(s) {
   if (byGrass) predatorDay(s);
   dropCarcasses(s);
 }
-// Lions and hyenas (fauna.js): each kind hunts its preferred prey over the island, takes what it kills from the
-// herds, and grows or shrinks with how well it ate
+// Lions and hyenas (fauna.js): prides and clans, each on its own home range, hunt the herds in it; herds drift
+// between neighbouring cells, so land no group holds is a refuge
 function predatorDay(s) {
-  s.predators ??= Object.fromEntries(
-    Object.entries(PREDATORS).map(([id, P]) => [
-      id,
-      { n: startPredators(preyKgOf(s, P), P.mass), killedKg: 0, fed: 1 },
-    ]),
-  );
-  for (const [id, P] of Object.entries(PREDATORS)) huntDay(s, s.predators[id], P);
+  s.predators ??= startGroups(s);
+  driftHerds(s);
+  for (const [id, P] of Object.entries(PREDATORS)) for (const g of s.predators[id].groups) huntDay(s, g, P);
 }
+const CELL_KM2 = (CELL * T.TILE_KM) ** 2;
+const habitatCells = () => habitat().flatMap((h, c) => ((h.grass ?? 0) + (h.woodland ?? 0) > 0 ? [c] : []));
 const herdKg = (s, sp) => s.animals[sp].reduce((t, n) => t + n, 0) * SPECIES[sp].mass;
 const preyKgOf = (s, P) => P.prey.reduce((t, sp) => t + herdKg(s, sp), 0);
-function huntDay(s, st, P) {
-  const herds = P.prey.map(sp => s.animals[sp].reduce((t, n) => t + n, 0) / SPECIES[sp].herd / landKm2());
-  const kills = killsPerDay(P, herds);
+// Ranges placed on the habitat; the starting numbers (Carbone and Gittleman's ratio) shared among the groups
+function startGroups(s) {
+  const out = {};
+  for (const [id, P] of Object.entries(PREDATORS)) {
+    const ranges = placeRanges(habitatCells(), R(RANGE[id]), CELL_KM2, CW, CH),
+      each = startPredators(preyKgOf(s, P), P.mass) / Math.max(1, ranges.length);
+    out[id] = { groups: ranges.map(cells => ({ cells, n: each, fed: 1, killedKg: 0 })) };
+  }
+  return out;
+}
+function huntDay(s, g, P) {
+  const km2 = g.cells.length * CELL_KM2,
+    herds = P.prey.map(sp => g.cells.reduce((t, c) => t + s.animals[sp][c], 0) / SPECIES[sp].herd / km2),
+    kills = killsPerDay(P, herds, g.n);
   let meat = 0;
   P.prey.forEach((sp, k) => {
-    const kg = Math.min(herdKg(s, sp), st.n * kills[k] * SPECIES[sp].mass);
-    takePrey(s, sp, kg);
-    st.killedKg += kg;
-    meat += kg * MEAT.edible;
+    const kg = g.n * kills[k] * SPECIES[sp].mass;
+    meat += takePreyIn(s, sp, kg, g.cells) * MEAT.edible;
   });
-  st.fed = st.n ? Math.min(1, meat / (st.n * P.needKg)) : 0;
-  st.n = Math.max(0, st.n + predatorChange(st.n, st.fed, P.mass) / 365);
+  g.killedKg += meat / MEAT.edible;
+  const ratio = g.n ? meat / (g.n * P.needKg) : 0;
+  g.fed = Math.min(1, ratio);
+  g.n = Math.max(0, g.n + predatorChange(g.n, g.fed, P.mass) / 365 - hungerDeaths(g, ratio));
 }
-// A kill of kg live mass from a herd, taken from every cell in proportion to its animals
-function takePrey(s, sp, kg) {
+// Body reserves, in days of need (full at predatorStarveDays): they fill when a group eats more than it needs and
+// drain when it eats less; once empty, the hungry die as herbivores do (fauna.js starveDeaths)
+function hungerDeaths(g, ratio) {
+  const most = R('predatorStarveDays');
+  g.reserve = Math.min(most, (g.reserve ?? most) + ratio - 1);
+  if (g.reserve > 0) return 0;
+  g.reserve = 0;
+  return (g.n * (1 - Math.min(1, ratio))) / most;
+}
+// A kill of up to kg live mass from a herd, from the given cells in proportion to their animals; returns kg taken
+function takePreyIn(s, sp, kg, cells) {
   const N = s.animals[sp],
-    total = N.reduce((t, n) => t + n, 0);
-  if (!total || kg <= 0) return;
+    total = cells.reduce((t, c) => t + N[c], 0);
+  if (!total || kg <= 0) return 0;
   const f = Math.min(1, kg / SPECIES[sp].mass / total);
-  for (let c = 0; c < N.length; c++) N[c] *= 1 - f;
+  for (const c of cells) N[c] *= 1 - f;
+  return f * total * SPECIES[sp].mass;
+}
+// Each day a share of every large herd moves to the neighbouring cells it can live in
+function driftHerds(s) {
+  const m = R('herdDriftPerDay');
+  for (const [id, sp] of Object.entries(SPECIES)) {
+    if (sp.mass < 20) continue;
+    const N = s.animals[id],
+      next = N.slice();
+    for (let c = 0; c < N.length; c++) {
+      const to = [c - 1, c + 1, c - CW, c + CW].filter(
+        k => k >= 0 && k < N.length && Math.abs((k % CW) - (c % CW)) <= 1 && capacity(sp, k) > 0,
+      );
+      if (!to.length || !N[c]) continue;
+      next[c] -= m * N[c];
+      for (const k of to) next[k] += (m * N[c]) / to.length;
+    }
+    s.animals[id] = next;
+  }
 }
 // The herds' need for the day, met from the herb layer (share met)
 function grazing(s) {

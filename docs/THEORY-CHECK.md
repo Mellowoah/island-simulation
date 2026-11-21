@@ -625,3 +625,26 @@ before disease because each layer's output is the next layer's environment.
   refuges for prey; herd size growing with density (Fryxell 2007; its fitted values are in a supplement not
   reached). Proposed to Robert: prides and clans on home ranges on the map (territories and refuges together).
 - Off by default; default island unchanged (fingerprint ee5f79eb58495f15).
+
+## 21 Nov 2026: predators, save 3: prides and clans on home ranges, herd drift, hunger deaths (off by default)
+
+Robert approved territories as the next step.
+- fauna.js: home ranges placed on the habitat (lions 100 km2, hyenas 50 km2: assumptions within the measured
+  36-600 and 9-1000+ km2), each group hunting only its own range with its own size in Fryxell's response; land no
+  group holds is a refuge. Large herds drift to neighbouring 2.8 km cells (herdDriftPerDay 0.05, assumption).
+- Island 1, 16 years: still a collapse (impala 470 -> 0, zebra 502 -> 2). Arithmetic: at low prey the share of
+  zebra killed a year is about (lions per km2) x a / (herd x pride) = 0.13 x 1.16 / 63 x 365 = 0.87, against the
+  zebra's most growth of 0.26; and the predators held that density for years on 11% of their food, because they
+  had only a slow background death rate.
+- Hunger added (it had been left out): each group carries body reserves of up to predatorStarveDays (30 days,
+  assumption 14-60); once empty, the hungry die, as herbivores do.
+- Island 1, 20 years, with hunger: lions 61 -> about 20, well fed; impala recover (96 -> 227 kg/km2); but hyenas
+  die out by year 6 (24 small clans hunting impala only) and zebra fade (502 -> 3): lions living on impala and
+  buffalo keep killing zebra faster than they breed (apparent competition; at low prey a pride's kills depend on
+  the ground it searches, not its size; with prides over nearly all the habitat, zebra lose about 0.42 a year
+  against 0.26 growth).
+- Missing, from the literature: hyenas also eat zebra and take lion kills (hyenas lose 70% of their kills to lions
+  yet gain equal food from them; Periquet et al. 2015); zebra herd size rising with density (Fryxell 2007);
+  territories not covering all the land.
+- This save made more than one change (ranges, drift, hunger): noted against the one-change rule.
+- Off by default; default island unchanged (fingerprint ee5f79eb58495f15).
