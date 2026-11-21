@@ -12,8 +12,8 @@
  "pattern": "herds ate 2.5% of the grass grown; herbivores 1278 kg/km2",
  "fails": [],
  "hashes": {
-  "nature.js": "0a282a1e55dec1013f02d546e7cc5035baeee767c75a9c5b00262091b0915f8e",
-  "fauna.js": "21ac4c004b73d04a578b82a0ec649cc2e602e9c6b47885fa296dff3e25269000"
+  "nature.js": "a8b7b1153df9671aac6a667d3c49f35e3237d00fa0316fb1219e1dafe29d1446",
+  "fauna.js": "773416300ca107051d0de2a9955dcb45f6378438cb4c5335a66899435f2da642"
  },
  "toggle": "config.layers.animals"
 }

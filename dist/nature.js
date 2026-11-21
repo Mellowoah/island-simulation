@@ -164,8 +164,13 @@ export function animalDay(s) {
   // rain with exponent 0.7, approx.; real: the plants' own year)
   const grown = real ? plantYearRatio(s) : null,
     kf = s.weather ? Math.max(0.3, Math.min(1.4, grown ?? rainYearRatio(s) ** 0.7)) : 1;
-  for (const [id, sp] of Object.entries(SPECIES)) speciesDay(s, id, sp, kf, met);
-  if (s.config?.predators === true) predatorDay(s);
+  // with predators, the large herds (20 kg and up, the prey of lions and hyenas) are held by grass and predators;
+  // small animals keep their field-count levels, which carry the small predators not modelled (jackals, caracals,
+  // eagles, pythons): left to grass alone, hares and hyraxes overran the island (20-21 Nov 2026)
+  const byGrass = s.config?.predators === true;
+  for (const [id, sp] of Object.entries(SPECIES))
+    (byGrass && sp.mass >= 20 ? grassHerdDay : speciesDay)(s, id, sp, kf, met);
+  if (byGrass) predatorDay(s);
   dropCarcasses(s);
 }
 // Lions and hyenas (fauna.js): each kind hunts its preferred prey over the island, takes what it kills from the
@@ -223,6 +228,22 @@ function speciesDay(s, id, sp, kf, met) {
       births = r * n * dt,
       deaths = ((r * n * n) / K) * dt + starveDeaths(n, met);
     N[c] = Math.max(0, n + births - deaths);
+    maybeCarcass(s, c, id, sp, deaths);
+  }
+}
+// A herd limited by its food, not by a field count: births at up to the most a mammal of its mass can grow (Fenchel
+// 1974) in proportion to how much of its need it met today; background deaths (herbivoreDeathRate) and hunger deaths;
+// predators take their share in predatorDay. Animals live only where their habitat is.
+function grassHerdDay(s, id, sp, kf, met) {
+  const N = s.animals[id],
+    d = R('herbivoreDeathRate'),
+    r = rMax(sp.mass),
+    dt = 1 / 365;
+  for (let c = 0; c < N.length; c++) {
+    if (capacity(sp, c) <= 0) continue;
+    const n = N[c],
+      deaths = d * n * dt + starveDeaths(n, met);
+    N[c] = Math.max(0, n + (r + d) * met * n * dt - deaths);
     maybeCarcass(s, c, id, sp, deaths);
   }
 }

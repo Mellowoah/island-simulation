@@ -606,3 +606,22 @@ before disease because each layer's output is the next layer's environment.
   herds are capped by field counts: a capped herd spares at most r/4 of its mass a year (about 6-9%), and predators
   at Carbone's ratio need about 24% a year. Save 2 (herds limited by grass) is what can carry them.
 - Off by default (config.predators); default island unchanged. Test F6. 194 tests pass.
+
+## 21 Nov 2026: predators, save 2 of 3: large herds limited by grass (with predators on) - unstable, shown in full
+
+- With config.predators, herds of 20 kg and up are held by grass and predators: births up to Fenchel's rMax in
+  proportion to the food need met; background deaths herbivoreDeathRate (0.1 a year, assumption) and hunger.
+- First try (all herds by grass): hares and hyraxes, with no predator of their own in the model, overran the
+  island (hares 23 -> 23,497 kg/km2 in 8 years) and starved the large herds. Small animals now keep their
+  field-count levels, which carry the small predators not modelled (jackals, caracals, eagles, pythons); hyenas no
+  longer take 5 kg dik-dik (they prefer 56-182 kg, Hayward 2006).
+- Second try: the large prey still collapse (island 1: impala 470 -> 0, zebra 502 -> 4, buffalo 232 -> 61 kg/km2
+  in 12 years; lions 61 -> 114 -> 49, hyenas 65 -> 27, starving) with grass plentiful throughout.
+- Mathematics: an equilibrium exists (for zebra about 200 kg/km2 and about 34 lions on the island: lions fed a third
+  of their need, kills equal to the zebra's growth), but with prey not food-limited and predators unlimited by
+  anything but prey it is unstable (the paradox of enrichment, Rosenzweig 1971); starting at Carbone's ratio
+  (61 lions) above it, the swings grow until the prey crash.
+- What steadies real systems (literature): predator territoriality and density-dependent cub survival; spatial
+  refuges for prey; herd size growing with density (Fryxell 2007; its fitted values are in a supplement not
+  reached). Proposed to Robert: prides and clans on home ranges on the map (territories and refuges together).
+- Off by default; default island unchanged (fingerprint ee5f79eb58495f15).

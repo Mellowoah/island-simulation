@@ -748,6 +748,7 @@ export const RATES = {
   lionGroup: { value: 6.3, low: 3, high: 10, unit: 'adults', dist: 'uniform', src: 'Mean adults in a Serengeti pride (Fryxell et al. 2007).' },
   hyenaGroup: { value: 3, low: 1, high: 6, unit: 'adults', dist: 'uniform', src: 'Assumption: spotted hyenas hunt in small groups.' },
   predatorDeathRate: { value: 0.15, low: 0.1, high: 0.25, unit: 'per year', dist: 'uniform', src: 'Assumption: adult lion and hyena deaths a year from causes other than hunger.' },
+  herbivoreDeathRate: { value: 0.1, low: 0.05, high: 0.2, unit: 'per year', dist: 'uniform', src: 'Assumption: deaths a year among wild herbivores from causes other than predators and hunger (disease, accidents, age).' },
   wetDayCoolMax: { value: 2, low: 1, high: 4, unit: 'deg C', dist: 'uniform', src: 'RETIRED 20 Nov 2026 (day temperature now from the energy balance, sunWarming in atmosphere.js). Was: assumption: rain days are cooler by day (clouds); dry days are warmer so the monthly mean holds (Richardson 1981 conditions temperature on wet and dry days)' },
   wetDayWarmMin: { value: 1, low: 0, high: 2, unit: 'deg C', dist: 'uniform', src: 'RETIRED 20 Nov 2026 (night temperature now from the longwave balance, nightWarming in atmosphere.js). Was: assumption: cloudy nights lose less heat (net longwave, FAO-56 eq. 39), so rain days have warmer nights' },
   dewDepressionDry: { value: 3, low: 2, high: 5, unit: 'deg C', dist: 'uniform', src: 'FAO-56 Annex 6: in arid and semi-arid places the dew point is about 2-4 deg C below Tmin; dry season' },
