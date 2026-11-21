@@ -648,3 +648,11 @@ Robert approved territories as the next step.
   territories not covering all the land.
 - This save made more than one change (ranges, drift, hunger): noted against the one-change rule.
 - Off by default; default island unchanged (fingerprint ee5f79eb58495f15).
+
+## 21 Nov 2026: predators time-boxed (Robert): up to three single-change saves, then on only if stable
+
+- Save A, the hyena's real diet: zebra added (avoided, not refused; Hayward 2006). Island 1: worse. Zebra
+  502 -> 53 kg/km2 in two years (hyenas now hunt them too; Carbone's start doubles hyenas to 135), hyenas still
+  die out by year 6, lions settle near 16-20, impala recover. The diet is a measured fact and stays; the failure
+  is recorded. The pattern behind all four tries: at low prey numbers each group's kills depend on the ground it
+  searches, so a rare prey keeps being hunted by predators that live on a common one (apparent competition).
