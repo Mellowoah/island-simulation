@@ -50,6 +50,8 @@ import { sanity } from './w-checks.js';
 import { H, SALT, W, WORLD_DEFAULTS, WORLD_VERSION, bandMembers, campOf, draw, event, living } from './w-core.js';
 import { fireDay, fireHour } from './w-craft.js';
 import { makeFood, stopGather, unload } from './w-food.js';
+import { plantsDay } from './plants.js';
+import { LAYERS } from './layers.js';
 import { atCamp } from './w-mind.js';
 import { act, walk } from './w-move.js';
 import {
@@ -244,7 +246,10 @@ export function stepWorld(s, n = 1) {
   }
   for (let z = 0; z < n; z++) {
     s.tick++;
-    if (s.weather && s.tick % day === 0) weatherDay(s); // the day's sky first: everything below reads it
+    if (s.weather && s.tick % day === 0) {
+      weatherDay(s); // the day's sky first: everything below reads it
+      if ((s.config?.layers?.plants ?? LAYERS.plants.status) === 'real') plantsDay(s); // then the plants (Layer 4)
+    }
     landStep(s, 1);
     if (s.tick % day === 0) {
       for (const p of living(s)) {

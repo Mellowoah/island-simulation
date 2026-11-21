@@ -1,0 +1,19 @@
+{
+ "layer": "water",
+ "pass": true,
+ "date": "2026-11-20",
+ "islands": 6,
+ "years": 3,
+ "tests": "# pass 6",
+ "deaths": {
+  "before": 4.166666666666667,
+  "after": 5.5
+ },
+ "pattern": "holes with water: wet season 0.81, Sep-Oct 0.23 (want >= 0.7 and 0.15-0.75)",
+ "fails": [],
+ "hashes": {
+  "weather.js": "0e60f8b395343df14e547059bd6b9eeb76c0dd9d7c1f3f9bfd1aacc793497ded",
+  "water.js": "f0d693f91ca078ef60eb33b1582ad6c9b699cdc55618bf4b417c2b91161b5cc9"
+ },
+ "toggle": "config.layers.water"
+}

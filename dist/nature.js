@@ -28,6 +28,9 @@ import { SALTS } from './streams.js';
 import { woodMoisture, rainYearRatio, soilMoisture, rainLastDays, spoilFactor } from './weather.js';
 import { R, clockOf, hourOf } from './clock.js';
 import * as T from './terrain.js';
+import { LAYERS } from './layers.js';
+import { plantYearRatio } from './plants.js';
+import { intakeKgDay, grazeDay, starveDeaths } from './fauna.js';
 
 const K = STREAMS.world[0];
 const SALT = SALTS; // named once in streams.js
@@ -143,57 +146,75 @@ export function makeAnimals() {
   return out;
 }
 // Logistic growth per cell, daily; natural deaths leave carcasses some of the time (most go to predators unseen).
+// With the real animals (Layer 5, fauna.js) the herds graze the plants layer's grass, and the land carries them
+// in proportion to the year's grass growth; short of grass, they starve.
+const animalsReal = s => (s.config?.layers?.animals ?? LAYERS.animals.status) === 'real';
 export function animalDay(s) {
-  const C = clockOf(s),
+  const real = animalsReal(s),
+    met = real ? grazing(s) : 1;
+  // with weather, the land carries more herbivores after a wet year and fewer in drought (stand-in: forage follows
+  // rain with exponent 0.7, approx.; real: the plants' own year)
+  const grown = real ? plantYearRatio(s) : null,
+    kf = s.weather ? Math.max(0.3, Math.min(1.4, grown ?? rainYearRatio(s) ** 0.7)) : 1;
+  for (const [id, sp] of Object.entries(SPECIES)) speciesDay(s, id, sp, kf, met);
+  dropCarcasses(s);
+}
+// The herds' need for the day, met from the herb layer (share met)
+function grazing(s) {
+  let demand = 0;
+  for (const [id, sp] of Object.entries(SPECIES))
+    demand += s.animals[id].reduce((t, n) => t + n, 0) * intakeKgDay(sp.mass);
+  s.grazed = (s.grazed ?? 0) + demand;
+  return grazeDay(s.plants, demand, landKm2());
+}
+let LAND_KM2 = null;
+const landKm2 = () => (LAND_KM2 ??= habitat().reduce((t, h) => t + Object.values(h).reduce((a, b) => a + b, 0), 0));
+function speciesDay(s, id, sp, kf, met) {
+  const N = s.animals[id],
+    r = rMax(sp.mass),
     dt = 1 / 365;
-  for (const [id, sp] of Object.entries(SPECIES)) {
-    // with weather, the land carries more herbivores after a wet year and fewer in drought (forage follows rain;
-    // exponent 0.7 so herds respond less than in proportion, approx.)
-    const N = s.animals[id],
-      r = rMax(sp.mass),
-      kf = s.weather ? Math.max(0.3, Math.min(1.4, rainYearRatio(s) ** 0.7)) : 1;
-    for (let c = 0; c < N.length; c++) {
-      const K = capacity(sp, c) * kf;
-      if (K <= 0) continue;
-      const n = N[c],
-        births = r * n * dt,
-        deaths = ((r * n * n) / K) * dt;
-      N[c] = Math.max(0, n + births - deaths);
-      // a carcass a person could find: most natural deaths are kills that lions and hyenas finish; a small share
-      // (register: carcassFound) lies with meat on it for about a day
-      if (
-        sp.mass >= 20 &&
-        draw(s, c * 7 + Object.keys(SPECIES).indexOf(id), SALT.carcass) < Math.min(1, deaths * R('carcassFound'))
-      ) {
-        const tiles = [];
-        for (let k = 0; k < 6; k++) {
-          const x = (c % CW) * CELL + Math.floor(draw(s, c, SALT.carcassX, s.tick * 6 + k) * CELL),
-            y = Math.floor(c / CW) * CELL + Math.floor(draw(s, c, SALT.carcassY, s.tick * 6 + k) * CELL);
-          if (T.isWalkable(x, y)) {
-            tiles.push([x, y]);
-            break;
-          }
-        }
-        if (tiles.length) {
-          const kcal = sp.mass * MEAT.edible * MEAT.kcalPerKg * 0.5;
-          s.carcasses.push({
-            id: s.nextId++,
-            species: id,
-            x: tiles[0][0],
-            y: tiles[0][1],
-            kcal,
-            kcal0: kcal,
-            taken: 0,
-            until: s.tick + Math.round(C.day / spoilFactor(s)),
-            natural: true,
-            roasted: false,
-          });
-          book(s, 'made', kcal);
-        }
-      }
+  for (let c = 0; c < N.length; c++) {
+    const K = capacity(sp, c) * kf;
+    if (K <= 0) continue;
+    const n = N[c],
+      births = r * n * dt,
+      deaths = ((r * n * n) / K) * dt + starveDeaths(n, met);
+    N[c] = Math.max(0, n + births - deaths);
+    maybeCarcass(s, c, id, sp, deaths);
+  }
+}
+// a carcass a person could find: most natural deaths are kills that lions and hyenas finish; a small share
+// (register: carcassFound) lies with meat on it for about a day
+function maybeCarcass(s, c, id, sp, deaths) {
+  if (sp.mass < 20) return;
+  if (draw(s, c * 7 + Object.keys(SPECIES).indexOf(id), SALT.carcass) >= Math.min(1, deaths * R('carcassFound')))
+    return;
+  const tiles = [];
+  for (let k = 0; k < 6; k++) {
+    const x = (c % CW) * CELL + Math.floor(draw(s, c, SALT.carcassX, s.tick * 6 + k) * CELL),
+      y = Math.floor(c / CW) * CELL + Math.floor(draw(s, c, SALT.carcassY, s.tick * 6 + k) * CELL);
+    if (T.isWalkable(x, y)) {
+      tiles.push([x, y]);
+      break;
     }
   }
-  dropCarcasses(s);
+  if (tiles.length) placeCarcass(s, id, sp, tiles[0]);
+}
+function placeCarcass(s, id, sp, [x, y]) {
+  const kcal = sp.mass * MEAT.edible * MEAT.kcalPerKg * 0.5;
+  s.carcasses.push({
+    id: s.nextId++,
+    species: id,
+    x,
+    y,
+    kcal,
+    kcal0: kcal,
+    taken: 0,
+    until: s.tick + Math.round(clockOf(s).day / spoilFactor(s)),
+    natural: true,
+    roasted: false,
+  });
+  book(s, 'made', kcal);
 }
 // carcasses that rot or are eaten by scavengers leave the world (booked)
 export function dropCarcasses(s) {
@@ -293,49 +314,51 @@ export function law(s, verb, a, b, skill, r) {
   const A = MATERIAL[a] ?? ITEM[a],
     B = MATERIAL[b] ?? ITEM[b];
   if (!A || !B) return null;
-  if (verb === 'strike') {
-    // a hard, heavy enough stone breaks a conchoidal stone into a sharp flake; two tough stones give a rough edge
-    for (const [h, t] of [
-      [A, B],
-      [B, A],
-    ]) {
-      const hk = h === A ? a : b,
-        tk = h === A ? b : a;
-      if (
-        MATERIAL[tk]?.fracture === 'conchoidal' &&
-        hardnessOf(hk) >= hardnessOf(tk) - 1 &&
-        massOf(hk) >= 0.3 &&
-        r < FIRST.flake + (0.9 - FIRST.flake) * skill
-      )
-        return { made: 'flake', note: 'struck a flake off the flint' };
-    }
+  if (verb === 'strike') return strike(A, B, a, b, skill, r);
+  if (verb === 'cut') return cut(a, b, skill, r);
+  if (verb === 'rub') return rub(s, a, b, skill, r);
+  return null;
+}
+// a hard, heavy enough stone breaks a conchoidal stone into a sharp flake; two tough stones give a rough edge
+function strike(A, B, a, b, skill, r) {
+  for (const [h] of [
+    [A, B],
+    [B, A],
+  ]) {
+    const hk = h === A ? a : b,
+      tk = h === A ? b : a;
     if (
-      MATERIAL[a]?.fracture === 'tough' &&
-      MATERIAL[b]?.fracture === 'tough' &&
-      r < FIRST.chopper + (0.4 - FIRST.chopper) * skill
+      MATERIAL[tk]?.fracture === 'conchoidal' &&
+      hardnessOf(hk) >= hardnessOf(tk) - 1 &&
+      massOf(hk) >= 0.3 &&
+      r < FIRST.flake + (0.9 - FIRST.flake) * skill
     )
-      return { made: 'chopper', note: 'broke a rough edge on a cobble' };
-    return null;
+      return { made: 'flake', note: 'struck a flake off the flint' };
   }
-  if (verb === 'cut') {
-    // an edge harder than the thing, and sharp enough, shapes wood into a point
-    for (const [e, w] of [
-      [a, b],
-      [b, a],
-    ])
-      if ((ITEM[e]?.sharp ?? 0) >= 0.35 && MATERIAL[w]?.wood && r < FIRST.spear + (0.9 - FIRST.spear) * skill)
-        return { made: 'spear', note: 'cut a stick to a point' };
-    return null;
-  }
-  if (verb === 'rub') {
-    // friction between two pieces of dry wood can make an ember; dry grass catches it
-    if (MATERIAL[a]?.wood && MATERIAL[b]?.wood) {
-      if (moisture(s) > 0.15) return null; // wet wood: the heat goes into the water (no ember)
-      if (r < FIRST.ember + (0.55 - FIRST.ember) * skill)
-        return { made: 'ember', note: 'twirled one dry stick against another until it smoked and glowed' };
-    }
-    return null;
-  }
+  if (
+    MATERIAL[a]?.fracture === 'tough' &&
+    MATERIAL[b]?.fracture === 'tough' &&
+    r < FIRST.chopper + (0.4 - FIRST.chopper) * skill
+  )
+    return { made: 'chopper', note: 'broke a rough edge on a cobble' };
+  return null;
+}
+// an edge harder than the thing, and sharp enough, shapes wood into a point
+function cut(a, b, skill, r) {
+  for (const [e, w] of [
+    [a, b],
+    [b, a],
+  ])
+    if ((ITEM[e]?.sharp ?? 0) >= 0.35 && MATERIAL[w]?.wood && r < FIRST.spear + (0.9 - FIRST.spear) * skill)
+      return { made: 'spear', note: 'cut a stick to a point' };
+  return null;
+}
+// friction between two pieces of dry wood can make an ember; dry grass catches it
+function rub(s, a, b, skill, r) {
+  if (!(MATERIAL[a]?.wood && MATERIAL[b]?.wood)) return null;
+  if (moisture(s) > 0.15) return null; // wet wood: the heat goes into the water (no ember)
+  if (r < FIRST.ember + (0.55 - FIRST.ember) * skill)
+    return { made: 'ember', note: 'twirled one dry stick against another until it smoked and glowed' };
   return null;
 }
 export const VERBS = ['strike', 'cut', 'rub'];
@@ -365,26 +388,29 @@ export function wildfireDay(s) {
     const x = ((c % CW) * CELL + CELL / 2) | 0,
       y = (Math.floor(c / CW) * CELL + CELL / 2) | 0;
     s.wildfires.push({ x, y, cell: c, until: s.tick + C.day });
-    // small animals caught by the fire: roasted carcasses for anyone who comes
-    for (let k = 0; k < 2; k++) {
-      if (!T.isWalkable(x + k, y)) continue;
-      const kcal = 2.5 * MEAT.edible * MEAT.kcalPerKg;
-      s.carcasses.push({
-        id: s.nextId++,
-        species: 'hare',
-        x: x + k,
-        y,
-        kcal,
-        kcal0: kcal,
-        taken: 0,
-        until: s.tick + 2 * C.day,
-        natural: true,
-        roasted: true,
-      });
-      book(s, 'made', kcal);
-    }
+    roastedByFire(s, x, y, C);
   }
   s.wildfires = s.wildfires.filter(w => w.until > s.tick);
+}
+// small animals caught by the fire: roasted carcasses for anyone who comes
+function roastedByFire(s, x, y, C) {
+  for (let k = 0; k < 2; k++) {
+    if (!T.isWalkable(x + k, y)) continue;
+    const kcal = 2.5 * MEAT.edible * MEAT.kcalPerKg;
+    s.carcasses.push({
+      id: s.nextId++,
+      species: 'hare',
+      x: x + k,
+      y,
+      kcal,
+      kcal0: kcal,
+      taken: 0,
+      until: s.tick + 2 * C.day,
+      natural: true,
+      roasted: true,
+    });
+    book(s, 'made', kcal);
+  }
 }
 
 // ---------- taking an animal ----------

@@ -1,10 +1,10 @@
 // Tests answering the Edge critic review (issue #1), implementation items 1–3 and F4 reporting.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createWorld, step, command, metrics, serialize, deserialize, noise, noise2, seedKey } from '../dist/sim.js';
-import { PLAN, schedule } from '../dist/experiment.js';
-import { DAY } from '../dist/sim.js';
-import { setDefaultClock } from '../dist/clock.js';
+import { createWorld, step, command, metrics, serialize, deserialize, noise, noise2, seedKey } from '../dist/frozen/sim.js';
+import { PLAN, schedule } from '../dist/frozen/experiment.js';
+import { DAY } from '../dist/frozen/sim.js';
+import { setDefaultClock } from '../dist/frozen/clock.js';
 setDefaultClock('legacy'); // these tests pin the original (pre-17 Nov) behaviour; tests/clock.test.mjs covers the real clock
 
 const corr = (a, b) => { const n = a.length, ma = a.reduce((x, y) => x + y) / n, mb = b.reduce((x, y) => x + y) / n; let s = 0, sa = 0, sb = 0; for (let i = 0; i < n; i++) { s += (a[i] - ma) * (b[i] - mb); sa += (a[i] - ma) ** 2; sb += (b[i] - mb) ** 2; } return s / Math.sqrt(sa * sb); };
@@ -80,8 +80,8 @@ test('E4 summaries can count the dead: medianHungerAll treats each death as 100'
 });
 
 test('E5 real withdrawal and matched-food ration keep the ledger honest and saves valid', async () => {
-  const { serialize, deserialize } = await import('../dist/sim.js');
-  const { runSeed } = await import('../dist/experiment.js');
+  const { serialize, deserialize } = await import('../dist/frozen/sim.js');
+  const { runSeed } = await import('../dist/frozen/experiment.js');
   const s = createWorld(45);
   for (let i = 0; i < PLAN.trainingDays * DAY; i++) schedule(s, 'provision');
   const left = metrics(s).giftRemaining;

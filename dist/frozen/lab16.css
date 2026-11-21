@@ -1,0 +1,73 @@
+/* Island Lab 16-bit look. Presentation only. */
+:root{color-scheme:dark;--ink:#f4f0dc;--bg:#0d1424;--box:#14204a;--box2:#0f1838;--edge:#e8e8f0;--gold:#ffd84a;--mute:#aab4d4;--green:#7fd88f}
+*{box-sizing:border-box}
+body{overflow-x:hidden;margin:0;background:#0d1424 radial-gradient(ellipse at 50% -20%,#24366e 0%,#0d1424 60%) fixed;color:var(--ink);font:15px/1.45 ui-monospace,"SF Mono",Menlo,Consolas,monospace;-webkit-text-size-adjust:100%}
+main{max-width:1200px;margin:0 auto;padding:max(10px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) 30px max(10px,env(safe-area-inset-left))}
+.title h1{margin:6px 0 0;font-size:clamp(26px,7vw,40px);letter-spacing:.18em;color:var(--gold);text-shadow:3px 3px 0 #7a3a10,6px 6px 0 #000}
+.title .sub{margin:4px 0 10px;color:var(--mute);font-size:13px}
+.box{position:relative;background:linear-gradient(#1b2a5e,#101a40);border:3px solid var(--edge);border-radius:6px;box-shadow:0 0 0 3px #000,inset 0 0 0 2px #2c3f86,6px 6px 0 #0008;padding:12px 12px 14px;margin:14px 3px}
+.box h2{margin:0 0 8px;font-size:15px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold)}
+.note{color:var(--mute);font-size:12.5px;margin:4px 0 10px}
+button,select,input{font:inherit;color:var(--ink)}
+button{min-height:44px;padding:8px 12px;border:2px solid var(--edge);border-radius:4px;background:linear-gradient(#3b56b0,#22357a);box-shadow:0 3px 0 #000,inset 0 2px #ffffff30;font-weight:700;letter-spacing:.04em;cursor:pointer;touch-action:manipulation}
+button:active{transform:translateY(2px);box-shadow:0 1px 0 #000}
+button:disabled{opacity:.45}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+button.big{width:100%;font-size:20px;letter-spacing:.2em;background:linear-gradient(#3fa24f,#1f6a2c);margin-top:6px}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin:10px 3px}
+.row>button{flex:1 1 120px}
+.worlds{display:grid;gap:8px}
+.worlds label{display:block;border:2px solid #4a5ea8;border-radius:4px;padding:10px;background:var(--box2);cursor:pointer}
+.worlds input{margin-right:8px;transform:scale(1.3)}
+.worlds label.on{border-color:var(--gold);box-shadow:inset 0 0 0 1px var(--gold)}
+.worlds small{display:block;color:var(--mute);margin-top:4px}
+.field{border-top:2px dashed #33478c;padding:10px 0}
+.field:first-child{border-top:0}
+.field .lab{display:flex;justify-content:space-between;align-items:center;gap:10px;font-weight:700}
+.field input[type=number],.field select{width:9.5em;min-height:44px;padding:6px 8px;border:2px solid var(--edge);border-radius:4px;background:#0a1230}
+.field .why{color:var(--mute);font-size:12.5px;margin-top:6px}
+.field .why b{color:#9fd4ff}
+.toggle{display:flex;gap:6px}.toggle button{min-width:64px;flex:0 0 auto}.toggle button.on{background:linear-gradient(#3fa24f,#1f6a2c)}
+.fixed{color:var(--gold)}
+.hud{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;background:#000;border:3px solid var(--edge);border-radius:6px;box-shadow:0 0 0 3px #000;padding:8px 10px;margin:8px 3px;font-weight:700;font-size:14px;letter-spacing:.06em}
+.hud .heart{color:#ff5a6a}.hud .phase{color:var(--gold)}.hud .phase.rel{color:#ff9a8a}.hud .mute{color:var(--mute);font-weight:400}
+.mapwrap{display:flex;justify-content:center;margin:4px calc(50% - 50vw)}
+#map{display:block;image-rendering:pixelated;image-rendering:crisp-edges;border:3px solid var(--edge);box-shadow:0 0 0 3px #000,8px 8px 0 #0009;border-radius:2px;touch-action:manipulation;max-width:none}
+#toast{min-height:20px;color:var(--gold);font-size:13px;margin:0 4px}
+.charts{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.chart h3{margin:0 0 4px;font-size:13px;color:#fff}
+.chart canvas{width:100%;height:150px;display:block;border:2px solid #33478c;border-radius:3px}
+.chart p{margin:4px 0 0;color:var(--mute);font-size:12px}
+.chart .key{font-size:11.5px;margin-top:2px}
+.events{margin:0;padding-left:18px;font-size:13px}.events li{margin:3px 0}.events .t{color:var(--mute)}
+.bars{display:grid;grid-template-columns:auto 1fr auto;gap:4px 8px;align-items:center;font-size:13px}
+.bar{height:8px;background:#0a1230;border:1px solid #4a5ea8}.bar i{display:block;height:100%;background:var(--green)}
+.rep{font:15px/1.55 system-ui,-apple-system,sans-serif}.rep .glance{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.rep .glance span{border:2px solid currentColor;border-radius:3px;padding:2px 6px;font:700 12px ui-monospace,monospace}
+.rep h1{font-size:19px;color:var(--gold);margin:0 0 6px}.rep h2{font-size:14px;margin-top:18px}.rep h3{margin:0 0 4px;font-size:15px}
+.rep .pred{border:2px solid #4a5ea8;border-radius:4px;padding:8px 10px;margin:8px 0;background:var(--box2)}
+.rep table{border-collapse:collapse;font-size:13px}.rep td{padding:2px 12px 2px 0}.rep .m{color:var(--mute);font-size:12.5px}
+.rep figure{margin:10px 0}.rep figcaption{font-size:12px;color:var(--mute)}
+.progress{height:14px;border:2px solid var(--edge);background:#000;margin-top:8px}.progress i{display:block;height:100%;background:var(--green);width:0}
+.saved{display:flex;flex-wrap:wrap;gap:6px;align-items:center;border-top:2px dashed #33478c;padding:8px 0}.saved span{flex:1 1 200px;font-size:13px}.saved button{min-height:36px;padding:4px 8px;font-size:12px}
+.credits{color:#6f7aa0;font-size:11px;text-align:center;margin-top:18px}
+[hidden]{display:none!important}
+@media(max-width:520px){body{font-size:14px}.box{padding:10px}.row>button{flex:1 1 40%;font-size:13px;padding:8px 6px}.field .lab{flex-wrap:wrap}}
+@media(prefers-reduced-motion:reduce){button{transition:none}}
+/* Logo on the setup screen; the text title stays for the other screens and for screen readers. */
+.title .logo{display:none}
+body[data-screen="setup"] .title .logo{display:block;text-align:center}
+.title .logo img{display:block;margin:0 auto;width:min(100%,420px);height:auto;image-rendering:pixelated;border:3px solid var(--edge);border-radius:6px;box-shadow:0 0 0 3px #000,6px 6px 0 #0008}
+body[data-screen="setup"] .title h1{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+body[data-screen="setup"] .title .sub{text-align:center}
+
+/* attributes and layers (read-only views) */
+details { margin-top: .6em; }
+details > summary { cursor: pointer; color: #ffe680; font-size: .95em; }
+table.attrs { width: 100%; border-collapse: collapse; font-size: .82em; }
+table.attrs td { padding: 2px 4px; border-bottom: 1px solid rgba(255,255,255,.08); vertical-align: top; }
+table.attrs td.v { text-align: right; width: 40%; overflow-wrap: anywhere; }
+table.attrs .note { font-size: .9em; }
+/* Characters panel: small arrow buttons, the name list takes the rest of the row */
+#charBox .row { display: flex; flex-wrap: nowrap; gap: 6px; align-items: stretch; }
+#charBox .row button { flex: 0 0 48px; min-width: 48px; padding: 6px 0; }
+#charBox .row select { flex: 1 1 auto; min-width: 0; font-size: 1em; }

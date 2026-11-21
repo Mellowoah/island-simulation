@@ -35,7 +35,7 @@ export const WORLD_DEFAULTS = {
   startKnowledge: 'none', // 'none': a blank slate, nothing known about tools or fire; 'basic': like people landing on an island, some grown-ups know how to knap flint, point a stick, make fire and cook
   years: 0, // run length for the page (0 = until stopped)      // chance a month that a family moves to another band where it has kin (camp membership is fluid among foragers; approx.)
   clockMinutes: 60,
-  density: 0.24, // people per km² the land feeds in an ordinary year (Hadza, Marlowe)
+  density: 0.24, // UNUSED with the real plants (20 Nov 2026): food is grown from measured yields; kept only for the stand-in food path (Hadza, Marlowe)
   menarche: 16,
   firstPair: { F: 16, M: 18 },
   menopause: 45, // forager menarche ~16, last births around 40 (Hadza)

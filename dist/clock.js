@@ -65,15 +65,8 @@ export const isNight = (C, tick) => {
   const h = hourOf(C, tick);
   return h < SUNRISE || h >= SUNSET;
 };
-// Darkness, for what light changes (walking pace, falls, how far one sees, fear of the dark): judged at the middle
-// of the step, and dark only beyond civil twilight (about 22 minutes near the equator, Hadza latitude ~3.5 S), when
-// there is not enough light to walk by. isNight stays the day's schedule (sleep, plans). Before 19 Nov 2026 the
-// world used isNight here, so with hour steps the whole 06:00-07:00 hour counted as full night.
-export const TWILIGHT_H = 0.37;
-export const isDark = (C, tick) => {
-  const h = (hourOf(C, tick) + C.hours / 2) % 24;
-  return h < SUNRISE - TWILIGHT_H || h >= SUNSET + TWILIGHT_H;
-};
+// Darkness (isDark) lives with the sun now (sun.js, Layer 0): the base layer may not read a higher one.
+
 // Foragers fall asleep about 3.3 hours after sunset and wake before sunrise (Yetish et al. 2015).
 export const SLEEP_FROM = SUNSET + 3.3,
   SLEEP_UNTIL = 6;
@@ -725,6 +718,47 @@ export const RATES = {
     dist: 'loguniform',
     src: 'assumption: how fast what one knows of a water hole goes stale (holes fill and dry over weeks with the seasons)',
   },
+  // Layer 1, the atmosphere (atmosphere.js)
+  tempPersistence: { value: 0.7, low: 0.5, high: 0.85, unit: 'day-to-day correlation', dist: 'uniform', src: 'assumption in the range found for daily temperature (Richardson 1981 WGEN: lag-1 correlations about 0.6-0.8)' },
+  tempAnomalySd: { value: 1.2, low: 0.6, high: 2, unit: 'deg C', dist: 'uniform', src: 'assumption: spread of daily max temperature about the monthly mean near the equator (small seasonal and day-to-day swings)' },
+  sensibleShare: { value: 0.5, low: 0.3, high: 0.8, unit: 'share', dist: 'uniform', src: 'Share of extra net sunshine that heats the air (sensible heat), beta/(1+beta) for a Bowen ratio beta near 1 over semi-arid savanna (assumption within the measured range; Stull 1988).' },
+  mixedLayerM: { value: 1500, low: 1000, high: 2500, unit: 'm', dist: 'uniform', src: 'Depth of the afternoon convective mixed layer over dry tropical land, about 1-2 km (Stull 1988).' },
+  nightLayerM: { value: 200, low: 100, high: 500, unit: 'm', dist: 'uniform', src: 'Depth of the stable night layer that the ground cools, about 100-500 m (Stull 1988).' },
+  groundNightShare: { value: 0.5, low: 0.3, high: 0.7, unit: 'share', dist: 'uniform', src: 'Assumption: share of the night longwave loss made up by heat stored in the ground by day, rather than taken from the air.' },
+  transpirationShare: { value: 0.51, low: 0.36, high: 0.66, unit: 'share', dist: 'uniform', src: 'Share of evapotranspiration that passes through plants: 51% (sd 15%) in steppes, shrublands and deserts (Schlesinger and Jasechko 2014, 81 partitioning studies).' },
+  transpirationRatio: { value: 300, low: 250, high: 350, unit: 'g water per g dry matter', dist: 'uniform', src: 'C4 grasses: about 250-350 g of water transpired per g of dry matter (Larcher, Physiological Plant Ecology).' },
+  aboveShare: { value: 0.53, low: 0.4, high: 0.65, unit: 'share', dist: 'uniform', src: 'Above-ground share of grass production: 53% on Nairobi savanna (ANPP 1004, BNPP 875 g/m2/yr; Kinyamario, ORNL DAAC NPP_NRB).' },
+  cureBelow: { value: 0.5, low: 0.4, high: 0.6, unit: 'soil wetness', dist: 'uniform', src: 'Grass cures once the soil has lost its readily available water: FAO-56 depletion fraction p, about 0.5 (Allen et al. 1998, Table 22).' },
+  curingDays: { value: 14, low: 7, high: 30, unit: 'days', dist: 'uniform', src: 'Assumption: green grass on drying soil cures over about two weeks.' },
+  litterHalfLifeDays: { value: 180, low: 90, high: 365, unit: 'days', dist: 'loguniform', src: 'Assumption: standing dead grass removed by termites, fire and weathering with a half-life of about six months.' },
+  tuberCover: { value: 0.1, low: 0.02, high: 0.5, unit: 'share of grass and woodland', dist: 'loguniform', src: 'Assumption, the largest unknown in the yields: share of grass and woodland where //ekwa grows at its measured density (5,200 kg/ha; Vincent 1985).' },
+  tuberHalfLifeDays: { value: 730, low: 365, high: 1460, unit: 'days', dist: 'loguniform', src: 'Assumption: a tuber stand renews over about two years (perennial legume rootstocks).' },
+  berryDryShare: { value: 0.3, low: 0.15, high: 0.5, unit: 'share', dist: 'uniform', src: 'Assumption: dry matter share of fresh wild berries (Grewia drupes are fairly dry).' },
+  berryEdibleShare: { value: 0.5, low: 0.3, high: 0.7, unit: 'share', dist: 'uniform', src: 'Assumption: share of a berry that is eaten (Grewia has a large hard stone).' },
+  baobabPerHa: { value: 2, low: 0.5, high: 10, unit: 'adult trees per ha', dist: 'loguniform', src: 'Assumption within the recorded range (0-60 stems per ha in natural woodland; 5 per ha in riverine forest, Tigrai).' },
+  intertidalShare: { value: 0.05, low: 0.02, high: 0.15, unit: 'share of shore', dist: 'loguniform', src: 'Assumption: the rocky intertidal strip is about 17 m of a 350 m shore square.' },
+  shellfishHalfLifeDays: { value: 365, low: 180, high: 730, unit: 'days', dist: 'loguniform', src: 'Assumption: a shellfish bed renews in about a year.' },
+  meanHerbGrowth: { value: 514, low: 400, high: 650, unit: 'g/m2 a year', dist: 'uniform', src: 'The herb layer\'s own average yearly growth at the measured climate (6 islands x 4 years, sd 99; 20 Nov 2026), so an average year gives the measured food yields; Deshmukh (1984) predicts about 485 at this rain.' },
+  intakePerKgMetabolic: { value: 0.09, low: 0.06, high: 0.12, unit: 'kg dry matter per kg^0.75 a day', dist: 'uniform', src: 'Herbivore voluntary intake scales with metabolic mass (mass^0.75); ruminants about 60-120 g DM per kg^0.75 a day (standard animal nutrition, approx.).' },
+  starveDays: { value: 60, low: 30, high: 120, unit: 'days', dist: 'uniform', src: 'Assumption: a herbivore with no food lives on its reserves for about two months.' },
+  wetDayCoolMax: { value: 2, low: 1, high: 4, unit: 'deg C', dist: 'uniform', src: 'RETIRED 20 Nov 2026 (day temperature now from the energy balance, sunWarming in atmosphere.js). Was: assumption: rain days are cooler by day (clouds); dry days are warmer so the monthly mean holds (Richardson 1981 conditions temperature on wet and dry days)' },
+  wetDayWarmMin: { value: 1, low: 0, high: 2, unit: 'deg C', dist: 'uniform', src: 'RETIRED 20 Nov 2026 (night temperature now from the longwave balance, nightWarming in atmosphere.js). Was: assumption: cloudy nights lose less heat (net longwave, FAO-56 eq. 39), so rain days have warmer nights' },
+  dewDepressionDry: { value: 3, low: 2, high: 5, unit: 'deg C', dist: 'uniform', src: 'FAO-56 Annex 6: in arid and semi-arid places the dew point is about 2-4 deg C below Tmin; dry season' },
+  dewDepressionWet: { value: 1, low: 0, high: 2, unit: 'deg C', dist: 'uniform', src: 'FAO-56 Annex 6: in humid conditions the dew point is near Tmin; wet season dry days' },
+  windDryMs:     { value: 3, low: 2, high: 5, unit: 'm/s at 2 m', dist: 'uniform', src: 'assumption: the Eyasi dry season is windy (Max Planck Institute fieldwork notes); daily means Weibull, k = 2' },
+  windWetMs:     { value: 2, low: 1, high: 3, unit: 'm/s at 2 m', dist: 'uniform', src: 'FAO-56 default when wind is not measured: 2 m/s; wet season' },
+  sunshineDry:   { value: 0.75, low: 0.6, high: 0.9, unit: 'n/N', dist: 'uniform', src: 'assumption: share of possible sunshine on a dry day in a semi-arid tropical place' },
+  sunshineWet:   { value: 0.3, low: 0.1, high: 0.5, unit: 'n/N', dist: 'uniform', src: 'assumption: share of possible sunshine on a rain day' },
+  tempPeakLagH:  { value: 1.5, low: 1, high: 2.5, unit: 'h after solar noon', dist: 'uniform', src: 'Parton and Logan 1981: the day sine peaks about 1.5-2 h after solar noon (fitted lag)' },
+  tempNightDecay: { value: 2.2, low: 1.5, high: 4, unit: 'e-folds per night', dist: 'uniform', src: 'Parton and Logan 1981: night cooling coefficient about 2.2 for air temperature' },
+  // Layer 2, water (water.js)
+  curveNumber:   { value: 85, low: 70, high: 88, unit: 'SCS curve number (average wetness)', dist: 'uniform', src: 'RETIRED with the real land (20 Nov 2026): curve numbers now come from land cover by TR-55 tables (water.js CN_BY_COVER: soil group B, fair condition; pans on clay, group D). Used only if the land is switched back to stand-in, where this fitted value (85) applies. History: USDA TR-55 (1986): poor desert-shrub and sparse herbaceous cover on soils of groups C-D give about 77-88. Set to 85 on 19 Nov 2026: at 75, daily rains here (mean about 9 mm on a wet day) almost never pass the initial loss, and rain-fed pans stayed dry (measured, island 1, 3 years)' },
+  groundwaterDays: { value: 120, low: 30, high: 365, unit: 'days', dist: 'loguniform', src: 'assumption: time constant of the groundwater store (linear reservoir); baseflow recession constants of weeks to months are typical of small semi-arid catchments (Brutsaert 2005)' },
+  percolationBeta: { value: 2, low: 1, high: 5, unit: 'exponent', dist: 'uniform', src: 'HBV soil routine (Bergstrom 1992): share of infiltrating water passed down = (soil wetness)^beta; beta usually 1-6 in calibrations' },
+  channelDays:   { value: 7, low: 5, high: 40, unit: 'days', dist: 'loguniform', src: 'assumption: time constant of the stream channels and sand rivers (the HBV fast reservoir); seasonal streams in semi-arid East Africa recede over days to weeks after rain' },
+  poolBedSeepMm: { value: 3, low: 1, high: 10, unit: 'mm/day', dist: 'loguniform', src: 'Assumption, measurable in the field: water a river or stream pool loses into its sand bed each day (a losing stream). Only with the real land (Layer 3).' },
+  holeAreaHa: { value: 1, low: 0.25, high: 4, unit: 'ha', dist: 'loguniform', src: 'Assumption, measurable in the field: the open water of one dry-season waterhole or river pool, about 100 m across. With the real land (Layer 3), inflow depth = runoff depth x catchment area / this area.' },
+  catchScale:    { value: 8, low: 4, high: 36, unit: 'x', dist: 'loguniform', src: 'RETIRED with the real land (Layer 3, 20 Nov 2026): each hole now gathers from its own catchment (land.js). Used only if the land is switched back to stand-in, where this fitted multiple applies. History: set 19 Nov 2026 against the observed season of water holes (widespread in the wet season, scarcer late in the dry; O\'Connell et al., the Tli\'ika area): swept 1-16 on 3 islands x 3 years; at 8, with curve number 85, pans hold water Nov-Jul and dry Aug-Oct (island 1)' },
   newsFlipPerHop: {
     value: 0.05,
     low: 0.01,

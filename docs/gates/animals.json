@@ -1,0 +1,19 @@
+{
+ "layer": "animals",
+ "pass": true,
+ "date": "2026-11-20",
+ "islands": 6,
+ "years": 3,
+ "tests": "# pass 4",
+ "deaths": {
+  "before": 4.166666666666667,
+  "after": 4.166666666666667
+ },
+ "pattern": "herds ate 2.5% of the grass grown; herbivores 1278 kg/km2",
+ "fails": [],
+ "hashes": {
+  "nature.js": "76d655818117fce60fad929ae5daacb33d83a585ba8120442c8a12cc916a2e51",
+  "fauna.js": "e14d0771eb0b9b13084cc33698eb4a59147b9dda1723193d42aabbdd266ba0ac"
+ },
+ "toggle": "config.layers.animals"
+}

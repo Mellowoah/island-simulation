@@ -1,19 +1,8 @@
 // Island: a body on the real clock (Eden and the savanna). Legacy worlds never call this file.
 // The law of energy is in energy.js, the rates and pairs in clock.js. This file applies them to one creature.
 
-import {
-  clockOf,
-  body,
-  eatKcal,
-  burnKcal,
-  storedKcal,
-  sleepTime,
-  ticksUntilWake,
-  isNight,
-  isDark,
-  hourOf,
-  SLEEP_UNTIL,
-} from './clock.js';
+import { clockOf, body, eatKcal, burnKcal, storedKcal, sleepTime, ticksUntilWake, isNight, hourOf, SLEEP_UNTIL } from './clock.js';
+import { isDark } from './sun.js';
 import { heatFactor } from './weather.js';
 import * as EN from './energy.js';
 import { lifeStage } from './being.js';

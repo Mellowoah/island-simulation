@@ -1,0 +1,20 @@
+{
+ "layer": "plants",
+ "pass": true,
+ "date": "2026-11-20",
+ "islands": 6,
+ "years": 3,
+ "tests": "# pass 4",
+ "deaths": {
+  "before": 5.5,
+  "after": 4.166666666666667
+ },
+ "pattern": "peak standing / Deshmukh 0.97, growth / Deshmukh 1.09, green Sep-Oct 3 against wet season 93 g/m2",
+ "fails": [],
+ "hashes": {
+  "savanna.js": "99b88b3caa64b6a6ef4bf1f86ae94905e70e8e855e2d35fc36bcade2e9fc9d76",
+  "plants.js": "4e062b15beca00352d0507ca3b179e188aced32577951ab4df2bfa1c2cdf9953",
+  "yields.js": "4f40f3c298b92b8d9aba32f00cf369c6b01ec4f0233b7a227a5ac55df6082261"
+ },
+ "toggle": "config.layers.plants"
+}

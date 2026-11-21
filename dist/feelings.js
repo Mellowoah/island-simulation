@@ -14,7 +14,8 @@
 // - Pain is the harm signal. Pain in the first year raises later pain sensitivity (Taddio et al. 1997).
 // - Inborn sensitivity is the inherited caution trait (about 40% heritable, as for neuroticism).
 // The same rules run in every world: nothing here knows about God, the fall or the serpent.
-import { R, clockOf, isDark } from './clock.js';
+import { R, clockOf } from './clock.js';
+import { isDark } from './sun.js';
 import { plasticity } from './being.js';
 import { moonLight } from './weather.js';
 

@@ -323,3 +323,206 @@ Findings with feelings on, 3 islands x 10 years (feelings off in brackets): deat
 7. The live site (GitHub Pages) was deployed only from design/lab-visual-polish, so main never reached it; the workflow now deploys from main.
 8. Code formatted with prettier (printWidth 120): 6,262 lines to 15,829. Proved behaviour-neutral by tools/fingerprint-all.mjs (world, Eden, Lab, old island, Lab16 run: all five identical before and after). One source-text test (S2) made spacing-free.
 Not done here (modelling decisions for Robert, from the audit): belief in the serpent only rises and the warning never fades (20 of 20 Eden worlds fall); lies are noise with no liar who gains; sharing costs nothing; the serpent does not adapt.
+
+## 19 Nov 2026: the live site, branches and the home screen
+Robert saw the live site "go backwards": when it moved to main its front page became the Eden test lab (16-bit, setup form first) and the small world sat behind a small link. Nothing was lost. New dist/home.html is the front page: the small world first, then the Eden test lab, then the first (15 Nov) Lab page, which still runs unchanged on today's code (dist/lab-classic.html, restored from design/lab-visual-polish). Every page links back to the home screen.
+Branches: all 16 reviewed. Main held every file of every branch except Cursor's Moving Bar prototype (0.4.0-proto, pre-registered, 340 runs; P-a failed, P-b failed in the opposite direction: peer monitoring lowered detection, P-c held as an identity). It changes the 15 Nov Eden engine, which has since been rebuilt, so it does not merge; its design and results are now in docs/archive/, and porting it to today's Eden is a decision for Robert. All 13 old branches are kept in one branch, archive/old-branches, whose commit has every old tip as a parent (checked: 13 of 13 inside); the list is docs/archive/BRANCHES.md. Deleting the old branches is refused from this session; Robert can delete them on GitHub.
+
+## 19 Nov 2026: one world at a time — the test worlds frozen
+Robert: build the simulation first, as close to our world as possible, physics-accurate; testing (deception, the biblical theory) comes later; "one world at once". The small world is now the app (the live site opens on it). Eden, the Lab island and the first island are frozen: a complete copy of the code as of commit 1e85c4f is in dist/frozen/ with its own pages (frozen/home.html, lab.html, lab-classic.html); their tests and tools (14 test files, drift-check, data-pack, fingerprint-all) now point at the frozen copy, and their files are removed from the live folder. So changes to the small world's shared files (clock, body, energy, weather, being) can no longer change or be held back by the frozen worlds. Checked: the frozen engines' fingerprints equal the live ones before removal (eden ee2e8dc69c70, lab 230bf4b9d39e, sim 526dafc087d5, lab16 acb7906ce0e9; world 0baec8913f86); 156 tests pass; all four pages load with no errors in a phone-size browser.
+Also agreed in direction (19 Nov, awaiting Robert's yes on the plan): calibration paused until the physics is complete (the score stays as a diagnostic); hand-set decision weights to be replaced by one currency (survival and reproductive value); the physics built in order: sun and air, body heat balance, water (Penman–Monteith), plants (light- and water-limited growth), animals and predators, movement (Pandolf, Tobler), illness as a process, then the mind.
+
+## Layer 0: energy from the sun (19 Nov 2026)
+Robert's layered plan (energy, atmosphere, water, terrain and soil, plants, animals, agents; networks, institutions, information and self-modification to be measured, not built). Corrections agreed in reply: the balance law is next = state + inflows - outflows (entropy is the second law's constraint on flows, not a term); terrain's shape is the base under water; air and water are one loop; layers run at their own time scales; weather arrives from outside the island; layers 7-10 emerge.
+dist/sun.js (new, every function under 30 lines, pure functions, no state): the sun by Meeus (1998) on true astronomical time from 06:00 EAT 1 Nov 2026 (the world's 365-day calendar labels drift about a day per four years from the sun; the sun does not drift); sunrise, sunset, civil dawn and dusk, solar noon, day length; daylight 0..1; sunlight at the top of the air (1361 W/m2 over distance squared) and at the ground (FAO-56 Angstrom); FAO-56 daily Ra, clear-sky share, net shortwave and net longwave (Stefan-Boltzmann).
+Spencer (1971), tried first, was dropped: against Meeus it was off by up to 0.3 deg (it assumes an average year), e.g. +0.25 deg at noon on 23 Sep 2026, after the real equinox at 00:05 UT.
+Tests S1-S6: FAO-56 example 8 reproduced exactly (Ra 32.194 with FAO's own declination); 2026 equinox and solstices (USNO times) give declination 0.001 and +/-23.438 deg; equinox day length 12 h 07 min at Lake Eyasi; hourly sunlight summed over a day equals the FAO daily formula within 1% on four dates (two independent methods); tick 0 is 06:00 EAT; every function under 30 lines.
+Wired in: physical darkness (isDark) now comes from the sun's elevation (dark below -6 deg at the middle of the step). With one-hour steps the pattern is unchanged (light 06:00-19:00 all year: at 3.6 S sunrise and sunset move only about 30 min over the year), so the world fingerprint is unchanged (0baec8913f86). The finer seasonal light needs a finer step: a reason for 15-minute steps later. Net radiation is ready for Layer 1 (air temperature), which will replace weather.js's heat factor.
+
+## Layer 1: the atmosphere (19 Nov 2026)
+dist/atmosphere.js (new; every function under 30 lines). Daily air: the measured monthly mean max and min temperature for the 0.5 deg cell over Lake Eyasi, 1901-2009 (max 24.7 deg C in July to 28.9 in October; min 13.3 in July to 16.6 in April), smoothed between month midpoints; a persistent anomaly (WGEN, Richardson 1981); wet days cooler by day and warmer by night, with dry days shifted the other way by the month's wet share so every month's mean stays on the record. Humidity from the dew point (FAO-56 Annex 6: near Tmin, 2-4 deg C below in the dry), pressure from elevation (FAO-56 eq. 7: 89.7 kPa at 1030 m), wind as a Weibull daily mean (windier June-October), sunshine fraction by wet or dry day. Hourly temperature by Parton and Logan (1981), fitted to the real sunrise and sunset from Layer 0.
+Replaced: weather.js's hand-set temperature (30 deg C mean max with a cosine season). The old days were about 2-3 deg C hotter than the measured record. Heat (water loss) and spoilage now follow the measured climate.
+Tests A1-A5: pressure 101.3 kPa at sea level and 90.0 at 1000 m (FAO table); 20 simulated years reproduce every month's measured max and min within 0.3 deg C with rain days in; the day curve is coldest at sunrise, warmest 13-16 h, continuous at sunrise and sunset; vapour pressure never above saturation; functions under 30 lines. The first A2 run failed: the test read the rain table (keyed by name, from November) by a January-first index; the world code converts the month explicitly.
+World: 3 islands x 5 years, no alarms, books balance, no hunger or thirst deaths; score 2.013 (was 2.017); 167 tests pass. Open for this layer: lake breezes and hills (a tile's own temperature by lapse rate) wait for Layer 3 terrain; clouds and storms are carried by the rain chain (weather from outside the island).
+
+## Layer 2: water — module built and verified; NOT yet wired into the world (19 Nov 2026)
+dist/water.js (new; functions under 30 lines): FAO Penman-Monteith daily reference evaporation with net radiation from Layers 0 and 1; SCS curve-number runoff with antecedent wetness (Chow et al. 1988); soil store with FAO-style water stress; groundwater as a linear reservoir. Tests W1-W5: FAO-56 example 18 (Uccle, 6 July) reproduced, 3.88 mm/day, matching an independent reproduction; runoff limits; water conserved over 10 000 random days; evaporation responds the right way to heat, wind, sun and humidity; functions under 30 lines.
+Tried in the world and taken back out: soil moisture by month barely changed (within 0.03), and evaporation became realistic (lower under wet-season cloud, higher in the dry season: 3.8-5.5 mm/day). But water holes, fed by runoff plus seepage with the catchment scaled to match the old average inflow (catchScale 12, island 1), held water far less: 16-55% of holes in the wet season and none from August to October, against 70-100% and about half before; the field record (O'Connell et al. on the Tli'ika area) has water widespread in the wet season and more restricted late in the dry. Thirst and starvation deaths followed. Causes: runoff comes in bursts that full holes spill; groundwater only recharges when the soil is saturated. To fix before wiring: drainage whenever soil is above field capacity (not only saturation), and hole catchments set against the observed pattern of water by season. The register entries curveNumber, groundwaterDays and catchScale are unused until then.
+Also found: the quick-check script always loaded the current code, so a "before" run was really "after"; it now takes ROOT=<path> (tools/quick.mjs).
+
+## The layer safeguards (19 Nov 2026, Robert: bake rules in so a new layer can never be mixed in unchecked)
+1. Switchboard (dist/layers.js): every file belongs to one layer, marked real or stand-in; the world uses a new layer only when its status is changed there (test L1: no file without a layer).
+2. Gate (tools/gate.mjs <layer>): the layer's own tests, then 6 islands with the layer as stand-in and 6 as real, each island in its own process (so "before" and "after" can never be the same code by mistake); no alarms, water books balanced, deaths per island not up by more than 20% (or 2), and the layer's real-world pattern (tools/gate-patterns.mjs). It writes docs/gates/<layer>.json with a hash of every file in the layer; test L3 refuses a real layer without a passing record, or whose files changed since (the gate must be run again).
+3. Contracts (tests/contracts.test.mjs): every day for a year, what each layer hands the next stays in physical range.
+4. Downhill only (test L2): no file imports from a higher layer. It found two: the clock read the sun (darkness now lives in sun.js) and the weather read the plants file for the year-to-year rain swing (rain-years.js, Layer 1); both moved with the world fingerprint unchanged (5bf2194c8c5470f5).
+5. Stand-ins listed (tools/layers-report.mjs, printed on every save): which layers are real, which are temporary, and which real layers feed each temporary one.
+Gates run: sun passed (dark 11.0 h a day in every month; deaths per island 5.0 -> 5.0); air passed (the world's monthly mean max within 0.28 deg C of the 1901-2009 record in every month). Both were wired before the gate existed, so their before and after run the same code; the record says so. Test L4: every function in a real layer is under 30 lines. Plus the GitHub read-back on every save. 177 tests pass.
+
+## Layer 2: water — through its gate and made real (19 Nov 2026)
+Fixes after the first attempt (holes dried): (1) HBV soil routine (Bergstrom 1992): of the water that soaks in, a share (soil wetness)^2 percolates to groundwater, so groundwater refills whenever the soil is wet, not only when saturated; (2) the HBV response routine: stream channels (7 days) and groundwater (120 days) as two linear reservoirs between the land and the holes, so runoff no longer arrives in one burst; (3) each kind of hole takes its own share of groundwater (rain-fed pans none, pools in seasonal streams 0.3, the river all); (4) curve number 85 (TR-55: poor desert-shrub and sparse cover on heavier soils, 77-88): at 75 the area's daily rains almost never passed the initial loss and pans stayed dry; (5) catchment scale 8, swept 1-16 on 3 islands x 3 years against the observed season of water.
+Measured by kind (island 1, 3 years): pans hold water Nov-Jul (43-81% of them) and are dry Aug-Oct; river and pools hold water all year (an open point: real seasonal river pools in the Eyasi basin dry in some years). Stream flow 0-0.22 mm/day, groundwater seepage 0.11-0.50 mm/day, peaking in May-June after the long rains.
+Gate (6 islands x 3 years, before = stand-in, after = real): passed. Holes with water 0.78 in the wet season and 0.51 in September-October (target >= 0.7 and 0.15-0.75); deaths per island 5.0 -> 4.2; no alarms; soil, hole, channel and groundwater books balanced. 3 islands x 5 years: no thirst or starvation deaths; score 1.903 (was 2.013).
+Then the 30-line rule (test L4) applied to weather.js as part of a real layer: makeWeather, weatherDay and the stand-in water split into small functions (fillHoles, pastYear, rainDay, one shared holeStep), proved behaviour-neutral by fingerprint for both paths (real 5964aac3c52cbdb6, stand-in 5bf2194c8c5470f5); that edit voided the gate, which was run again and passed with the same numbers. Also fixed: the water switch assumed every world has settings (a bare test world has none). Water is real; the stand-in stays callable for gates (config.layers.water = 'stand-in').
+
+## 20 Nov 2026: fitted water numbers marked provisional; Layer 3 (land) started, not yet real
+
+- curveNumber (85) and catchScale (8) are marked PROVISIONAL in the register and on the switchboard
+  (layers.js `provisional`; printed on every save). They were fitted to the seasonal water pattern while the
+  land was missing and are to be replaced, not kept.
+- dist/land.js: heights in metres (coast 1000 m, top 1900 m, like the Eyasi escarpment's 900 m rise), flow
+  accumulation (O'Callaghan and Mark 1984) over the map's own drainage directions (priority-flood, Barnes et al.
+  2014), so the drawn rivers lie exactly on the flow lines; catchment area and mean flow length per tile; slope;
+  lapse rate 6.5 deg C per km. Tests T1-T4 (tests/land.test.mjs).
+- With the land switched on (config.layers.terrain = 'real'), each hole gathers from its own catchment:
+  inflow depth = runoff depth x catchment area / pool area (holeAreaHa, 1 ha, an assumption measurable in the
+  field). This replaces catchScale. Old paths proven unchanged by fingerprint (5964aac3c52cbdb6 real water,
+  5bf2194c8c5470f5 stand-in water). Water gate re-run after the edit to weather.js: passed, same numbers.
+- Found, not yet fixed (needs Robert's decision): with real catchments, small-catchment pools now dry, but river
+  pools still never dry. Two causes in Layer 2: (1) groundwater recharge is 18% of rain, against 0.1-5% measured
+  for semi-arid land (Scanlon et al. 2006, Hydrological Processes 20: 3335-3370); (2) every river pool takes all
+  the groundwater seepage, but semi-arid seasonal rivers are mostly losing streams: the water table lies below the
+  bed, and groundwater comes out at springs and the lake, not in the channel. Even at 4% recharge, river pools stay
+  wet; with losing rivers they would dry where nothing else feeds them.
+
+## 20 Nov 2026 (later): losing rivers; FAO-56 deep percolation; Layer 3 (land) real
+
+Robert approved fixing both water problems the land exposed.
+- Deep percolation now follows FAO-56 (Allen et al. 1998, eq. 88): water drains below the roots only when the
+  root zone holds more than it can after the day's evaporation. The HBV percolation (and its fitted exponent
+  beta) is gone from the soil day. Diffuse recharge falls from 18% of rain to about 0%. Measured semi-arid
+  recharge is 0.1-5% (Scanlon et al. 2006), and most of it is focused, through channel beds; that focused part
+  is not yet credited to groundwater (catchments are nested, so the volumes need routing first). Open item.
+- Seasonal rivers are losing streams: no seasonal hole takes groundwater (ground share 0); groundwater comes
+  out at springs and the lake. With the real land, river and stream pools also seep into their sand beds
+  (poolBedSeepMm, 3 mm a day, an assumption measurable in the field; tested at 1 and 10); clay pans do not.
+- Result (6 islands, 3 years): river and stream pools wet in Sep-Oct, small catchments 0.32 against large 0.59;
+  seasonal holes wet 0.73 in the wet season and 0.24 in Sep-Oct. Rivers now dry in the late dry season, small
+  ones first, as Eyasi's seasonal rivers do; people are left with springs and the lake, as Hadza dry-season
+  camps are (Marlowe 2010, The Hadza, ch. 2).
+- Gates: water re-run and passed (deaths per island 5.0 -> 5.0); terrain passed (deaths 5.0 -> 4.3), so the land
+  is real. catchScale is retired; curveNumber (85) is still provisional.
+- waterSites split into four helpers for the 30-line rule; the sites are identical before and after (hash).
+- Fingerprints: all real ef56e330baf9fc6b; land stand-in 6febb3225f828d4c; land and water stand-in
+  5bf2194c8c5470f5 (unchanged since Layer 2).
+
+## 20 Nov 2026: day temperature from the sun's energy (Layer 1)
+
+- The fixed wet/dry shift on the day's maximum (wetDayCoolMax, retired) is replaced by the energy balance
+  (atmosphere.js sunWarming): the day's net sunshine above or below the month's mean (FAO-56 eq. 21, 35, 38),
+  times the share that heats the air (sensibleShare 0.5, a Bowen ratio near 1), spread through the afternoon
+  mixed layer (mixedLayerM 1500 m; Stull 1988): dT = dRns x share / (rho cp h). Mean sunshine is the month's own,
+  so departures average to zero and the measured monthly means hold.
+- Cross-check: this gives wet days about 0.9 deg C below the mean and dry days about 1.1 above, a 2 deg C gap,
+  the same size as the old assumed shift, now derived rather than assumed.
+- Air gate re-run: passed; monthly mean max within 0.28 deg C of the record. Sun gate re-run after a comment
+  edit in sun.js: passed, dark 11.0 h every month.
+- Still statistical: the night minimum (wetDayWarmMin). Cloudy nights warmer by longwave (FAO-56 eq. 39) needs a
+  night-layer depth and ground heat flux; next.
+- Fingerprint, everything real: 90e5e57b88b992ff.
+
+## 20 Nov 2026: night temperature from the longwave balance (Layer 1)
+
+- The fixed wet/dry shift on the night minimum (wetDayWarmMin, retired) is replaced by the longwave balance
+  (atmosphere.js nightWarming): FAO-56 eq. 39 net longwave with the cloud factor from the day's sunshine, half of
+  it in the 12-hour equatorial night, part returned by the ground (groundNightShare 0.5, assumption), the rest
+  cooling the night layer (nightLayerM 200 m; Stull 1988). Vapour pressure from the month's minimum (FAO-56
+  eq. 48). Departures are from the month's mean sunshine, so the measured means hold.
+- Result: cloudy nights about 1.2 deg C warmer than the mean, clear nights about 1.5 colder.
+- The air gate now also checks night lows against the record. Passed: mean max within 0.28 deg C and mean min
+  within 0.21 deg C of the record in every month.
+- Day and night temperature are now both driven by the sun's energy (Layer 0 to Layer 1), anchored to the
+  measured monthly means. Fingerprint, everything real: 711d9a635cfb7d95.
+
+## 20 Nov 2026: curve numbers from land cover (TR-55); the last fitted water number retired
+
+- Goal check: the small world as close to ours as possible, each layer built from measured physics, the output of
+  each layer the environment of the next, nothing tuned to a wanted result. curveNumber (85) was the last number
+  fitted to a pattern; it is now retired (kept only for the stand-in land path).
+- Curve numbers come from what covers the ground (TR-55, USDA 1986, Table 2-2d arid and semiarid rangelands,
+  fair condition, 30-70% ground cover): soil group B (sandy soils over granite and gneiss, as around Eyasi;
+  assumption): herbaceous 71, desert shrub (thorn bush, woodland) 72; bare rock 98 (impervious, Table 2-2a);
+  river beds loose sand, group A, 63 (the only group-A arid row, desert shrub poor). Each catchment's number is
+  the area-weighted composite of its own cover (land.js catchmentCover); the island's number is 73.3.
+- Pans: pans form on clay (which is why they hold water and do not seep); around them soil group D: herbaceous
+  89, desert shrub 86.
+- Each hole now has its own stream: its own runoff by its own curve number at the island's soil wetness, through
+  its own channel reservoir (holeStream). Books: holeChannelError ~ 1e-11.
+- Missing physics found and added: rain falling on a pool's own open water (all kept). Without it, and with pans
+  scored on sandy ground, pans held water only 12% of wet-season days; with both, 89%.
+- A contradiction found and fixed: river-bed squares were first scored as impervious (98), against the losing,
+  sand-bed rivers of the water layer. This made tiny all-channel catchments wetter late in the dry season than
+  large ones and failed the land gate (small 0.56 against large 0.45). As sand (63): small 0.32, large 0.39.
+- Results (6 islands, 3 years): runoff 1.2% of rain, groundwater recharge 0.9% (measured semi-arid range 0.1-5%,
+  Scanlon et al. 2006); seasonal holes wet 0.81 in the wet season, 0.23 in Sep-Oct.
+- Gates: water passed (deaths per island 4.2 -> 5.5 against the old stand-in water; within the limit, and the
+  rise is real: physical runoff leaves less water than the fitted number did); terrain passed (5.8 -> 5.5).
+- Old paths proven unchanged against the last save (land stand-in a781c050f8219ff4; land and water stand-in
+  754db016e0756aac). Fingerprint, everything real: .
+
+## 20 Nov 2026: Layer 4 (plants), first part: the herb layer grows from transpired water
+
+- Found: the food patches (w-food.js makeFood) are sized from the Hadza density (0.24 people/km2) x the land x a
+  year's need. That builds the answer in. Layer 4 is to replace it with food grown from the plants.
+- plants.js: each day, growth above ground (g/m2) = actual evapotranspiration (mm, from the water layer) x the
+  share through plants (0.51; Schlesinger and Jasechko 2014) x 1000 / the transpiration ratio (300 g water per g
+  dry matter, C4 grasses 250-350; Larcher) x the above-ground share (0.53; Nairobi savanna, Kinyamario, ORNL
+  DAAC). Green grass cures once the soil has lost its readily available water (FAO-56 p = 0.5) over about two
+  weeks; dead grass is removed with a half-life of about six months (assumptions, in the register).
+- Independent check, nothing fitted: Deshmukh (1984), East and southern Africa, peak herb biomass (kg/ha) =
+  8.488 x rain (mm) - 195.8. Across 6 islands x 3 years: peak standing grass / Deshmukh 0.97 (by year
+  0.70-1.50), the year's growth / Deshmukh 1.09 (peak standing crop underestimates production, as the Nairobi
+  work found). Green grass about 93 g/m2 in the wet season and 3 g/m2 in Sep-Oct.
+- Gate passed. Plants stay a stand-in on the switchboard: food is still scripted. With the plants on or off the
+  island is identical (fingerprint c4ffeb745a9ff88e both ways), because nothing reads them yet.
+- Water gate re-run after weather.js began to hand the day's evapotranspiration upward (W.aet): passed.
+- Books: grass grown = green + dead + removed, exactly (test P3).
+- Next: grow the foods from the plants (berries and fruit from woody plants, tubers, seeds), each with a measured
+  edible yield, and remove the density from makeFood. Needs woody-plant growth and published yields.
+
+## 20 Nov 2026: the Hadza density removed from the food; food grown from measured yields (Layer 4 real)
+
+Robert: "Remove hazda and implement our goal".
+- Before: food patches were sized as 0.24 people/km2 (Hadza) x the land x a year's need x a diet share per food.
+  The island was told how many people it feeds (about 205). That built the answer in.
+- Now (dist/yields.js, w-food.js makeFoodGrown): every food at every food site of its own ground; each kind of
+  ground's yearly yield from field measurements, shared among its sites. No people density, no diet shares:
+  tubers //ekwa 5,200 kg/ha where it grows (Vincent 1985, in Wood et al. 2021), 146 kcal/100 g dry, ~78% water
+  (Schoeninger et al. 2001); berries 935 kg/ha fresh edible fruit in savanna woodland (KwaZulu-Natal 2022),
+  320 kcal/100 g dry (Crittenden et al. 2009); baobab 36.8 kg fruit per tree (Venter and Witkowski 2011), pulp
+  16.6%, seeds ~29% (as nuts); honey 6.8 wild colonies/km2 in Africa (Visick and Ratnieks 2023) x 5-8 kg a year;
+  fish by lake area (Marshall 1984: 147 kg/ha for the island's 34 km2 lake) and 43 kg/ha for rivers; shellfish
+  88 g AFDW/m2 rocky shore (Seys et al.).
+- Assumptions, in the register with ranges: share of land where //ekwa grows (0.1, the largest unknown), tuber
+  renewal (2 years), berry dry and edible shares (0.3, 0.5), baobab trees per ha (2; recorded 0-60), intertidal
+  share of shore (0.05), shellfish renewal (1 year).
+- Each year's food follows that year's plant growth (plants.js plantYearRatio, against the plants' own average,
+  514 g/m2, 24 island-years) in place of the rain shortcut; in the first year, the rain ratio.
+- Result: the land grows about 20.6 billion kcal a year, food for about 25,000 people (the stand-in: about 205).
+  Berries are about half of it and rest on the weakest numbers (a South African fruit plot and two assumptions).
+- Effect: deaths per island 5.5 -> 4.2 (6 islands, 3 years); nobody starved before or after; almost all deaths
+  are "Illness", which is a Hadza mortality curve (Siler fit) in the people layer: the next scripted input.
+- Tests: P4 (changing the people density changes no patch), P5 (Marshall's points). Y8 now looks for regrowth
+  learning across foods: with measured stocks tuber patches never fall below 64% of full, so tuber beliefs rightly
+  stay put while baobab, nuts and berries beliefs move. Y9 looks for a band split on four islands, not one.
+- Gate passed; plants are real. Fingerprints: all real eef4c2c7e0262054; plants stand-in c4ffeb745a9ff88e
+  (unchanged from before).
+- Other Hadza numbers still used as inputs (people layer, to be rebuilt): the Siler mortality fit, menarche and
+  menopause ages, camp size at the start, daily energy use, sleep, day-range limits.
+
+## 20 Nov 2026: Layer 5 (animals) real: herds graze the grass that grew
+
+- fauna.js: herbivores eat in proportion to metabolic mass (mass^0.75; intake 0.09 kg dry matter per kg^0.75 a
+  day, approx., range 0.06-0.12). Each day the herds' need comes out of the plants layer's grass, green first then
+  dead (dry tissue is a large part of dry-season diets; McNaughton 1985). Short of grass they starve (a herd with
+  nothing lasts about 60 days, assumption). The land's carrying capacity follows the plants' own year in place of
+  the rain shortcut. Fish, shellfish and honey yields moved here from yields.js (identical fingerprint).
+- Result (6 islands, 3 years): herds eat 2.5% of the grass grown; herbivores 1,278 kg/km2. Both within the
+  measured ranges (native large herbivores eat 1-64% of ANPP, Joern and Raynor 2018; 10^2-10^4 kg/km2 across
+  African parks, Fritz and Duncan 1994). 2.5% is near the low end: densities still come from field counts made
+  where lions and people hold herds down, so on the island predators (implicit), not grass, set the numbers;
+  grass limits them only in drought. Predators of their own are the next step for this layer.
+- Gate passed (deaths per island 4.2 -> 4.2); plants gate re-run after the move: passed.
+- Safeguard fixed: the 30-line test (L4) checked only each layer's original files, not its new real files; it now
+  checks both (all pass). nature.js split: animalDay, law and wildfireDay into small functions, fingerprint
+  identical (eef4c2c7e0262054).
+- Still to tie in: wildfire fuel should come from the dead grass, not the rain ratio.

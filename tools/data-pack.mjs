@@ -1,12 +1,12 @@
 // Writes the data pack for outside review: every setting, and what each run produced.
 // Usage: node tools/data-pack.mjs <variant> <outDir>   (one variant per process; see REVIEW/data-pack/README.md)
 import { writeFileSync } from 'node:fs';
-import { DEFAULTS, STREAMS } from '../dist/sim.js';
-import { EDEN_DEFAULTS } from '../dist/eden.js';
-import { LAB_DEFAULTS } from '../dist/lab.js';
-import { runToEnd } from '../dist/lab16-run.js';
-import { summarizeEden, summarizeLab } from '../dist/lab16-report.js';
-import { normalizeSetup, HELP } from '../dist/lab16-setup.js';
+import { DEFAULTS, STREAMS } from '../dist/frozen/sim.js';
+import { EDEN_DEFAULTS } from '../dist/frozen/eden.js';
+import { LAB_DEFAULTS } from '../dist/frozen/lab.js';
+import { runToEnd } from '../dist/frozen/lab16-run.js';
+import { summarizeEden, summarizeLab } from '../dist/frozen/lab16-report.js';
+import { normalizeSetup, HELP } from '../dist/frozen/lab16-setup.js';
 
 export const SEEDS = Array.from({ length: 20 }, (_, i) => 61 + i), YEARS = 20, LAB_DAYS = 10;
 export const VARIANTS = {

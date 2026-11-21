@@ -28,10 +28,21 @@ if node tools/page-files.mjs | grep -q MISSING; then
   echo "STOP: the page imports a missing file, nothing committed"
   exit 1
 fi
+node tools/layers-report.mjs || exit 1
 git add -A || exit 1
 git commit -qm "$1
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_012xN3GUzMmVqX8SdtpbUCK5" || exit 1
 git push -q origin HEAD || { echo "STOP: committed but the push failed"; exit 1; }
+# No lost lines: what GitHub now holds must equal this commit exactly, file for file and line for line
+# (Robert, 19 Nov: GitHub has limits; never lose a line of code).
+branch=$(git rev-parse --abbrev-ref HEAD)
+git fetch -q origin "+refs/heads/$branch:refs/remotes/origin/$branch" || { echo "STOP: could not read back from GitHub"; exit 1; }
+[ "$(git ls-remote origin "refs/heads/$branch" | cut -f1)" = "$(git rev-parse HEAD)" ] || { echo "STOP: GitHub's branch is not at this commit"; exit 1; }
+if [ "$(git rev-parse HEAD^{tree})" != "$(git rev-parse "origin/$branch^{tree}")" ]; then
+  echo "STOP: GitHub's copy differs from this commit"; git diff --stat HEAD "origin/$branch"; exit 1
+fi
+files=$(git ls-files | wc -l); lines=$(git ls-files -z | xargs -0 cat 2>/dev/null | wc -l)
+echo "GitHub matches this commit exactly: $files files, $lines lines"
 git log --oneline -1

@@ -9,12 +9,15 @@ import {
   storedKcal,
   hourOf,
   isNight,
-  isDark,
   sleepTime,
   REAL_MINUTES,
   SLEEP_UNTIL,
   dateOf,
 } from './clock.js';
+import { isDark } from './sun.js';
+import { KCAL_PER_KM2 } from './yields.js';
+import { FAUNA_KCAL_PER_KM2, fishKcal } from './fauna.js';
+import { LAYERS } from './layers.js';
 import * as EN from './energy.js';
 import { FOODS, rainOf, waterActive, landStep, returnRate, realFrac } from './savanna.js';
 import { practise, forget } from './body.js';
@@ -37,7 +40,11 @@ export const FOOD_BY_REGION = {
   grass: ['tubers', 'baobab'],
   rock: ['honey'],
 };
+// With the real plants (Layer 4) the food is grown from the land's measured yields; before that, the stand-in
+// below sizes it from a people density (the Hadza's), which builds the answer in.
+const plantsReal = s => (s.config?.layers?.plants ?? LAYERS.plants.status) === 'real';
 export function makeFood(s) {
+  if (plantsReal(s)) return makeFoodGrown(s);
   const C = clockOf(s),
     B = body(s),
     carrying = s.config.density * T.LAND_KM2,
@@ -91,6 +98,71 @@ export function makeFood(s) {
       gift: false,
     };
   });
+}
+
+// ---------- food grown from the land (real plants) ----------
+const nearLake = site =>
+  [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+    [2, 0],
+    [-2, 0],
+    [0, 2],
+    [0, -2],
+  ].some(([a, b]) => T.regionAt(site.x + a, site.y + b) === 'lake');
+const foodsAt = site =>
+  site.region === 'shore' ? (nearLake(site) ? ['fish', 'berries'] : ['shellfish']) : FOOD_BY_REGION[site.region];
+function regionKm2() {
+  const km2 = {};
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++) km2[T.regionAt(x, y)] = (km2[T.regionAt(x, y)] ?? 0) + T.TILE_KM * T.TILE_KM;
+  return km2;
+}
+// A year's edible kcal for each food on each kind of ground, over the whole island (shore split between the lake
+// shore and the sea shore by their share of the shore's food sites)
+function yearlyTotals(sites) {
+  const km2 = regionKm2(),
+    shore = sites.filter(x => x.region === 'shore');
+  const lakeShare = shore.length ? shore.filter(nearLake).length / shore.length : 0;
+  const area = (food, region) =>
+    region !== 'shore' ? (km2[region] ?? 0) : km2.shore * (food === 'shellfish' ? 1 - lakeShare : lakeShare);
+  return (food, region) =>
+    food === 'fish'
+      ? fishKcal(km2.lake ?? 0, km2.river ?? 0)
+      : { ...KCAL_PER_KM2, ...FAUNA_KCAL_PER_KM2 }[food]() * area(food, region);
+}
+// Every food at every site of its ground; each region's yearly yield shared equally among that food's sites
+// there (fish: among all fish sites). No people density and no diet shares.
+export function makeFoodGrown(s) {
+  const C = clockOf(s),
+    B = body(s),
+    sites = T.foodSites().filter(x => FOOD_BY_REGION[x.region]);
+  const pairs = sites.flatMap(site => foodsAt(site).map(food => ({ ...site, food })));
+  const key = p => (p.food === 'fish' ? 'fish' : p.food + '@' + p.region),
+    count = {};
+  for (const p of pairs) count[key(p)] = (count[key(p)] ?? 0) + 1;
+  const total = yearlyTotals(sites);
+  return pairs.map((p, i) => grownPatch(C, B, p, total(p.food, p.region) / count[key(p)], i));
+}
+function grownPatch(C, B, p, kcalYear, i) {
+  const F = FOODS[p.food],
+    regen = kcalYear / B.unitKcal / C.year,
+    decay = Math.LN2 / (F.realHalfLifeDays * C.day);
+  const cap = regen / decay;
+  return {
+    id: 'p' + i,
+    name: F.label,
+    food: p.food,
+    x: p.x,
+    y: p.y,
+    stock: cap * 0.6,
+    capacity: cap,
+    regen,
+    decay,
+    gift: false,
+  };
 }
 
 // ---------- seeing ----------
