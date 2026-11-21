@@ -758,3 +758,10 @@ the 120-day fingerprint stays ee5f79eb58495f15.
   then written): same words, same order.
 - State hash unchanged throughout (332adef1905a6bf1). Timing on this machine varies by about 10%; best of two runs:
   28.9 s -> 25.4 s for 2 island-years.
+
+## 21 Nov 2026: timing a 10,000 km2 map (throwaway copy, nothing saved but one fix)
+
+Timing only, on a copy with the map 549 x 384 tiles (10,362 km2 of land, 5,608 food places, 475 waters), island 42,
+the same 54 people: one year 22.9 s against 13.3 s on today's 850 km2. Found on the way: land.js took the highest
+point with Math.max(...map), which overflows the call stack on a large map. Replaced by a plain loop that gives the
+same value (NaN as Math.max would); fingerprint and one-year state hash unchanged.
