@@ -709,3 +709,21 @@ move, notice danger and avoid it; lions and hunters sharing one landscape).
   seasons are survived; only a deeper drought would starve them.
 - Correction to the record: the field-count herds already followed each year's plant growth; the identical islands
   were only with predators on. What this adds is condition and starvation.
+
+## 21 Nov 2026: Layer 6 step 2a: the pneumococcus passed between people (disease.js, off by default)
+
+- One general engine for germs carried in the nose and throat (carry, pass on, clear, sometimes fall ill). First germ:
+  Streptococcus pneumoniae, measured rates from Melegaro, Gay & Medley 2004 (household and community acquisition,
+  51 and 19 days of carriage, density factor w 1.184) and starting shares by age from Hussain et al. 2005.
+- Camp contact stands in for Melegaro's "community", scaled by the share of others in camp who carry it over the
+  25% of swabs positive in that study. There is no world outside the island to bring the germ in.
+- Pneumonia per new carriage 0.0056 (assumption, 0.002-0.02, worked from O'Brien 2009; no direct measurement);
+  untreated case fatality children 0.13 (assumption, 0.057-0.30), adults 0.30 (Austrian, 0.25-0.35); crisis after
+  7 days (5-10); hunger raises the hazard up to 11.63 (Olofin 2013) as the fat store empties below 50% (assumption).
+- Off by default (config.disease.pneumococcus); default fingerprint unchanged (ee5f79eb58495f15). While on with the
+  Hadza illness curve, pneumonia deaths are counted twice; the curve comes off only when 2a-2c are all in.
+- First result, 4 islands x 3 years, nothing tuned: the germ died out on every island within 1-3 years (young-child
+  carriage 13-35% in year 1, against 45-52% in the UK study; then 0). A closed island of 50-65 people at UK contact
+  rates is below the size that keeps it going (critical community size). Cases 0-1 per island; pneumonia deaths 0-1.
+  Open question for Robert: real foragers meet neighbours and share huts more closely than UK families; the island
+  has neither neighbours nor forager-measured contact rates yet.

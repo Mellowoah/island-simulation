@@ -26,6 +26,7 @@ export const LAYERS = {
   people: { rank: 6, plan: 6, status: 'stand-in',
     files: ['being.js', 'body.js', 'energy.js', 'feelings.js', 'learning.js', 'world.js', 'w-checks.js',
       'w-core.js', 'w-craft.js', 'w-food.js', 'w-meat.js', 'w-mind.js', 'w-move.js', 'w-people.js', 'w-social.js'],
+    real: ['disease.js'], toggle: 'config.disease.pneumococcus',
     note: 'the existing people; to be rebuilt on one currency (survival and reproduction) and body heat balance' },
   measures: { rank: 7, plan: null, status: 'real', files: ['patterns.js', 'price.js'],
     note: 'scoring and measuring only; nothing in the world reads them' },

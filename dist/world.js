@@ -70,6 +70,7 @@ import {
   youngOf,
 } from './w-people.js';
 import { bandThin, evening, feedFromPool, maybeMoveCamp, share } from './w-social.js';
+import { diseaseDay } from './disease.js';
 
 export * from './w-core.js';
 export * from './w-food.js';
@@ -316,6 +317,7 @@ export function stepWorld(s, n = 1) {
       if (hr === 19) evening(s);
       else if (hr === 10 || hr === 13 || hr === 16) share(s);
     }
+    if (s.tick % day === 0 && s.config.disease?.pneumococcus) diseaseDay(s);
     if (s.tick % day === 0) {
       // how far grown people have had to walk lately (a ten-day average): long days mean the food near camp is used up
       for (const b of s.bands) {
