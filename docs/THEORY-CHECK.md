@@ -576,3 +576,16 @@ Robert approved the range runs, and asked whether to add land (journals and math
   Layer 6, when density is a result. If networks and institutions (Layers 7-10) need more bands, a Hadza-sized
   island (about 4,000 km2) is the measured reference, at about 4-5 times the computing and every gate re-run.
 - Burnt area (about a third of the land a year) still not checked against a source: none found for this rainfall.
+
+## 20 Nov 2026 (late): Layer 6 step 1: aging from the cross-forager measure, not the Hadza fit
+
+- The deaths the sim does not model itself come from a Siler age curve (infant-child, constant, aging), all three
+  terms the Hadza fit. Step 1 replaces only the aging term, the least Hadza-specific: human mortality doubling
+  times are similar across populations, 7-9 years (Finch 2007); the Hadza term doubled every 5.5 years, the
+  hunter-gatherer average every 8.1 (Gurven and Kaplan 2007, table 2: a3 1.47e-4, b3 0.086), now used.
+- Effect on the curve: life expectancy at birth 34.3 -> 32.1 years; at 45, 24.9 -> 21.6 more years.
+- Effect on the island (2 islands x 10 years): people alive 70 -> 68 and 72 -> 72; deaths almost unchanged.
+  Seen in passing: on island 2, 12 of 32 deaths in ten years were from thirst, so the environment does reach
+  people on some islands over longer runs (the 2-year range runs missed it).
+- Next (step 2, a big modelling decision, to be agreed first): replace the infant-child and constant terms with
+  disease from the body and from contact.

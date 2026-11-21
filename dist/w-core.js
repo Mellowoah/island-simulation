@@ -45,7 +45,12 @@ export const WORLD_DEFAULTS = {
   heritability: 0.4,
   birthRisk: 0.012, // death of the mother per birth before modern medicine (Cambridge Group summary)
   illnessShare: 0.79, // share of hunter-gatherer deaths from illness (~70%) and degenerative causes (~9%) (Gurven and Kaplan 2007)
-  siler: { a1: 0.351, b1: 0.895, a2: 0.011, a3: 6.7e-6, b3: 0.125 }, // Hadza Siler fit (Gurven and Kaplan 2007, table 2; e0 = 34)
+  // Age pattern of the deaths the sim does not yet model itself (Siler: infant and child, constant, aging).
+  // Aging (a3, b3): the hunter-gatherer average, mortality doubling every 8.1 years (Gurven and Kaplan 2007,
+  // table 2), as human doubling times are 7-9 years across populations (Finch 2007); replaced the Hadza aging term
+  // (6.7e-6, 0.125, doubling every 5.5 years) on 20 Nov 2026. Infant-child (a1, b1) and constant (a2) are still the
+  // Hadza fit: to be replaced by disease from the body and from contact (Layer 6, next step).
+  siler: { a1: 0.351, b1: 0.895, a2: 0.011, a3: 1.47e-4, b3: 0.086 },
   campRadiusKm: 4, // what the first band knows around its camp at the start
   poolHalfLifeDays: 3, // food kept at camp spoils
   populationCap: 400, // technical limit only
