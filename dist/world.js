@@ -20,6 +20,7 @@
 // Nothing here is God, Eden or the deceiver. Those come later as layers on this same world.
 
 import { noise2, seedKey, STREAMS, fieldPath, fieldDist, mapOf, path } from './sim.js';
+import { maxOf, minOf } from './numbers.js';
 import { placesChanged } from './w-memo.js';
 import {
   R,
@@ -139,7 +140,7 @@ export function createWorld2(seed = 41, opts = {}) {
         .map(x => ({
           x,
           d:
-            Math.min(...s.bands.map(b => Math.abs(b.camp.x - x.x) + Math.abs(b.camp.y - x.y))) +
+            minOf(s.bands.map(b => Math.abs(b.camp.x - x.x) + Math.abs(b.camp.y - x.y))) +
             draw(s, bi, SALT.setupCamp, x.x * 999 + x.y) * 4,
         }))
         .sort((a2, b2) => b2.d - a2.d)[0].x;

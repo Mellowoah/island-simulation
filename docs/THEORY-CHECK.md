@@ -765,3 +765,15 @@ Timing only, on a copy with the map 549 x 384 tiles (10,362 km2 of land, 5,608 f
 the same 54 people: one year 22.9 s against 13.3 s on today's 850 km2. Found on the way: land.js took the highest
 point with Math.max(...map), which overflows the call stack on a large map. Replaced by a plain loop that gives the
 same value (NaN as Math.max would); fingerprint and one-year state hash unchanged.
+
+## 21 Nov 2026: rules baked in (docs/RULES.md, tests/rules.test.mjs)
+
+After the outside review, Robert asked for the rules and constraints we now understand to be built in. Six rules
+added (9-14: exact speed-ups only; no outcome built in; no double counting; general, not one place; rebuild in
+order; answer reviews with evidence), listed in docs/RULES.md with what enforces each, and in the goals doc.
+- Rule 12 test (R1): no list spread into Math.max or Math.min anywhere in dist; the five places that did now use
+  maxOf and minOf (dist/numbers.js, base layer), which give exactly what Math.max and Math.min give, signed zeros,
+  NaN and empty lists included (R3), and handle a whole large map.
+- Rule 11 test (R2): disease stays off in a default world while the Hadza illness curve is on.
+- Rule 9 tool: tools/state-hash.mjs (whole state after a year on islands 42 and 43). Unchanged: 332adef1905a6bf1;
+  fingerprint ee5f79eb58495f15.

@@ -14,6 +14,7 @@
 // Figures marked (approx.) are reasonable values not yet pinned to one source; they are listed in THEORY-CHECK.md.
 
 import { registerMap, noise2, seedKey, STREAMS } from './sim.js';
+import { maxOf, minOf } from './numbers.js';
 import { R, clockOf, body, growPatch } from './clock.js';
 import { rainOf } from './rain-years.js';
 import { rainYearRatio } from './weather.js';
@@ -58,7 +59,7 @@ function segDist(px, py, [ax, ay], [bx, by]) {
     t = Math.max(0, Math.min(1, ((px - ax) * vx + (py - ay) * vy) / (vx * vx + vy * vy)));
   return Math.hypot(px - (ax + t * vx), py - (ay + t * vy));
 }
-const riverDist = (x, y) => Math.min(...RIVER.slice(1).map((b, i) => segDist(x + 0.5, y + 0.5, RIVER[i], b)));
+const riverDist = (x, y) => minOf(RIVER.slice(1).map((b, i) => segDist(x + 0.5, y + 0.5, RIVER[i], b)));
 
 // Region of each tile, computed once.
 export const REGIONS = ['sea', 'lake', 'river', 'rock', 'shore', 'woodland', 'grass'];

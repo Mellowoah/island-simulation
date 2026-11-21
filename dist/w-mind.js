@@ -1,5 +1,6 @@
 // Island small world: mind.js (split from world.js, build plan change 4; behaviour unchanged).
 import { noise2, seedKey, STREAMS, fieldPath, fieldDist, mapOf, path } from './sim.js';
+import { maxOf, minOf } from './numbers.js';
 import { versionOf, checkingMemos } from './w-memo.js';
 import {
   R,
@@ -333,7 +334,7 @@ export function decide(s, p) {
       o.u += e * o.ig;
     }
   } // -G = u + weight x information gain
-  const mx = Math.max(...opts.map(o => o.u));
+  const mx = maxOf(opts.map(o => o.u));
   const w = opts.map(o => Math.exp((o.u - mx) / T0)),
     tot = w.reduce((a, b) => a + b, 0);
   let r = draw(s, p.id, SALT.choice) * tot,
@@ -470,14 +471,7 @@ export function exploreValue(s, p) {
   const unseenShare = Math.max(0, Math.min(1, 1 - (p.seenN ?? 0) / (Math.PI * reach * reach))),
     newTiles = tripTiles * 9 * unseenShare; // sight about 4 tiles each side
   const nets = knownRates(s, p);
-  let top = -Infinity; // a plain loop, not Math.max(...nets): same value, no spreading a long list into arguments
-  for (const v of nets) {
-    if (v !== v) {
-      top = NaN; // as Math.max would
-      break;
-    }
-    if (v > top) top = v;
-  }
+  const top = maxOf(nets); // not Math.max(...nets): same value, no spreading a long list into one call
   const best = nets.length ? top : 0,
     mean = nets.length ? nets.reduce((a, b) => a + b, 0) / nets.length : R('exploreGuessRate');
   const sd = Math.max(

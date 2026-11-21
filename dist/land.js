@@ -11,6 +11,7 @@
 // The map itself is still the generated one (terrain.js, a stand-in); this layer reads it and adds the physics.
 // Every function is under 30 lines.
 import { TW, TH, TILE_KM, DOWN, elevation, regionAt } from './terrain.js';
+import { maxOf, minOf } from './numbers.js';
 
 export const LAPSE_C_PER_KM = 6.5;
 
@@ -19,19 +20,9 @@ export const LAPSE_C_PER_KM = 6.5;
 // The island is fictional: its lake, inland, comes out near 1365 m, like a highland lake. Assumption: heights are
 // scaled linearly. Temperatures are anchored at the median land height (REF_M), so the island as a whole keeps
 // the measured climate and only its hills and lowlands depart from it.
-// The largest value, as Math.max would give it (NaN if any is NaN), without spreading the whole map into one call:
-// a spread of a large map overflows the call stack (found timing a 10,000 km2 map, 21 Nov 2026).
-function highest(a) {
-  let top = -Infinity;
-  for (const v of a) {
-    if (v !== v) return NaN;
-    if (v > top) top = v;
-  }
-  return top;
-}
 const RAW = Float32Array.from({ length: TW * TH }, (_, i) => elevation(i % TW, (i / TW) | 0));
 const SEA_RAW = 0.42,
-  TOP_RAW = highest(RAW);
+  TOP_RAW = maxOf(RAW); // not Math.max(...RAW): that overflowed the call stack on a 10,000 km2 map (21 Nov 2026)
 export const metresAt = (x, y) => 1000 + ((Math.max(SEA_RAW, RAW[y * TW + x]) - SEA_RAW) / (TOP_RAW - SEA_RAW)) * 900;
 const landM = [...RAW.keys()]
   .filter(i => !['sea', 'lake'].includes(regionAt(i % TW, (i / TW) | 0)))

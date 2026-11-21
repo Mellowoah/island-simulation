@@ -11,7 +11,7 @@
 // (energy 0, atmosphere 1, water 2, terrain and soil 3, plants 4, animals 5, agents 6) is kept as `plan`.
 
 export const LAYERS = {
-  base: { rank: -1, plan: null, status: 'real', files: ['sim.js', 'streams.js', 'clock.js', 'layers.js'],
+  base: { rank: -1, plan: null, status: 'real', files: ['sim.js', 'streams.js', 'clock.js', 'layers.js', 'numbers.js'],
     note: 'time, chance keys and the register of numbers; clock.js also reads the sun for darkness' },
   sun: { rank: 0, plan: 0, status: 'real', files: ['sun.js'], gate: 'admitted' },
   air: { rank: 1, plan: 1, status: 'real', files: ['atmosphere.js', 'rain-years.js'], gate: 'admitted' },

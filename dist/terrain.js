@@ -11,6 +11,7 @@
 // the hills by steepest descent to the lake or the sea; woodland follows water; grass covers the rest.
 
 import { registerMap } from './sim.js';
+import { maxOf, minOf } from './numbers.js';
 
 export const TW = 160,
   TH = 112,
@@ -116,7 +117,7 @@ function components() {
       }
       sizes.push(n);
     }
-  return { comp, main: sizes.indexOf(Math.max(...sizes)) };
+  return { comp, main: sizes.indexOf(maxOf(sizes)) };
 }
 let { comp, main } = components();
 // Distance to the sea, in tiles (for the lake, the shore and the hills).
