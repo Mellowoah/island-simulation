@@ -727,3 +727,10 @@ move, notice danger and avoid it; lions and hunters sharing one landscape).
   rates is below the size that keeps it going (critical community size). Cases 0-1 per island; pneumonia deaths 0-1.
   Open question for Robert: real foragers meet neighbours and share huts more closely than UK families; the island
   has neither neighbours nor forager-measured contact rates yet.
+
+## 21 Nov 2026: fix: two register entries shared the name starveDays
+
+The herds' entry (60 days, added with Layer 5) had the same name as the people's (40 days) in the register object, so
+it silently replaced it. Renamed to herdStarveDays. Nothing in the people reads it (their fat store comes from body
+fat, energy.js), so the people's fallback goes back to 40 and nothing changes: fingerprint ee5f79eb58495f15 before and
+after; herds still use 60.

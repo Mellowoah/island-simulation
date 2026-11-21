@@ -18,7 +18,7 @@ test('F2 grazing books: what is eaten leaves the green grass first, then the dea
   assert.equal(F.grazeDay(P, 4000, 1), 0.25); // only 1 g/m2 left
 });
 
-test('F3 starvation: none when fed; a herd with nothing lasts about starveDays', () => {
+test('F3 starvation: none when fed; a herd with nothing lasts about herdStarveDays', () => {
   assert.equal(F.starveDeaths(100, 1), 0);
   assert.equal(F.starveDeaths(100, 0), 100 / 60);
 });

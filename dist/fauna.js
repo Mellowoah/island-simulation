@@ -49,7 +49,7 @@ export function grazeDay(P, demandKg, landKm2) {
 // - Grass quality: green leaf about 62% digestible, 10% protein (assumption near ILRI's 60-62%); cured grass in the
 //   dry season about 44% digestible, 2.5% protein (Botswana hardveld, 41.5-50.8% and 2.1-8.4%; Arch. Zootec. 2005).
 // - Intake falls with digestibility (cattle on Transvaal savanna; Zimmermann): eaten = intake x digestibility / 62%.
-// - Condition: a surplus builds body reserves (up to starveDays of need), a deficit drains them. Females breed at
+// - Condition: a surplus builds body reserves (up to herdStarveDays of need), a deficit drains them. Females breed at
 //   full rate while reserves last (impala fecundity did not follow rainfall, Ogutu et al. 2015); once reserves are
 //   gone no young are raised (juvenile survival is what rainfall moves most, Owen-Smith et al. 2005) and the
 //   hungry die. Drought reaches herds through poorer, scarcer grass:
@@ -67,14 +67,14 @@ export function energyRatio(greenShare, met) {
 }
 // One day of a herd's condition (reserve in days of need): returns its births share (0..1) and hunger deaths share
 export function conditionDay(reserve, ratio) {
-  const most = R('starveDays'),
+  const most = R('herdStarveDays'),
     r = Math.min(most, reserve + ratio - 1);
   if (r > 0) return { reserve: r, breed: 1, starve: 0 }; // fecundity holds while reserves last (Ogutu 2015)
   return { reserve: 0, breed: 0, starve: (1 - Math.min(1, ratio)) / most };
 }
 
-// Extra deaths in a day for a herd of n that got only `met` of its food (it lasts about starveDays on reserves)
-export const starveDeaths = (n, met) => (met < 1 ? (n * (1 - met)) / R('starveDays') : 0);
+// Extra deaths in a day for a herd of n that got only `met` of its food (it lasts about herdStarveDays on reserves)
+export const starveDeaths = (n, met) => (met < 1 ? (n * (1 - met)) / R('herdStarveDays') : 0);
 
 // Lake fish yield (kg/ha/yr) by lake area (km2): log-log interpolation through Marshall's (1984) points
 const MARSHALL = [

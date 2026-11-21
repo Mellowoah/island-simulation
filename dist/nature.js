@@ -290,7 +290,7 @@ function speciesDay(s, id, sp, kf, met) {
 // while they last and starves once they are gone. With the real animals this holds for every herd, field-count or not.
 function herdCondition(s, id, met) {
   const cond = (s.condition ??= {}),
-    day = conditionDay(cond[id] ?? R('starveDays'), energyRatio(s.plants?.greenShare ?? 1, met));
+    day = conditionDay(cond[id] ?? R('herdStarveDays'), energyRatio(s.plants?.greenShare ?? 1, met));
   cond[id] = day.reserve;
   return day;
 }
