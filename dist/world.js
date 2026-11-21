@@ -20,6 +20,7 @@
 // Nothing here is God, Eden or the deceiver. Those come later as layers on this same world.
 
 import { noise2, seedKey, STREAMS, fieldPath, fieldDist, mapOf, path } from './sim.js';
+import { placesChanged } from './w-memo.js';
 import {
   R,
   activeRates,
@@ -203,6 +204,7 @@ export function createWorld2(seed = 41, opts = {}) {
         }
     for (const q of s.patches)
       if (Math.hypot(q.x - c.x, q.y - c.y) <= kr) p.places[q.id] = { exp: q.stock, t: 0, u: q.stock, n: 1 };
+    placesChanged(p);
     for (const w of s.waters)
       if (Math.hypot(w.x - c.x, w.y - c.y) <= kr) p.waters[w.id] = { active: w.active, t: 0, dryOk: w.id === c.water };
     p.seenN = p.seen.reduce((n, v) => n + v, 0);

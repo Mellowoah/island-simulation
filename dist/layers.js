@@ -25,7 +25,7 @@ export const LAYERS = {
     note: 'herds at field-count densities that follow the plants year and graze the herb layer, starving if it runs short (fauna.js); gate passed 20 Nov 2026; no predators of their own yet (field counts carry them)' },
   people: { rank: 6, plan: 6, status: 'stand-in',
     files: ['being.js', 'body.js', 'energy.js', 'feelings.js', 'learning.js', 'world.js', 'w-checks.js',
-      'w-core.js', 'w-craft.js', 'w-food.js', 'w-meat.js', 'w-mind.js', 'w-move.js', 'w-people.js', 'w-social.js'],
+      'w-core.js', 'w-craft.js', 'w-food.js', 'w-meat.js', 'w-mind.js', 'w-move.js', 'w-people.js', 'w-social.js', 'w-memo.js'],
     real: ['disease.js'], toggle: 'config.disease.pneumococcus',
     note: 'the existing people; to be rebuilt on one currency (survival and reproduction) and body heat balance' },
   measures: { rank: 7, plan: null, status: 'real', files: ['patterns.js', 'price.js'],

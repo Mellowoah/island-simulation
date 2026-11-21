@@ -28,6 +28,7 @@ import { LEARNERS, delta, deltaByCount, deltaLog } from './learning.js';
 import { SALTS } from './streams.js';
 import { H, W, bandOf, dist, note, placeName } from './w-core.js';
 import { lightFire } from './w-craft.js';
+import { placesChanged } from './w-memo.js';
 import { atCamp } from './w-mind.js';
 import { youngOf } from './w-people.js';
 import { checkNews, checkWaterNews } from './w-social.js';
@@ -196,7 +197,10 @@ export function look(s, p) {
     }
     if (near)
       observe(s, p, q, q.stock); // a close look
-    else if (!prev) p.places[q.id] = { exp: q.stock * 0.5, t: s.tick, u: 0, n: 0 }; // seen from afar: it is there, how much is a guess
+    else if (!prev) {
+      p.places[q.id] = { exp: q.stock * 0.5, t: s.tick, u: 0, n: 0 }; // seen from afar: it is there, how much is a guess
+      placesChanged(p);
+    }
   }
   for (const w of s.waters)
     if (dist(w, p) <= r) {
@@ -241,6 +245,7 @@ export function observe(s, p, q, stock) {
   checkNews(s, p, k, stock); // was what one heard right?
   const n = (k?.n ?? 0) + 1,
     u = k?.u ? deltaByCount(k.u, stock, Math.min(n, LEARNERS.human.memoryLooks)) : stock;
+  if (!k) placesChanged(p);
   p.places[q.id] = { exp: stock, t: s.tick, u, n };
 }
 export function expected(s, p, q, k) {

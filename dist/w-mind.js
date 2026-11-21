@@ -1,5 +1,6 @@
 // Island small world: mind.js (split from world.js, build plan change 4; behaviour unchanged).
 import { noise2, seedKey, STREAMS, fieldPath, fieldDist, mapOf, path } from './sim.js';
+import { versionOf, checkingMemos } from './w-memo.js';
 import {
   R,
   clockOf,
@@ -15,7 +16,7 @@ import {
   dateOf,
 } from './clock.js';
 import * as EN from './energy.js';
-import { FOODS, rainOf, waterActive, landStep, returnRate, realFrac } from './savanna.js';
+import { FOODS, rainOf, waterActive, landStep, returnRate, realFrac, ageFactor } from './savanna.js';
 import { practise, forget } from './body.js';
 import { lifeStage } from './being.js';
 import * as T from './terrain.js';
@@ -432,6 +433,30 @@ const urgency0 = (s, p) => Math.min(2, householdShort(s, p) / Math.max(1, househ
 // worth what it would add over the best place they know: the expected positive part of (its rate - the best rate),
 // for a normal spread like the places they know (the standard expected-improvement formula), used for
 // voiHorizonHours. Divided by the trip's hours, less the walking, it is food per hour, the currency of foraging.
+// The return rate of every place a person knows, in the order they learned them. It changes only when they learn a
+// new place, their skills change, or they pass into a new age row, so it is kept (w-memo.js) until one of those does.
+const RATES_MEMO = new WeakMap();
+function knownRates(s, p) {
+  const v = versionOf(p),
+    age = ageFactor(p.body.age, false) + '/' + ageFactor(p.body.age, true),
+    m = RATES_MEMO.get(p);
+  const fresh = () => {
+    const nets = [];
+    for (const id in p.places) {
+      const q = s.patchById.get(id);
+      if (q) nets.push(returnRate(q.food, p.body.age, p.skills[q.id] ?? 0));
+    }
+    return nets;
+  };
+  const same = m && m.of === p.places && m.sk === p.skills; // a swapped-in map or skill book also counts as a change
+  if (same && m.places === v.places && m.skills === v.skills && m.age === age) {
+    if (checkingMemos() && JSON.stringify(fresh()) !== JSON.stringify(m.nets)) throw new Error(`stale memo: ${p.name}`);
+    return m.nets;
+  }
+  const nets = fresh();
+  RATES_MEMO.set(p, { places: v.places, skills: v.skills, age, nets, of: p.places, sk: p.skills });
+  return nets;
+}
 export function exploreValue(s, p) {
   const C = clockOf(s),
     reach = Math.min(maxTripKm(p.body.age), 3 * EN.speedKmH(p.body.mass)) / T.TILE_KM / 2,
@@ -440,12 +465,16 @@ export function exploreValue(s, p) {
     rho = ((p.foundN ?? 0) + 1) / ((p.seenN ?? 0) + hope);
   const unseenShare = Math.max(0, Math.min(1, 1 - (p.seenN ?? 0) / (Math.PI * reach * reach))),
     newTiles = tripTiles * 9 * unseenShare; // sight about 4 tiles each side
-  const nets = [];
-  for (const id in p.places) {
-    const q = s.patchById.get(id);
-    if (q) nets.push(returnRate(q.food, p.body.age, p.skills[q.id] ?? 0));
+  const nets = knownRates(s, p);
+  let top = -Infinity; // a plain loop, not Math.max(...nets): same value, no spreading a long list into arguments
+  for (const v of nets) {
+    if (v !== v) {
+      top = NaN; // as Math.max would
+      break;
+    }
+    if (v > top) top = v;
   }
-  const best = nets.length ? Math.max(...nets) : 0,
+  const best = nets.length ? top : 0,
     mean = nets.length ? nets.reduce((a, b) => a + b, 0) / nets.length : R('exploreGuessRate');
   const sd = Math.max(
     100,

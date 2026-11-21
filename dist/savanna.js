@@ -403,11 +403,15 @@ export const AGE_RETURN = {
     [18, 1],
   ],
 };
+// The age row in force: the last row whose age has been reached (same as reverse().find, without copying the table).
+export function ageFactor(ageYears, hard) {
+  const table = AGE_RETURN[hard ? 'hard' : 'easy'];
+  for (let i = table.length - 1; i >= 0; i--) if (ageYears >= table[i][0]) return table[i][1];
+  return table[0][1];
+}
 export function returnRate(food, ageYears, skill) {
-  const F = FOODS[food],
-    table = AGE_RETURN[F.hard ? 'hard' : 'easy'];
-  const ageF = [...table].reverse().find(([a]) => ageYears >= a)?.[1] ?? table[0][1];
-  return F.kcalHour * ageF * (0.6 + 0.4 * Math.min(1, skill));
+  const F = FOODS[food];
+  return F.kcalHour * ageFactor(ageYears, F.hard) * (0.6 + 0.4 * Math.min(1, skill));
 }
 export const gatherTicks = (units, kcalHour) =>
   Math.max(2, Math.ceil((units * KCAL_PER_UNIT) / (kcalHour * TICK_HOURS)));

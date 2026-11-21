@@ -734,3 +734,17 @@ The herds' entry (60 days, added with Layer 5) had the same name as the people's
 it silently replaced it. Renamed to herdStarveDays. Nothing in the people reads it (their fat store comes from body
 fat, energy.js), so the people's fallback goes back to 40 and nothing changes: fingerprint ee5f79eb58495f15 before and
 after; herds still use 60.
+
+## 21 Nov 2026: speed work, exact changes only (step 1 toward a 10,000 km2 island)
+
+Robert's rule for the bigger island: same 350 m detail everywhere; only speed-ups that change nothing. Proof for each:
+the whole world state after one year on islands 42 and 43 hashes the same before and after (332adef1905a6bf1), and
+the 120-day fingerprint stays ee5f79eb58495f15.
+- Profile (one island-year, 14 s): about 80% is the people (choices 41%, sharing news 10%, food 10%), about 10% land.
+- returnRate no longer copies and reverses its age table on every call (ageFactor; test M1 checks every age).
+- exploreValue's list of known places' return rates is kept per person (w-memo.js) until they learn a place, their
+  skills change or they pass into a new age row; a check mode works it out fresh on every call and throws on any
+  difference (2 islands x 1 year passed; test M2 runs 60 days in check mode).
+- Result: 2 island-years 31.1 s -> 24.5 s (21% faster), identical state.
+- Caught by the full tests before saving (Y18): a test swapped a person's whole map of places for an empty one, and
+  the memo did not notice. The memo now also checks it is the same map and skill book; all world tests pass.
