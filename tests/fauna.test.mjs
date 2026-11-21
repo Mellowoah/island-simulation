@@ -44,3 +44,12 @@ test('F6 grouped hunting (Fryxell 2007): kills level off at the handling limit o
   const limit = 1 / (0.045 + 1.422 / 6.3) / 6.3; // per lion, at endless prey
   assert.ok(many[0] < limit && many[0] > 0.9 * limit);
 });
+
+test('F7 energy law: green grass feeds above need, cured grass below it (Minson ME; maintenance 0.51 MJ/kg^0.75)', () => {
+  assert.ok(Math.abs(F.meOf(F.FORAGE.green) - (0.157 * 62 + 0.059 * 10 - 1.073)) < 1e-9);
+  assert.ok(F.energyRatio(1, 1) > 1.5 && F.energyRatio(0, 1) < 0.8);
+  const fed = F.conditionDay(10, 1.5), starving = F.conditionDay(0.2, 0.5);
+  assert.equal(fed.breed, 1);
+  assert.equal(starving.breed, 0);
+  assert.ok(starving.starve > 0);
+});

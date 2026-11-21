@@ -673,3 +673,25 @@ Robert approved territories as the next step.
   realistic (every island the same; 6 hyenas over 24 clan ranges is no population; impala and zebra at 2-3% of
   field densities). Predators stay off; the island keeps its measured field counts. Open, for later: herds that
   feel drought through grass quality and water, whole animals rather than fractions, and clans that merge.
+
+## 21 Nov 2026: Robert: "there is no next yet, resolve this"; a general energy law for herds (predators still off)
+
+Robert asked for a general law (to scale beyond one island), journals and mathematics, and no fixation on one place.
+- fauna.js: each day a herd's energy got against its need. Need: maintenance 0.51 MJ ME per kg^0.75 a day (cattle
+  0.515, Luke; sheep 0.511, calorimetry). Food energy: Minson (1984) ME = 0.157 DOMD + 0.059 CP - 1.073. Green grass
+  62% digestible, 10% protein; cured 44%, 2.5% (Botswana dry season 41.5-50.8%, 2.1-8.4%). Intake falls with
+  digestibility (Zimmermann, Transvaal). Result: all-green diet 1.63 x need, all-cured 0.75. Reserves fill on a
+  surplus and drain on a deficit; females breed while reserves last (impala fecundity did not follow rainfall,
+  Ogutu et al. 2015); with reserves gone no young are raised (juvenile survival is what rainfall moves most,
+  Owen-Smith et al. 2005) and the hungry die.
+- Diet composition: green and cured grass taken as they stand, green favoured. With the assumed preference of 5,
+  the diet was mostly cured grass all year and herds and lions collapsed (islands finally differed). The preference
+  is now derived from two measurements: grazers eat green leaves almost exclusively in the wet season (McNaughton
+  1985) while green is about 0.4 of standing dead (145 against 364 g/m2, Nairobi): about 22-25 times; set 25.
+- With it the herds are well fed; the islands are identical again, because predators hold impala and zebra at
+  about 2% of field densities (sustained by buffalo and by scavenging), so grass never runs short.
+- Diagnosis: the gap is not the herds' food but predation at low prey numbers. Real impala persist among lions by
+  avoiding lion areas and keeping vigilant (the landscape of fear), which a mean-field model cannot hold.
+- Also measured and not yet used: standing dead grass decomposes at 7-11% a week in the wet season and 1-2% in the
+  dry (Ngatia et al., Kenya), against the constant six-month half-life in plants.js.
+- Predators off by default; default island unchanged (fingerprint ee5f79eb58495f15). Test F7.

@@ -40,6 +40,8 @@ import {
   startPredators,
   RANGE,
   placeRanges,
+  energyRatio,
+  conditionDay,
 } from './fauna.js';
 
 const K = STREAMS.world[0];
@@ -291,11 +293,14 @@ function grassHerdDay(s, id, sp, kf, met) {
     d = R('herbivoreDeathRate'),
     r = rMax(sp.mass),
     dt = 1 / 365;
+  const cond = (s.condition ??= {}),
+    day = conditionDay(cond[id] ?? R('starveDays'), energyRatio(s.plants?.greenShare ?? 1, met));
+  cond[id] = day.reserve;
   for (let c = 0; c < N.length; c++) {
     if (capacity(sp, c) <= 0) continue;
     const n = N[c],
-      deaths = d * n * dt + starveDeaths(n, met);
-    N[c] = Math.max(0, n + (r + d) * met * n * dt - deaths);
+      deaths = d * n * dt + n * day.starve;
+    N[c] = Math.max(0, n + (r + d) * day.breed * n * dt - deaths);
     (s.carrion ??= new Float64Array(N.length))[c] += deaths * sp.mass * MEAT.edible; // for scavengers today
     maybeCarcass(s, c, id, sp, deaths);
   }
