@@ -181,6 +181,7 @@ function predatorDay(s) {
   s.predators ??= startGroups(s);
   driftHerds(s);
   for (const [id, P] of Object.entries(PREDATORS)) for (const g of s.predators[id].groups) huntDay(s, g, P);
+  s.carrion?.fill(0); // what no scavenger ate in a day goes to vultures, jackals and rot
 }
 const CELL_KM2 = (CELL * T.TILE_KM) ** 2;
 const habitatCells = () => habitat().flatMap((h, c) => ((h.grass ?? 0) + (h.woodland ?? 0) > 0 ? [c] : []));
@@ -206,6 +207,7 @@ function huntDay(s, g, P) {
     meat += takePreyIn(s, sp, kg, g.cells) * MEAT.edible;
   });
   g.killedKg += meat / MEAT.edible;
+  if (P.scavenges) meat += scavenge(s, g.cells, Math.max(0, g.n * P.needKg - meat));
   const ratio = g.n ? meat / (g.n * P.needKg) : 0;
   g.fed = Math.min(1, ratio);
   g.n = Math.max(0, g.n + predatorChange(g.n, g.fed, P.mass) / 365 - hungerDeaths(g, ratio));
@@ -218,6 +220,17 @@ function hungerDeaths(g, ratio) {
   if (g.reserve > 0) return 0;
   g.reserve = 0;
   return (g.n * (1 - Math.min(1, ratio))) / most;
+}
+// Meat (kg) a scavenging group finds today in its range from animals that died of other causes, up to what it needs
+function scavenge(s, cells, wantKg) {
+  let got = 0;
+  for (const c of cells) {
+    if (!s.carrion || got >= wantKg) break;
+    const take = Math.min(s.carrion[c], wantKg - got);
+    s.carrion[c] -= take;
+    got += take;
+  }
+  return got;
 }
 // A kill of up to kg live mass from a herd, from the given cells in proportion to their animals; returns kg taken
 function takePreyIn(s, sp, kg, cells) {
@@ -283,6 +296,7 @@ function grassHerdDay(s, id, sp, kf, met) {
     const n = N[c],
       deaths = d * n * dt + starveDeaths(n, met);
     N[c] = Math.max(0, n + (r + d) * met * n * dt - deaths);
+    (s.carrion ??= new Float64Array(N.length))[c] += deaths * sp.mass * MEAT.edible; // for scavengers today
     maybeCarcass(s, c, id, sp, deaths);
   }
 }

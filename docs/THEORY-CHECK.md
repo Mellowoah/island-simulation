@@ -663,3 +663,13 @@ Robert approved territories as the next step.
   year 10 (impala about 20, zebra about 30, buffalo about 200 kg/km2; about 13 lions, fed 0.97). Lion biomass
   about 92 kg per 10,000 kg of its prey: Carbone and Gittleman's 90, not set. Still wrong: hyenas die out by
   year 6, and total large herbivores (about 250 kg/km2) are low, though inside the park range.
+- Save C, scavenging: hyenas eat animals that died of other causes (background and hunger deaths, routed to the
+  range they fall in; what no scavenger eats in a day goes to vultures and rot). Islands 1, 2 and 3, 16 years:
+  all five species persist, steady from year 10 (impala about 7, zebra 11, buffalo 160 kg/km2; lions about 9,
+  hyenas 6). Lions about 88 kg per 10,000 kg of prey (Carbone 90); all herds about 240 kg/km2 (in park range).
+- But the three islands are identical to the last digit: with predators on, grass never runs short, so weather
+  never reaches the large herds, and nothing else in them is random. Real herds die back in droughts.
+- Time-box verdict (agreed rule: on only if stable and realistic): stable and on the narrow checks, but not
+  realistic (every island the same; 6 hyenas over 24 clan ranges is no population; impala and zebra at 2-3% of
+  field densities). Predators stay off; the island keeps its measured field counts. Open, for later: herds that
+  feel drought through grass quality and water, whole animals rather than fractions, and clans that merge.

@@ -81,7 +81,8 @@ export const FAUNA_KCAL_PER_KM2 = {
 // - Check: about 90 kg of a carnivore species per 10,000 kg of its prey (Carbone and Gittleman 2002).
 export const PREDATORS = {
   lion: { mass: 150, needKg: 6, group: 'lionGroup', prey: ['impala', 'zebra', 'buffalo'] },
-  hyena: { mass: 55, needKg: 3.9, group: 'hyenaGroup', prey: ['impala', 'zebra'] }, // avoided, not refused (Hayward 2006)
+  // hyenas: zebra avoided, not refused (Hayward 2006); they also eat animals that died of other causes (scavenges)
+  hyena: { mass: 55, needKg: 3.9, group: 'hyenaGroup', prey: ['impala', 'zebra'], scavenges: true },
 };
 // Kills a day by one predator of each prey kind, given herds per km2 of each (type II over all its prey together)
 export function killsPerDay(P, herds, group = R(P.group)) {
