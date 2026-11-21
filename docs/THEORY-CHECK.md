@@ -748,3 +748,13 @@ the 120-day fingerprint stays ee5f79eb58495f15.
 - Result: 2 island-years 31.1 s -> 24.5 s (21% faster), identical state.
 - Caught by the full tests before saving (Y18): a test swapped a person's whole map of places for an empty one, and
   the memo did not notice. The memo now also checks it is the same map and skill book; all world tests pass.
+- Evening news: a teller used to go through every place they know for every hearer. A hearer ends up holding each
+  place at least as fresh as the teller (entries only get fresher), so next time only places the teller has written
+  since can be news. Writes are logged per person (w-memo.js newsIds); places are still visited in the teller's own
+  order, so everything happens exactly as before. Check mode compares with the full loop on every telling (2 islands
+  x 1 year passed). Its share of run time fell from 6.6% to about 2.4% plus the log; it no longer grows with how
+  many places people know, which is what matters on a bigger island.
+- Option reasons for foraging trips are written out only for the six options kept with a decision (sorted first,
+  then written): same words, same order.
+- State hash unchanged throughout (332adef1905a6bf1). Timing on this machine varies by about 10%; best of two runs:
+  28.9 s -> 25.4 s for 2 island-years.

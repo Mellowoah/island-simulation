@@ -163,7 +163,10 @@ export function options(s, p) {
           (net > 0 ? R('wDrive') * drive : 0) -
           late -
           p.mind.caution * Math.max(0, out - 3) * 0.05,
-        why: `${q.name.toLowerCase()} ${out.toFixed(1)} h away, about ${Math.round(net)} kcal an hour after walking`,
+        // written out only if someone reads it (the six best options are kept with the decision): same words
+        get why() {
+          return `${q.name.toLowerCase()} ${out.toFixed(1)} h away, about ${Math.round(net)} kcal an hour after walking`;
+        },
       });
     }
   }
@@ -348,9 +351,10 @@ export function decide(s, p) {
     why: o.why,
     thought: innerVoice(s, p, o),
     options: opts
-      .map(x => ({ k: x.k, u: Math.round(x.u * 100) / 100, why: x.why }))
+      .map(x => ({ k: x.k, u: Math.round(x.u * 100) / 100, x }))
       .sort((a, b) => b.u - a.u)
-      .slice(0, 6),
+      .slice(0, 6)
+      .map(({ k, u, x }) => ({ k, u, why: x.why })), // sorted first, so only the six kept are written out
   };
   const C = clockOf(s),
     cp = campOf(s, p),

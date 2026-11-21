@@ -1,6 +1,6 @@
 // Island small world: social.js (split from world.js, build plan change 4; behaviour unchanged).
 import { noise2, seedKey, STREAMS, fieldPath, fieldDist, mapOf, path } from './sim.js';
-import { placesChanged } from './w-memo.js';
+import { placesChanged, placeWritten, newsIds } from './w-memo.js';
 import {
   R,
   clockOf,
@@ -297,7 +297,7 @@ export function evening(s) {
   // chain is worth less. The hearer weighs it by how much they trust the teller (trustOf), learned from checking:
   // when they next look at a place they heard of, they see whether the teller was right (within a factor of two).
   const tell = (a, b) => {
-    for (const id in a.places) {
+    for (const id of newsIds(a, b)) {
       const k = a.places[id],
         kb = b.places[id];
       if (!kb || kb.t < k.t) {
@@ -317,6 +317,7 @@ export function evening(s) {
         const exp = kb ? kb.exp + tr * (heard - kb.exp) : heard; // a stranger's word on a place one knows moves belief only as far as one trusts it
         if (!kb) placesChanged(b);
         b.places[id] = { exp, t: k.t, u: kb?.u || k.u, n: kb?.n ?? 0, from: a.id, heard, hops: (k.hops ?? 0) + 1 };
+        placeWritten(b, id);
       }
     } // news, not their own looks
     // Water news is yes or no (has water or not): a binary channel. Each retelling gets it backwards with a small

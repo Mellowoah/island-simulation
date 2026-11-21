@@ -28,7 +28,7 @@ import { LEARNERS, delta, deltaByCount, deltaLog } from './learning.js';
 import { SALTS } from './streams.js';
 import { H, W, bandOf, dist, note, placeName } from './w-core.js';
 import { lightFire } from './w-craft.js';
-import { placesChanged } from './w-memo.js';
+import { placesChanged, placeWritten } from './w-memo.js';
 import { atCamp } from './w-mind.js';
 import { youngOf } from './w-people.js';
 import { checkNews, checkWaterNews } from './w-social.js';
@@ -200,6 +200,7 @@ export function look(s, p) {
     else if (!prev) {
       p.places[q.id] = { exp: q.stock * 0.5, t: s.tick, u: 0, n: 0 }; // seen from afar: it is there, how much is a guess
       placesChanged(p);
+      placeWritten(p, q.id);
     }
   }
   for (const w of s.waters)
@@ -247,6 +248,7 @@ export function observe(s, p, q, stock) {
     u = k?.u ? deltaByCount(k.u, stock, Math.min(n, LEARNERS.human.memoryLooks)) : stock;
   if (!k) placesChanged(p);
   p.places[q.id] = { exp: stock, t: s.tick, u, n };
+  placeWritten(p, q.id);
 }
 export function expected(s, p, q, k) {
   const b = beliefOf(p, q.food),
