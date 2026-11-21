@@ -777,3 +777,17 @@ order; answer reviews with evidence), listed in docs/RULES.md with what enforces
 - Rule 11 test (R2): disease stays off in a default world while the Hadza illness curve is on.
 - Rule 9 tool: tools/state-hash.mjs (whole state after a year on islands 42 and 43). Unchanged: 332adef1905a6bf1;
   fingerprint ee5f79eb58495f15.
+
+## 21 Nov 2026: rebuild for the bigger world, Layer 0 (sun): every place its own sun
+
+Robert agreed the layout (lake basin west, escarpment and highland plateau east, like Lake Eyasi and the Mbulu
+Highlands) and the rebuild from the sun up. A 10,000 km2 world spans about 1 degree of latitude, so the sun can no
+longer be one point at the lake.
+- sun.js placeAt(dxKm, dyKm, metres): a place's own latitude, longitude and height from km east and south of the map's
+  anchor, using WGS84 degree lengths (kmPerDegree, standard series). Every sun function already takes such a site.
+- Test S7: degree lengths at the equator and 45 deg match the WGS84 values to 2 m; 100 km south of Lake Eyasi is
+  4.50 S; clear-sky share at 2,300 m is 0.796 (FAO-56 eq. 37); the December day 100 km south is 3.2 min longer, within
+  10% of what plain geometry gives. (My first bound, "under 3 minutes", was a guess and wrong; replaced by the
+  geometric expectation, not by loosening.)
+- sun.js reformatted by prettier (it had not been). Nothing uses placeAt yet, so the world is unchanged
+  (fingerprint ee5f79eb58495f15). The map (Layer 3) will hand each square its place.

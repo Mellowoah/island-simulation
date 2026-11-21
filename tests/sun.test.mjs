@@ -47,3 +47,19 @@ test('S6 every function in the sun module is under 30 lines', () => {
     if (start >= 0 && l === '}') { assert.ok(i - start + 1 < 30, `function at line ${start + 1} is ${i - start + 1} lines`); start = -1; }
   });
 });
+
+test('S7 every place its own sun: degree lengths on WGS84 (equator 110.574 and 111.320 km; 45 deg 111.132 and 78.847 km); a place 100 km south of Lake Eyasi sits at 4.50 S; clear sky lets more through at 2,300 m (0.796)', () => {
+  const e = S.kmPerDegree(0), m = S.kmPerDegree(45);
+  assert.ok(Math.abs(e.lat - 110.574) < 0.002 && Math.abs(e.lon - 111.32) < 0.002, JSON.stringify(e));
+  assert.ok(Math.abs(m.lat - 111.132) < 0.002 && Math.abs(m.lon - 78.847) < 0.002, JSON.stringify(m));
+  const here = S.placeAt(0, 0, S.SITE.elevation);
+  assert.equal(here.lat, S.SITE.lat); assert.equal(here.lon, S.SITE.lon); assert.equal(here.zone, S.SITE.zone);
+  const south = S.placeAt(0, 100, 1030), high = S.placeAt(60, -20, 2300);
+  assert.ok(Math.abs(south.lat + 4.5044) < 0.001, `${south.lat}`);
+  assert.ok(Math.abs(S.clearSkyShare(high) - 0.796) < 1e-12);
+  const jd = S.julianDay(2026, 12, 21, 12), a = S.sunTimes(jd).dayHours, b = S.sunTimes(jd, south).dayHours;
+  // geometry alone (no refraction): day = (2/15) acos(-tan(lat) tan(dec)) hours; the change southward should match it
+  const dec = S.sunAt(jd).dec, geo = lat => (2 / 15) * (180 / Math.PI) * Math.acos(-Math.tan((lat * Math.PI) / 180) * Math.tan((dec * Math.PI) / 180));
+  const want = geo(south.lat) - geo(S.SITE.lat);
+  assert.ok(b > a && Math.abs(b - a - want) < 0.1 * want, `December day longer to the south by ${(b - a) * 60} min, geometry ${want * 60}`);
+});

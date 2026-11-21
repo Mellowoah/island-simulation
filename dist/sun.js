@@ -27,7 +27,8 @@ export function julianDay(year, month, day, hour = 12, zone = SITE.zone) {
     year -= 1;
     month += 12;
   }
-  const A = Math.floor(year / 100), B = 2 - A + Math.floor(A / 4);
+  const A = Math.floor(year / 100),
+    B = 2 - A + Math.floor(A / 4);
   const jd0 = Math.floor(365.25 * (year + 4716)) + Math.floor(30.6001 * (month + 1)) + day + B - 1524.5;
   return jd0 + (hour - zone) / 24;
 }
@@ -45,15 +46,24 @@ export const jdOfTick = (tick, hoursPerTick = 1) => JD_START + (tick * hoursPerT
 
 // The sun at a Julian day: declination (deg), equation of time (min), Earth-sun distance (AU) (Meeus ch. 25, 28)
 export function sunAt(jd) {
-  const T = (jd - 2451545) / 36525, L0 = mod(280.46646 + 36000.76983 * T + 0.0003032 * T * T, 360);
-  const M = rad(357.52911 + 35999.05029 * T - 0.0001537 * T * T), e = 0.016708634 - 0.000042037 * T;
-  const C = (1.914602 - 0.004817 * T) * Math.sin(M) + (0.019993 - 0.000101 * T) * Math.sin(2 * M) + 0.000289 * Math.sin(3 * M);
-  const om = rad(125.04 - 1934.136 * T), lam = rad(L0 + C - 0.00569 - 0.00478 * Math.sin(om));
+  const T = (jd - 2451545) / 36525,
+    L0 = mod(280.46646 + 36000.76983 * T + 0.0003032 * T * T, 360);
+  const M = rad(357.52911 + 35999.05029 * T - 0.0001537 * T * T),
+    e = 0.016708634 - 0.000042037 * T;
+  const C =
+    (1.914602 - 0.004817 * T) * Math.sin(M) + (0.019993 - 0.000101 * T) * Math.sin(2 * M) + 0.000289 * Math.sin(3 * M);
+  const om = rad(125.04 - 1934.136 * T),
+    lam = rad(L0 + C - 0.00569 - 0.00478 * Math.sin(om));
   const eps = rad(23.439291 - 0.0130042 * T + 0.00256 * Math.cos(om));
   const R = (1.000001018 * (1 - e * e)) / (1 + e * Math.cos(M + rad(C)));
-  const y = Math.tan(eps / 2) ** 2, L = rad(L0);
-  const E = y * Math.sin(2 * L) - 2 * e * Math.sin(M) + 4 * e * y * Math.sin(M) * Math.cos(2 * L) -
-    0.5 * y * y * Math.sin(4 * L) - 1.25 * e * e * Math.sin(2 * M);
+  const y = Math.tan(eps / 2) ** 2,
+    L = rad(L0);
+  const E =
+    y * Math.sin(2 * L) -
+    2 * e * Math.sin(M) +
+    4 * e * y * Math.sin(M) * Math.cos(2 * L) -
+    0.5 * y * y * Math.sin(4 * L) -
+    1.25 * e * e * Math.sin(2 * M);
   return { dec: deg(Math.asin(Math.sin(eps) * Math.sin(lam))), eot: 4 * deg(E), dist: R };
 }
 
@@ -62,16 +72,20 @@ export const clockHourOf = (jd, zone = SITE.zone) => mod((jd + 0.5 + zone / 24) 
 
 // Sun's elevation above the horizon (deg) at a Julian day
 export function elevation(jd, site = SITE) {
-  const s = sunAt(jd), h = clockHourOf(jd, site.zone);
+  const s = sunAt(jd),
+    h = clockHourOf(jd, site.zone);
   const solarMin = h * 60 + s.eot + 4 * site.lon - 60 * site.zone; // true solar time, minutes
-  const w = rad(solarMin / 4 - 180), phi = rad(site.lat), d = rad(s.dec);
+  const w = rad(solarMin / 4 - 180),
+    phi = rad(site.lat),
+    d = rad(s.dec);
   const sinAlt = Math.sin(phi) * Math.sin(d) + Math.cos(phi) * Math.cos(d) * Math.cos(w);
   return deg(Math.asin(Math.max(-1, Math.min(1, sinAlt))));
 }
 
 // Half the time (hours) the sun's centre stays above altitude a (deg), for declination dec (deg)
 export function halfDay(dec, a, site = SITE) {
-  const phi = rad(site.lat), d = rad(dec);
+  const phi = rad(site.lat),
+    d = rad(dec);
   const c = (Math.sin(rad(a)) - Math.sin(phi) * Math.sin(d)) / (Math.cos(phi) * Math.cos(d));
   if (c <= -1) return 12;
   if (c >= 1) return 0;
@@ -84,8 +98,10 @@ export const localNoonJd = (jd, zone = SITE.zone) => Math.floor(jd + 0.5 + zone 
 // Sun times for the local day containing jd, in clock hours: solar noon, sunrise and sunset (upper limb with
 // refraction, -0.833 deg), civil dawn and dusk (-6 deg); day length in hours
 export function sunTimes(jd, site = SITE) {
-  const s = sunAt(localNoonJd(jd, site.zone)), noon = 12 - (s.eot + 4 * site.lon - 60 * site.zone) / 60;
-  const up = halfDay(s.dec, -0.833, site), civil = halfDay(s.dec, -6, site);
+  const s = sunAt(localNoonJd(jd, site.zone)),
+    noon = 12 - (s.eot + 4 * site.lon - 60 * site.zone) / 60;
+  const up = halfDay(s.dec, -0.833, site),
+    civil = halfDay(s.dec, -6, site);
   return { noon, rise: noon - up, set: noon + up, dawn: noon - civil, dusk: noon + civil, dayHours: 2 * up };
 }
 
@@ -97,7 +113,9 @@ export function daylight(jd, site = SITE) {
 
 // Extraterrestrial radiation for a day, MJ/m2/day (FAO-56 eq. 21), from declination (deg) and day of year J
 export function dailyRa(dec, J, site = SITE) {
-  const phi = rad(site.lat), d = rad(dec), ws = rad(15 * halfDay(dec, 0, site));
+  const phi = rad(site.lat),
+    d = rad(dec),
+    ws = rad(15 * halfDay(dec, 0, site));
   const dr = 1 + 0.033 * Math.cos((2 * Math.PI * J) / 365); // FAO-56 eq. 23
   const k = ((24 * 60) / Math.PI) * GSC_MJ * dr;
   return k * (ws * Math.sin(phi) * Math.sin(d) + Math.cos(phi) * Math.cos(d) * Math.sin(ws));
@@ -133,11 +151,31 @@ export function netLongwave(tmax, tmin, ea, RsOverRso) {
   return sigma * (0.34 - 0.14 * Math.sqrt(Math.max(0, ea))) * cloud;
 }
 
+// ---------- every place its own sun (rule 12: general, not one place) ----------
+// One degree of latitude and of longitude in km on the WGS84 ellipsoid at latitude lat (deg), from the standard
+// series: 111132.92 - 559.82 cos 2phi + 1.175 cos 4phi - 0.0023 cos 6phi m, and
+// 111412.84 cos phi - 93.5 cos 3phi + 0.118 cos 5phi m (about 110.57 and 111.32 km at the equator).
+export function kmPerDegree(lat) {
+  const p = rad(lat);
+  return {
+    lat: (111132.92 - 559.82 * Math.cos(2 * p) + 1.175 * Math.cos(4 * p) - 0.0023 * Math.cos(6 * p)) / 1000,
+    lon: (111412.84 * Math.cos(p) - 93.5 * Math.cos(3 * p) + 0.118 * Math.cos(5 * p)) / 1000,
+  };
+}
+// A place for the sun: dxKm east and dyKm south of the origin (the map's own anchor, SITE unless the map says
+// otherwise), at its own height in metres, in the origin's time zone. Every function above takes such a site, so the
+// sun's path, day length, top-of-air and clear-sky sunlight (FAO-56 eq. 37 rises with height) are each place's own.
+export function placeAt(dxKm, dyKm, elevationM, origin = SITE) {
+  const k = kmPerDegree(origin.lat);
+  return { lat: origin.lat - dyKm / k.lat, lon: origin.lon + dxKm / k.lon, zone: origin.zone, elevation: elevationM };
+}
+
 // Darkness, for what light changes (walking pace, falls, how far one sees, fear of the dark). It comes from the
 // sun (Layer 0, sun.js): dark when the sun's centre is more than 6 degrees below the horizon (past civil
 // twilight) at the middle of the step, so it follows the real sunrise and sunset through the year. isNight stays
 // the day's schedule (sleep, plans). One answer per tick and step length is kept, as every person asks.
-let darkKey = null, darkVal = false;
+let darkKey = null,
+  darkVal = false;
 export const isDark = (C, tick) => {
   const key = tick * 1e3 + C.hours;
   if (key === darkKey) return darkVal;
