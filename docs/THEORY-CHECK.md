@@ -526,3 +526,11 @@ Robert: "Remove hazda and implement our goal".
   checks both (all pass). nature.js split: animalDay, law and wildfireDay into small functions, fingerprint
   identical (eef4c2c7e0262054).
 - Still to tie in: wildfire fuel should come from the dead grass, not the rain ratio.
+
+## 20 Nov 2026: merged to main and live
+
+- Robert: "Merge all live". PR #4 (Layers 0-5 real) merged as 815e17d after the front-page screenshots were sent.
+- The live-site workflow then failed without running: its name, "Publish Island: the small world", had an
+  unquoted colon, so the YAML could not be read. Quoted, test WF1 added (any workflow name with a colon must be
+  quoted), merged as PR #5 (28aafe5). GitHub Pages deployment of 28aafe5: success.
+- Not checked from here: the workspace cannot open github.io, and the web-reader check went unapproved.
