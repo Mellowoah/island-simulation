@@ -14,7 +14,7 @@ export const LAYERS = {
   base: { rank: -1, plan: null, status: 'real', files: ['sim.js', 'streams.js', 'clock.js', 'layers.js', 'numbers.js'],
     note: 'time, chance keys and the register of numbers; clock.js also reads the sun for darkness' },
   sun: { rank: 0, plan: 0, status: 'real', files: ['sun.js'], gate: 'admitted' },
-  air: { rank: 1, plan: 1, status: 'real', files: ['atmosphere.js', 'rain-years.js'], gate: 'admitted' },
+  air: { rank: 1, plan: 1, status: 'real', files: ['atmosphere.js', 'rain-years.js', 'orographic.js'], gate: 'admitted' },
   terrain: { rank: 2, plan: 3, status: 'real', files: ['terrain.js'], real: ['land.js'], toggle: 'config.layers.terrain',
     note: 'heights in metres, flow accumulation and catchments over the map (land.js); gate passed 20 Nov 2026; the map itself is still generated, with no erosion, soil or nutrients yet' },
   water: { rank: 3, plan: 2, status: 'real', files: ['weather.js'], real: ['water.js'], toggle: 'config.layers.water',

@@ -791,3 +791,25 @@ longer be one point at the lake.
   geometric expectation, not by loosening.)
 - sun.js reformatted by prettier (it had not been). Nothing uses placeAt yet, so the world is unchanged
   (fingerprint ee5f79eb58495f15). The map (Layer 3) will hand each square its place.
+
+## 21 Nov 2026: Layer 1 (air) rebuild, step 1: rain made by mountains (orographic.js), not yet wired in
+
+Robert chose the physics (option 1): the linear theory of orographic precipitation (Smith and Barstad 2004). Pure
+function of any height grid (the air layer stays below the land; the water layer will hand it the map).
+- Tests: O1 moist air (FAO-56 saturation 2.338 kPa at 20 C; moist lapse 4-5 K/km; Hw about 2.4 km); O2 no delays, no
+  waves, thin moist layer -> exactly the classical upslope rain Cw U dh/dx (within 1%); O3 no water created overall
+  (net under 0.1% once the grid holds the lee drying); O4 windward wet, lee dry, delays move rain downwind; O5 opposite
+  wavenumbers give conjugates; O6 wind bearings and shares; O7 an independent exact solution (Queney's hydrostatic
+  wave over a bell-shaped ridge, weighted over the moist layer) matches within 3% (test bound 5%).
+- New register entries, all with ranges: cloud and fall-out delays 1000 s (200-2000, Smith and Barstad; Barstad and
+  Smith 2005), moist stability 0.005 1/s (0.0005-0.01), wind 6 m/s (3-10, assumption) from 110 deg (60-150, the
+  Indian Ocean inflow), background rain rate 2 mm/h (1-5, assumption).
+- First look, a synthetic Eyasi-like profile (basin 1,000 m; escarpment to a 2,000 m plateau to the east; wind from
+  the east-south-east), share of background rain, basin / plateau:
+    central 1.44 / 0.27 (the opposite of the measured 300-400 mm basin and about 1,000 mm highlands);
+    moist stability 0.0005: 0.56 / 1.18; 0.01: 1.31 / 0.55; wind 3 m/s: 1.20 / 0.75; 10 m/s: 0.93 / 0.38;
+    delays 200 s: 1.60 / 0.20, 2000 s: 1.14 / 0.45; rain rate 1 mm/h: 1.89 / 0.01, 5 mm/h: 1.18 / 0.71.
+  The pattern hinges on moist stability against wind and moist-layer depth (N Hw / U about 2 at the central values,
+  where the moist layer spans a third of a vertical wavelength and windward rain is carried far upwind). Not tuned:
+  reported. The independent exact check (O7) shows this is the theory, not a coding error. Next: look up measured
+  moist stability and inflow wind in the rains rather than leave them assumptions.

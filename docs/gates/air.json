@@ -1,19 +1,20 @@
 {
  "layer": "air",
  "pass": true,
- "date": "2026-11-20",
+ "date": "2026-11-21",
  "islands": 6,
  "years": 3,
  "tests": "# pass 5",
  "deaths": {
-  "before": 4.833333333333333,
-  "after": 4.833333333333333
+  "before": 4.166666666666667,
+  "after": 4.166666666666667
  },
  "pattern": "mean max minus measured, by month: -0.09 -0.07 0.22 -0.05 -0.12 -0.17 0.01 -0.00 0.28 0.00 -0.10 -0.10; mean min: -0.03 0.08 0.14 -0.12 0.04 -0.15 -0.13 0.21 0.18 -0.02 0.05 -0.06",
  "fails": [],
  "hashes": {
   "atmosphere.js": "3be9b12926f400916c1037ce2a56a3c22b010558ef74ddc0300b3cbd4dbb21e4",
-  "rain-years.js": "5ccdb00a90a0f68ebbcc4306d0d9c613ecc99bf204eea6400ae801d44429bbaf"
+  "rain-years.js": "5ccdb00a90a0f68ebbcc4306d0d9c613ecc99bf204eea6400ae801d44429bbaf",
+  "orographic.js": "4ba65233a543e3888d7515ed9b3573671768d8681deb79cd3e63eae9fcf3692d"
  },
  "toggle": "none: this layer was wired before the gate existed, so before and after run the same code"
 }
