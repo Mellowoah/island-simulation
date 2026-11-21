@@ -30,7 +30,15 @@ import { R, clockOf, hourOf } from './clock.js';
 import * as T from './terrain.js';
 import { LAYERS } from './layers.js';
 import { plantYearRatio } from './plants.js';
-import { intakeKgDay, grazeDay, starveDeaths } from './fauna.js';
+import {
+  intakeKgDay,
+  grazeDay,
+  starveDeaths,
+  PREDATORS,
+  killsPerDay,
+  predatorChange,
+  startPredators,
+} from './fauna.js';
 
 const K = STREAMS.world[0];
 const SALT = SALTS; // named once in streams.js
@@ -157,7 +165,42 @@ export function animalDay(s) {
   const grown = real ? plantYearRatio(s) : null,
     kf = s.weather ? Math.max(0.3, Math.min(1.4, grown ?? rainYearRatio(s) ** 0.7)) : 1;
   for (const [id, sp] of Object.entries(SPECIES)) speciesDay(s, id, sp, kf, met);
+  if (s.config?.predators === true) predatorDay(s);
   dropCarcasses(s);
+}
+// Lions and hyenas (fauna.js): each kind hunts its preferred prey over the island, takes what it kills from the
+// herds, and grows or shrinks with how well it ate
+function predatorDay(s) {
+  s.predators ??= Object.fromEntries(
+    Object.entries(PREDATORS).map(([id, P]) => [
+      id,
+      { n: startPredators(preyKgOf(s, P), P.mass), killedKg: 0, fed: 1 },
+    ]),
+  );
+  for (const [id, P] of Object.entries(PREDATORS)) huntDay(s, s.predators[id], P);
+}
+const herdKg = (s, sp) => s.animals[sp].reduce((t, n) => t + n, 0) * SPECIES[sp].mass;
+const preyKgOf = (s, P) => P.prey.reduce((t, sp) => t + herdKg(s, sp), 0);
+function huntDay(s, st, P) {
+  const herds = P.prey.map(sp => s.animals[sp].reduce((t, n) => t + n, 0) / SPECIES[sp].herd / landKm2());
+  const kills = killsPerDay(P, herds);
+  let meat = 0;
+  P.prey.forEach((sp, k) => {
+    const kg = Math.min(herdKg(s, sp), st.n * kills[k] * SPECIES[sp].mass);
+    takePrey(s, sp, kg);
+    st.killedKg += kg;
+    meat += kg * MEAT.edible;
+  });
+  st.fed = st.n ? Math.min(1, meat / (st.n * P.needKg)) : 0;
+  st.n = Math.max(0, st.n + predatorChange(st.n, st.fed, P.mass) / 365);
+}
+// A kill of kg live mass from a herd, taken from every cell in proportion to its animals
+function takePrey(s, sp, kg) {
+  const N = s.animals[sp],
+    total = N.reduce((t, n) => t + n, 0);
+  if (!total || kg <= 0) return;
+  const f = Math.min(1, kg / SPECIES[sp].mass / total);
+  for (let c = 0; c < N.length; c++) N[c] *= 1 - f;
 }
 // The herds' need for the day, met from the herb layer (share met)
 function grazing(s) {

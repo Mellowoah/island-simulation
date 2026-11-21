@@ -36,3 +36,11 @@ test('F5 fire needs fuel: no dead grass, no fire; a fire burns its share of the 
   const held = P.green + P.dead + P.removedTotal + (P.eatenTotal ?? 0) + (P.burnedTotal ?? 0);
   assert.ok(Math.abs(P.grownTotal - held) < 1e-6 * P.grownTotal, `${P.grownTotal} vs ${held}`);
 });
+
+test('F6 grouped hunting (Fryxell 2007): kills level off at the handling limit of the group; more herds, more kills', async () => {
+  const { PREDATORS } = F;
+  const few = F.killsPerDay(PREDATORS.lion, [0.01]), many = F.killsPerDay(PREDATORS.lion, [1000]);
+  assert.ok(many[0] > few[0]);
+  const limit = 1 / (0.045 + 1.422 / 6.3) / 6.3; // per lion, at endless prey
+  assert.ok(many[0] < limit && many[0] > 0.9 * limit);
+});

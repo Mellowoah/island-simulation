@@ -61,3 +61,42 @@ export const FAUNA_KCAL_PER_KM2 = {
   honey: () => 6.8 * 6.5 * 3040,
   shellfish: () => 88 * 1e6 * R('intertidalShare') * 5 * ((Math.LN2 * 365) / R('shellfishHalfLifeDays')),
 };
+
+// ---------- predators (on with config.predators; until herds are limited by grass, field counts already hold them
+// down, so with both on predation would be counted twice) ----------
+// The grouped functional response of Fryxell, Mosser, Sinclair and Packer (2007, Nature 449: 1041-1043), measured on
+// Serengeti lions: a group of G predators searches as one, meets prey herds (not single animals: prey-group density is
+// lower than individual density), and each success is one whole animal shared by the group. Kills a day for the group:
+//   a H / (1 + a H (h1 + h2 / G)),  H = herds per km2 = animals per km2 / herd size.
+// - a = 1.16 km2 a day: a 0.4 km search path x 10 km a day x 0.29 success (Serengeti lions, wildebeest).
+// - h1 = 0.045 days to attack and subdue; h2 = 1.422 days of digestive pause per carcass, shared by the group.
+// - G: lions 6.3 adults a pride (Fryxell 2007); hyenas hunt in small groups (assumption 3). Hyenas are given the
+//   lion's search rate and handling times (assumption).
+// - Grouping by both predators and prey is what steadies the system (Fryxell 2007); without it, lions here wiped out
+//   their prey in two to three years (20 Nov 2026).
+// - Need: lions about 5-7 kg of meat a day (Shamwari); hyenas 3.8-4.0 kg (Henschel and Tilson 1988).
+// - Prey: carnivores favour prey of about half to twice their own mass (Owen-Smith and Mills 2008); hyenas prefer
+//   56-182 kg and avoid buffalo and zebra (Hayward 2006).
+// - Births when fed, at the most a mammal of that mass can grow (Fenchel 1974); adults die at predatorDeathRate.
+// - Check: about 90 kg of a carnivore species per 10,000 kg of its prey (Carbone and Gittleman 2002).
+export const PREDATORS = {
+  lion: { mass: 150, needKg: 6, group: 'lionGroup', prey: ['impala', 'zebra', 'buffalo'] },
+  hyena: { mass: 55, needKg: 3.9, group: 'hyenaGroup', prey: ['impala', 'dikdik'] },
+};
+// Kills a day by one predator of each prey kind, given herds per km2 of each (type II over all its prey together)
+export function killsPerDay(P, herds) {
+  const a = R('predatorSearchKm2'),
+    G = R(P.group),
+    h = R('handleDays') + R('digestDays') / G;
+  const total = herds.reduce((t, H) => t + H, 0),
+    groupKills = (a * total) / (1 + a * total * h);
+  return herds.map(H => (total ? (groupKills * H) / total / G : 0));
+}
+// A year's change in a predator population of n with fed share `fed` (0..1): growth at full food, decline when hungry
+export const predatorChange = (n, fed, mass) => {
+  const d = R('predatorDeathRate'),
+    rMax = 1.1 * mass ** -0.26;
+  return n * ((rMax + d) * fed - d);
+};
+// Starting numbers from Carbone and Gittleman's ratio (the check then sees where the island takes them)
+export const startPredators = (preyKg, mass) => (0.009 * preyKg) / mass;

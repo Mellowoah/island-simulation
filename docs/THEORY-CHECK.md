@@ -589,3 +589,20 @@ Robert approved the range runs, and asked whether to add land (journals and math
   people on some islands over longer runs (the 2-year range runs missed it).
 - Next (step 2, a big modelling decision, to be agreed first): replace the infant-child and constant terms with
   disease from the body and from contact.
+
+## 20-21 Nov 2026: Layer 5, predators, save 1 of 3: lions and hyenas (off by default)
+
+Robert approved the plan (predators, then herds limited by grass, then carcasses and risk to people), predators
+before disease because each layer's output is the next layer's environment.
+- fauna.js: the grouped functional response of Fryxell et al. (2007, Nature): a group of G predators meets herds
+  (animals per km2 / herd size), kills a day for the group a H / (1 + a H (h1 + h2 / G)); a 1.16 km2 a day, h1
+  0.045 d, h2 1.422 d, lions G 6.3; hyenas G 3 with the lion's rates (assumptions). Needs: lion 6 kg of meat a
+  day (Shamwari 5-7), hyena 3.9 (Henschel and Tilson 3.8-4.0). Prey by size (half to twice own mass); hyenas avoid
+  zebra and buffalo (Hayward 2006). Births when fed up to Fenchel's rMax; deaths 0.15 a year (assumption). Start
+  at Carbone and Gittleman's 90 kg per 10,000 kg of prey.
+- First version (lions hunting alone, meeting single animals, type II on biomass): wiped out the prey in two to
+  three years (herbivores 1,262 -> 33 kg/km2), as the unstable simple model predicts.
+- With grouping: a slow decline instead (1,262 -> 89 kg/km2 in 8 years; lions 61 -> 62, starving). Expected while
+  herds are capped by field counts: a capped herd spares at most r/4 of its mass a year (about 6-9%), and predators
+  at Carbone's ratio need about 24% a year. Save 2 (herds limited by grass) is what can carry them.
+- Off by default (config.predators); default island unchanged. Test F6. 194 tests pass.
