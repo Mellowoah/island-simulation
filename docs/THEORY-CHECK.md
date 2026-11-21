@@ -695,3 +695,17 @@ Robert asked for a general law (to scale beyond one island), journals and mathem
 - Also measured and not yet used: standing dead grass decomposes at 7-11% a week in the wet season and 1-2% in the
   dry (Ngatia et al., Kenya), against the constant six-month half-life in plants.js.
 - Predators off by default; default island unchanged (fingerprint ee5f79eb58495f15). Test F7.
+
+## 21 Nov 2026: option B: the energy law on the field-count herds (default world)
+
+Robert chose B now and the landscape of fear later, built once with the people (same machinery: individuals that
+move, notice danger and avoid it; lions and hunters sharing one landscape).
+- With the real animals, every herd (field-count or not) now carries body condition from the energy law: it breeds
+  while reserves last and starves once they are gone (nature.js herdCondition). Stand-in path unchanged
+  (fingerprint ee5f79eb58495f15 over 120 days).
+- Two islands, 12 years: herds follow each island's own run of years. Island 1: three dry years (415, 411, 371 mm)
+  took herds from about 1,290 to 1,015 kg/km2; two wet years brought them back. Island 2: 368, 422, 338 mm took
+  them from 1,376 to about 1,000. Zebra reserves fell to 37-53 days at the lowest and never ran out: ordinary dry
+  seasons are survived; only a deeper drought would starve them.
+- Correction to the record: the field-count herds already followed each year's plant growth; the identical islands
+  were only with predators on. What this adds is condition and starvation.

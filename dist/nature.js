@@ -274,16 +274,25 @@ const landKm2 = () => (LAND_KM2 ??= habitat().reduce((t, h) => t + Object.values
 function speciesDay(s, id, sp, kf, met) {
   const N = s.animals[id],
     r = rMax(sp.mass),
-    dt = 1 / 365;
+    dt = 1 / 365,
+    day = animalsReal(s) ? herdCondition(s, id, met) : { breed: 1, starve: 0 };
   for (let c = 0; c < N.length; c++) {
     const K = capacity(sp, c) * kf;
     if (K <= 0) continue;
     const n = N[c],
-      births = r * n * dt,
-      deaths = ((r * n * n) / K) * dt + starveDeaths(n, met);
+      births = r * n * dt * day.breed,
+      deaths = ((r * n * n) / K) * dt + n * day.starve;
     N[c] = Math.max(0, n + births - deaths);
     maybeCarcass(s, c, id, sp, deaths);
   }
+}
+// The energy law (fauna.js) for a herd today: its diet's energy against its need moves its body reserves; it breeds
+// while they last and starves once they are gone. With the real animals this holds for every herd, field-count or not.
+function herdCondition(s, id, met) {
+  const cond = (s.condition ??= {}),
+    day = conditionDay(cond[id] ?? R('starveDays'), energyRatio(s.plants?.greenShare ?? 1, met));
+  cond[id] = day.reserve;
+  return day;
 }
 // A herd limited by its food, not by a field count: births at up to the most a mammal of its mass can grow (Fenchel
 // 1974) in proportion to how much of its need it met today; background deaths (herbivoreDeathRate) and hunger deaths;
@@ -293,9 +302,7 @@ function grassHerdDay(s, id, sp, kf, met) {
     d = R('herbivoreDeathRate'),
     r = rMax(sp.mass),
     dt = 1 / 365;
-  const cond = (s.condition ??= {}),
-    day = conditionDay(cond[id] ?? R('starveDays'), energyRatio(s.plants?.greenShare ?? 1, met));
-  cond[id] = day.reserve;
+  const day = herdCondition(s, id, met);
   for (let c = 0; c < N.length; c++) {
     if (capacity(sp, c) <= 0) continue;
     const n = N[c],
