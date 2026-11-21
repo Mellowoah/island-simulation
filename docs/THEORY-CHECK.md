@@ -534,3 +534,18 @@ Robert: "Remove hazda and implement our goal".
   unquoted colon, so the YAML could not be read. Quoted, test WF1 added (any workflow name with a colon must be
   quoted), merged as PR #5 (28aafe5). GitHub Pages deployment of 28aafe5: success.
 - Not checked from here: the workspace cannot open github.io, and the web-reader check went unapproved.
+
+## 20 Nov 2026: fire burns the dry grass that grew
+
+- Predators checked: they are in the model only implicitly (field-count herd densities carry their effect; most
+  natural deaths are kills that lions and hyenas finish, so only a share leaves a carcass; buffalo and zebra can
+  hurt hunters; people learn fear of large animals). Predators as their own animals are deferred (Robert).
+- Fire with the real plants: odds in proportion to the standing dead grass against its mean on fire-possible days
+  (fuelRefGm2 413 g/m2, the model's own, p10-p90 296-549); no dead grass, no fire. Savanna fire is limited by fuel,
+  not sparks (Archibald et al. 2010); fuel follows the past years' rain (Govender et al. 2006); only grass not
+  eaten is fuel (FAO). Each fire burns its share of the island's dead grass (burnedTotal). Books: grown = green +
+  dead + removed + eaten + burned (test F5).
+- Result (6 islands x 3 years): 38.9 fires a year (before, on the rain shortcut: 49.0), about a third of the land
+  burnt a year (not yet checked against a source). Correlation of fires with that year's mean dead grass 0.33
+  (before 0.43; lower because fires now remove the fuel they are measured against).
+- Animals gate re-run: passed (deaths 4.8 -> 4.2, herds ate 2.5%). Plants stand-in path unchanged (c4ffeb745a9ff88e).

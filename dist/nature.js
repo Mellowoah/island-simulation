@@ -373,13 +373,7 @@ export function wildfireDay(s) {
     f = (((s.tick % C.year) + C.year) % C.year) / C.year;
   // with weather: grass burns when it has cured (dry soil, no rain for three days), and more often when last year's
   // rain grew more grass to burn (fuel); without weather, the dry season by the calendar
-  const odds = s.weather
-    ? soilMoisture(s) < 0.3 && rainLastDays(s, 3) < 1
-      ? Math.max(0.3, Math.min(1.6, rainYearRatio(s)))
-      : 0
-    : f < 7 / 12
-      ? 0
-      : 1;
+  const odds = s.weather ? (soilMoisture(s) < 0.3 && rainLastDays(s, 3) < 1 ? fuelOdds(s) : 0) : f < 7 / 12 ? 0 : 1;
   if (!odds) return;
   if (draw(s, 1, SALT.fire) < (odds * T.LAND_KM2) / 1000) {
     const c = Math.floor(draw(s, 2, SALT.fire) * CW * CH),
@@ -388,9 +382,28 @@ export function wildfireDay(s) {
     const x = ((c % CW) * CELL + CELL / 2) | 0,
       y = (Math.floor(c / CW) * CELL + CELL / 2) | 0;
     s.wildfires.push({ x, y, cell: c, until: s.tick + C.day });
+    burnFuel(s, h);
     roastedByFire(s, x, y, C);
   }
   s.wildfires = s.wildfires.filter(w => w.until > s.tick);
+}
+// How readily grass fire runs. With the real plants: in proportion to the cured grass standing (fires in savanna
+// are limited by fuel, not by sparks: Archibald et al. 2010; fuel follows the past years' rain: Govender et al.
+// 2006), against its usual level on days fire is possible (fuelRefGm2); no dead grass, no fire. Before that, the
+// rain-year shortcut.
+function fuelOdds(s) {
+  if (s.plants && (s.config?.layers?.plants ?? LAYERS.plants.status) === 'real')
+    return Math.min(1.6, s.plants.dead / R('fuelRefGm2'));
+  return Math.max(0.3, Math.min(1.6, rainYearRatio(s)));
+}
+// The fire burns the cured grass on its ground: the island's dead grass falls by the burnt share of the land (only
+// grass not eaten is fuel, and what burns is no longer there to burn or eat)
+function burnFuel(s, h) {
+  const P = s.plants;
+  if (!P || (s.config?.layers?.plants ?? LAYERS.plants.status) !== 'real') return;
+  const burnt = (P.dead * ((h.grass ?? 0) + (h.woodland ?? 0))) / T.LAND_KM2;
+  P.dead -= burnt;
+  P.burnedTotal = (P.burnedTotal ?? 0) + burnt;
 }
 // small animals caught by the fire: roasted carcasses for anyone who comes
 function roastedByFire(s, x, y, C) {

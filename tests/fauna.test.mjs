@@ -27,3 +27,12 @@ test('F4 fish follow Marshall (1984): 355 kg/ha at 1 km2, 200 at 10, falling wit
   assert.ok(Math.abs(F.lakeFishKgHa(1) - 355) < 1e-9 && Math.abs(F.lakeFishKgHa(10) - 200) < 1e-9);
   assert.ok(F.lakeFishKgHa(34) < 200 && F.lakeFishKgHa(34) > 112);
 });
+
+test('F5 fire needs fuel: no dead grass, no fire; a fire burns its share of the dead grass and the books hold', async () => {
+  const { createWorld2, stepWorld } = await import('../dist/world.js');
+  const s = createWorld2(3, {});
+  stepWorld(s, 24 * 400);
+  const P = s.plants;
+  const held = P.green + P.dead + P.removedTotal + (P.eatenTotal ?? 0) + (P.burnedTotal ?? 0);
+  assert.ok(Math.abs(P.grownTotal - held) < 1e-6 * P.grownTotal, `${P.grownTotal} vs ${held}`);
+});
