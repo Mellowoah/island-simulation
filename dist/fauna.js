@@ -89,8 +89,12 @@ export function killsPerDay(P, herds, group = R(P.group)) {
     G = Math.max(1, group),
     h = R('handleDays') + R('digestDays') / G;
   const total = herds.reduce((t, H) => t + H, 0),
-    groupKills = (a * total) / (1 + a * total * h);
-  return herds.map(H => (total ? (groupKills * H) / total / G : 0));
+    groupKills = (a * total) / (1 + a * total * h),
+    // prey switching (Murdoch 1969): the group's hunting goes disproportionately to the commonest prey, in
+    // proportion to herds^switchingPower (1: no switching); rare prey get a refuge (Owen-Smith and Mills 2008)
+    pull = herds.map(H => H ** R('switchingPower')),
+    pulls = pull.reduce((t, p) => t + p, 0);
+  return pull.map(p => (pulls ? (groupKills * p) / pulls / G : 0));
 }
 // A year's change in a predator population of n with fed share `fed` (0..1): growth at full food, decline when hungry
 export const predatorChange = (n, fed, mass) => {

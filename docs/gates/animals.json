@@ -13,7 +13,7 @@
  "fails": [],
  "hashes": {
   "nature.js": "ea508319af21860cf5eb903f02980a544b499d8cab21e7d121be7b01840ef07f",
-  "fauna.js": "a8900e91b4f2eb2b352af7745bbd551777e14fbacc520ca4b4fb40f7243e449b"
+  "fauna.js": "8efe6262880fc254107f9f94743fcd61e617305dd3440d096247d2e7ae066053"
  },
  "toggle": "config.layers.animals"
 }

@@ -656,3 +656,10 @@ Robert approved territories as the next step.
   die out by year 6, lions settle near 16-20, impala recover. The diet is a measured fact and stays; the failure
   is recorded. The pattern behind all four tries: at low prey numbers each group's kills depend on the ground it
   searches, so a rare prey keeps being hunted by predators that live on a common one (apparent competition).
+- Save B, prey switching (Murdoch 1969; the accelerating, type III response that prey selection produces, which
+  counteracts fluctuations by sparing prey that have become rare: Owen-Smith and Mills 2008, Kruger lions; lions
+  shift diet with prey numbers, Eastern Cape 2011): each group's hunting split in proportion to herds^2
+  (switchingPower 2, assumption within 1-3). Island 1: the large herds and the lions now hold steady from about
+  year 10 (impala about 20, zebra about 30, buffalo about 200 kg/km2; about 13 lions, fed 0.97). Lion biomass
+  about 92 kg per 10,000 kg of its prey: Carbone and Gittleman's 90, not set. Still wrong: hyenas die out by
+  year 6, and total large herbivores (about 250 kg/km2) are low, though inside the park range.
