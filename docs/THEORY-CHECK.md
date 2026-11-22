@@ -822,3 +822,17 @@ on islands 42 and 43, no crash, people alive and having children, food and water
 island-year, page code parses; passes today, about 3 minutes); time-box each layer to three saves, then measured data
 as input (17). Rain (Layer 1) is on save 1 of 3: save 1 was the physics (a23864c); next, measured moist stability and
 inflow wind.
+
+## 21 Nov 2026: Layer 1 rain, save 2 of 3: measured moist stability and wind
+
+Robert: "see if you can work through it." No paper gives these for northern Tanzania, but real soundings do: four
+Nairobi radiosondes (station 63741, 1,798 m, the nearest upper-air station, about 280 km north-east of Eyasi) in
+the April 2025 long rains, from the College of DuPage archive. tools/moist-stability.mjs computes the saturated
+buoyancy frequency layer by layer (Durran and Klemp 1982: Nm^2 = (g/T)(dT/dz + Gm)(1 + L qs/(Rd T)) - g/(1+qw) dqw/dz).
+- All four saturated layers (1.3-2.4 km deep) were moist-UNSTABLE: Nm^2 -2.0e-5 to -6.5e-5 s-2.
+- Winds in those layers: 1.5-3.6 m/s from 70-120 deg (one near-calm day from the north).
+- Consequence: the linear theory of orographic rain needs stable or neutral moist air (Nm^2 >= 0), so it does not
+  apply to these rains. They are convective, which fits the Kilimanjaro modelling (local processes give over 60% of
+  the rain at 2-4 km). The first-look result (basin wetter than plateau) came from using the theory outside its range.
+  The code stays (correct, tested, for stable-flow cases); register now carries the measured wind and the finding.
+- Under rule 17 the third save is the fallback: measured rain as input, with held-out stations as the only checks.
