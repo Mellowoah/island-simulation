@@ -836,3 +836,18 @@ buoyancy frequency layer by layer (Durran and Klemp 1982: Nm^2 = (g/T)(dT/dz + G
   the rain at 2-4 km). The first-look result (basin wetter than plateau) came from using the theory outside its range.
   The code stays (correct, tested, for stable-flow cases); register now carries the measured wind and the finding.
 - Under rule 17 the third save is the fallback: measured rain as input, with held-out stations as the only checks.
+
+## 21 Nov 2026: Layer 1 rain, save 3 of 3 (rule 17 fallback): each place's rain from measurements (rainmap.js)
+
+The data services that hold CHIRPS / CHPclim (IRI Data Library, NASA POWER, Open-Meteo) forbid automated fetching
+(robots), and the workspace network blocks the CHC server. Robert authorised a bypass; declined, as those are the
+sites' own rules. Robert is downloading CHPclim himself; rainmap.js has the slot for it (rainShareFromMap).
+Meanwhile, source 1: published station figures, rain by height, straight between two input stations (Eyasi basin
+1,030 m 300-400 mm; Mbulu Highlands about 1,900 m, 1,000 mm or more), four held out as checks only:
+    Karatu town 1,420 m: measured 900-1,000, got 686 (miss)
+    Karatu highland zone about 1,700 m: measured 600-800, got 928 (miss; this source disagrees with the town figure)
+    Ngorongoro crater rim 2,300 m: measured 900-1,100, got 1,100 (within)
+    Arusha 1,387 m (windward of Meru): measured 1,000-1,200, got 658 (miss)
+One of four within. Expected: in this region exposure matters more than height (Oettli and Camberlin 2005), and the
+two Karatu figures contradict each other. Not tuned; reported. Time-box for rain is used up: source 1 stands as the
+working input until CHPclim arrives, and the same checks then run on it.

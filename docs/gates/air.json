@@ -1,7 +1,7 @@
 {
  "layer": "air",
  "pass": true,
- "date": "2026-11-21",
+ "date": "2026-11-22",
  "islands": 6,
  "years": 3,
  "tests": "# pass 5",
@@ -14,7 +14,8 @@
  "hashes": {
   "atmosphere.js": "3be9b12926f400916c1037ce2a56a3c22b010558ef74ddc0300b3cbd4dbb21e4",
   "rain-years.js": "5ccdb00a90a0f68ebbcc4306d0d9c613ecc99bf204eea6400ae801d44429bbaf",
-  "orographic.js": "4ba65233a543e3888d7515ed9b3573671768d8681deb79cd3e63eae9fcf3692d"
+  "orographic.js": "4ba65233a543e3888d7515ed9b3573671768d8681deb79cd3e63eae9fcf3692d",
+  "rainmap.js": "abce748709aba7f2bdfc55d64d3d8ee478b3eca89781677614b449f30d32981b"
  },
  "toggle": "none: this layer was wired before the gate existed, so before and after run the same code"
 }
