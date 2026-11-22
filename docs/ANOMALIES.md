@@ -22,3 +22,4 @@ Children's traits regress toward a fixed 1 (body) or 0.5 (mind), not toward the 
 
 ## A9 — some islands are chaotic (19 Nov 2026)
 Island 4 (seed 4) over 10 years: with feelings off, changing news blur from 0.29 to 0.31 gives 13 or 48 survivors; with fear on, 2, 51 or 70 depending on fear weight. Small causes, large effects: results must come from many islands (ensembles), never from one. Open: why seed 4 is fragile (thirst and starvation both high even in its best runs).
+| A8 | 21 Nov | Hack's law on the bigger world's land (flow.js over land-big.js) | exponent 0.5-0.7 (Hack 1957; Dodds and Rothman 2000), slightly below 0.6 for basins under 20,000 km2 (Rigon et al. 1996) | 0.47 (catchments 1-2,000 km2, 29,458 squares) | the land is generated noise, not eroded: real basins elongate as rivers cut them; water moves in four directions only | open (test FL3 TODO); a surveyed height grid or an erosion step would test which |

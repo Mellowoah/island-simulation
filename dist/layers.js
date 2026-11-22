@@ -15,7 +15,7 @@ export const LAYERS = {
     note: 'time, chance keys and the register of numbers; clock.js also reads the sun for darkness' },
   sun: { rank: 0, plan: 0, status: 'real', files: ['sun.js'], gate: 'admitted' },
   air: { rank: 1, plan: 1, status: 'real', files: ['atmosphere.js', 'rain-years.js', 'orographic.js', 'rainmap.js'], gate: 'admitted' },
-  terrain: { rank: 2, plan: 3, status: 'real', files: ['terrain.js'], real: ['land.js', 'land-big.js'], toggle: 'config.layers.terrain',
+  terrain: { rank: 2, plan: 3, status: 'real', files: ['terrain.js'], real: ['land.js', 'land-big.js', 'flow.js'], toggle: 'config.layers.terrain',
     note: 'heights in metres, flow accumulation and catchments over the map (land.js); gate passed 20 Nov 2026; the map itself is still generated, with no erosion, soil or nutrients yet' },
   water: { rank: 3, plan: 2, status: 'real', files: ['weather.js'], real: ['water.js'], toggle: 'config.layers.water',
         note: 'FAO Penman-Monteith, SCS runoff, HBV percolation, stream channels and groundwater; gate passed 19 Nov 2026; catchScale retired by Layer 3 catchments; curve numbers from land cover (TR-55 composite); rivers are losing streams (20 Nov)' },

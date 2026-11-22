@@ -864,3 +864,10 @@ The shape is generated (fractal noise on that layout); a survey grid (SRTM) woul
   km2 (an assumption of its size; Lake Eyasi varies with the seasons). Builds in 0.06 s (343 x 343 squares).
 - Next saves: rivers, catchments and flow over it (the land.js routing, made to take any grid); then the switch that
   lets a world run on it, and the whole-world check on both worlds.
+
+## 21 Nov 2026: Layer 3, the bigger world, save 2 of 3: water over any grid (flow.js)
+
+The island's routing (priority-flood, Barnes et al. 2014; upstream-first accumulation) made into functions of any
+grid (rule 12), run on the bigger land. Every square drains to the lake or the sea (FL1); catchments emptying into
+outlets add up to all the land (FL2); largest catchment about 2,000 km2; 0.1 s. Hack's law (FL3): exponent 0.47
+against the measured 0.5-0.7: anomaly A8, open, not tuned (likely the land is generated, not eroded).
