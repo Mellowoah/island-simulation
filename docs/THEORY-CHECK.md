@@ -851,3 +851,16 @@ Meanwhile, source 1: published station figures, rain by height, straight between
 One of four within. Expected: in this region exposure matters more than height (Oettli and Camberlin 2005), and the
 two Karatu figures contradict each other. Not tuned; reported. Time-box for rain is used up: source 1 stands as the
 working input until CHPclim arrives, and the same checks then run on it.
+
+## 21 Nov 2026: Layer 3 (terrain), the bigger world, save 1 of 3: the land's shape (land-big.js), built beside
+
+Rule 15: a separate generator, imported by nothing in the running world (test TB4). A pure function of a landscape
+description (rule 12) following the real land around Lake Eyasi: basin and lake at the foot of the Eyasi escarpment
+(running south-west to north-east), the Mbulu-like plateau on its south-east, a volcanic block to the north-east.
+The shape is generated (fractal noise on that layout); a survey grid (SRTM) would be better and can replace heightAt.
+- Result (checks only, all against measurements): land 10,664 km2 (target about 10,000); basin median 1,266 m (lake
+  1,030 m, Lake Eyasi); plateau median 2,081 m (Mbulu Highlands 1,500-2,300 m); highest 2,900 m (Ngorongoro
+  conservation area tops out at 3,648 m); the escarpment climbs from the lake to about 1,860 m within 4 km. Lake 693
+  km2 (an assumption of its size; Lake Eyasi varies with the seasons). Builds in 0.06 s (343 x 343 squares).
+- Next saves: rivers, catchments and flow over it (the land.js routing, made to take any grid); then the switch that
+  lets a world run on it, and the whole-world check on both worlds.
