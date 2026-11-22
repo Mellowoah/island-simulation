@@ -20,6 +20,8 @@
 // Nothing here is God, Eden or the deceiver. Those come later as layers on this same world.
 
 import { noise2, seedKey, STREAMS, fieldPath, fieldDist, mapOf, path } from './sim.js';
+import { maxOf, minOf } from './numbers.js';
+import { placesChanged } from './w-memo.js';
 import {
   R,
   activeRates,
@@ -70,6 +72,7 @@ import {
   youngOf,
 } from './w-people.js';
 import { bandThin, evening, feedFromPool, maybeMoveCamp, share } from './w-social.js';
+import { diseaseDay } from './disease.js';
 
 export * from './w-core.js';
 export * from './w-food.js';
@@ -137,7 +140,7 @@ export function createWorld2(seed = 41, opts = {}) {
         .map(x => ({
           x,
           d:
-            Math.min(...s.bands.map(b => Math.abs(b.camp.x - x.x) + Math.abs(b.camp.y - x.y))) +
+            minOf(s.bands.map(b => Math.abs(b.camp.x - x.x) + Math.abs(b.camp.y - x.y))) +
             draw(s, bi, SALT.setupCamp, x.x * 999 + x.y) * 4,
         }))
         .sort((a2, b2) => b2.d - a2.d)[0].x;
@@ -202,6 +205,7 @@ export function createWorld2(seed = 41, opts = {}) {
         }
     for (const q of s.patches)
       if (Math.hypot(q.x - c.x, q.y - c.y) <= kr) p.places[q.id] = { exp: q.stock, t: 0, u: q.stock, n: 1 };
+    placesChanged(p);
     for (const w of s.waters)
       if (Math.hypot(w.x - c.x, w.y - c.y) <= kr) p.waters[w.id] = { active: w.active, t: 0, dryOk: w.id === c.water };
     p.seenN = p.seen.reduce((n, v) => n + v, 0);
@@ -316,6 +320,7 @@ export function stepWorld(s, n = 1) {
       if (hr === 19) evening(s);
       else if (hr === 10 || hr === 13 || hr === 16) share(s);
     }
+    if (s.tick % day === 0 && s.config.disease?.pneumococcus) diseaseDay(s);
     if (s.tick % day === 0) {
       // how far grown people have had to walk lately (a ten-day average): long days mean the food near camp is used up
       for (const b of s.bands) {

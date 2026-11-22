@@ -30,7 +30,19 @@ import { R, clockOf, hourOf } from './clock.js';
 import * as T from './terrain.js';
 import { LAYERS } from './layers.js';
 import { plantYearRatio } from './plants.js';
-import { intakeKgDay, grazeDay, starveDeaths } from './fauna.js';
+import {
+  intakeKgDay,
+  grazeDay,
+  starveDeaths,
+  PREDATORS,
+  killsPerDay,
+  predatorChange,
+  startPredators,
+  RANGE,
+  placeRanges,
+  energyRatio,
+  conditionDay,
+} from './fauna.js';
 
 const K = STREAMS.world[0];
 const SALT = SALTS; // named once in streams.js
@@ -156,8 +168,98 @@ export function animalDay(s) {
   // rain with exponent 0.7, approx.; real: the plants' own year)
   const grown = real ? plantYearRatio(s) : null,
     kf = s.weather ? Math.max(0.3, Math.min(1.4, grown ?? rainYearRatio(s) ** 0.7)) : 1;
-  for (const [id, sp] of Object.entries(SPECIES)) speciesDay(s, id, sp, kf, met);
+  // with predators, the large herds (20 kg and up, the prey of lions and hyenas) are held by grass and predators;
+  // small animals keep their field-count levels, which carry the small predators not modelled (jackals, caracals,
+  // eagles, pythons): left to grass alone, hares and hyraxes overran the island (20-21 Nov 2026)
+  const byGrass = s.config?.predators === true;
+  for (const [id, sp] of Object.entries(SPECIES))
+    (byGrass && sp.mass >= 20 ? grassHerdDay : speciesDay)(s, id, sp, kf, met);
+  if (byGrass) predatorDay(s);
   dropCarcasses(s);
+}
+// Lions and hyenas (fauna.js): prides and clans, each on its own home range, hunt the herds in it; herds drift
+// between neighbouring cells, so land no group holds is a refuge
+function predatorDay(s) {
+  s.predators ??= startGroups(s);
+  driftHerds(s);
+  for (const [id, P] of Object.entries(PREDATORS)) for (const g of s.predators[id].groups) huntDay(s, g, P);
+  s.carrion?.fill(0); // what no scavenger ate in a day goes to vultures, jackals and rot
+}
+const CELL_KM2 = (CELL * T.TILE_KM) ** 2;
+const habitatCells = () => habitat().flatMap((h, c) => ((h.grass ?? 0) + (h.woodland ?? 0) > 0 ? [c] : []));
+const herdKg = (s, sp) => s.animals[sp].reduce((t, n) => t + n, 0) * SPECIES[sp].mass;
+const preyKgOf = (s, P) => P.prey.reduce((t, sp) => t + herdKg(s, sp), 0);
+// Ranges placed on the habitat; the starting numbers (Carbone and Gittleman's ratio) shared among the groups
+function startGroups(s) {
+  const out = {};
+  for (const [id, P] of Object.entries(PREDATORS)) {
+    const ranges = placeRanges(habitatCells(), R(RANGE[id]), CELL_KM2, CW, CH),
+      each = startPredators(preyKgOf(s, P), P.mass) / Math.max(1, ranges.length);
+    out[id] = { groups: ranges.map(cells => ({ cells, n: each, fed: 1, killedKg: 0 })) };
+  }
+  return out;
+}
+function huntDay(s, g, P) {
+  const km2 = g.cells.length * CELL_KM2,
+    herds = P.prey.map(sp => g.cells.reduce((t, c) => t + s.animals[sp][c], 0) / SPECIES[sp].herd / km2),
+    kills = killsPerDay(P, herds, g.n);
+  let meat = 0;
+  P.prey.forEach((sp, k) => {
+    const kg = g.n * kills[k] * SPECIES[sp].mass;
+    meat += takePreyIn(s, sp, kg, g.cells) * MEAT.edible;
+  });
+  g.killedKg += meat / MEAT.edible;
+  if (P.scavenges) meat += scavenge(s, g.cells, Math.max(0, g.n * P.needKg - meat));
+  const ratio = g.n ? meat / (g.n * P.needKg) : 0;
+  g.fed = Math.min(1, ratio);
+  g.n = Math.max(0, g.n + predatorChange(g.n, g.fed, P.mass) / 365 - hungerDeaths(g, ratio));
+}
+// Body reserves, in days of need (full at predatorStarveDays): they fill when a group eats more than it needs and
+// drain when it eats less; once empty, the hungry die as herbivores do (fauna.js starveDeaths)
+function hungerDeaths(g, ratio) {
+  const most = R('predatorStarveDays');
+  g.reserve = Math.min(most, (g.reserve ?? most) + ratio - 1);
+  if (g.reserve > 0) return 0;
+  g.reserve = 0;
+  return (g.n * (1 - Math.min(1, ratio))) / most;
+}
+// Meat (kg) a scavenging group finds today in its range from animals that died of other causes, up to what it needs
+function scavenge(s, cells, wantKg) {
+  let got = 0;
+  for (const c of cells) {
+    if (!s.carrion || got >= wantKg) break;
+    const take = Math.min(s.carrion[c], wantKg - got);
+    s.carrion[c] -= take;
+    got += take;
+  }
+  return got;
+}
+// A kill of up to kg live mass from a herd, from the given cells in proportion to their animals; returns kg taken
+function takePreyIn(s, sp, kg, cells) {
+  const N = s.animals[sp],
+    total = cells.reduce((t, c) => t + N[c], 0);
+  if (!total || kg <= 0) return 0;
+  const f = Math.min(1, kg / SPECIES[sp].mass / total);
+  for (const c of cells) N[c] *= 1 - f;
+  return f * total * SPECIES[sp].mass;
+}
+// Each day a share of every large herd moves to the neighbouring cells it can live in
+function driftHerds(s) {
+  const m = R('herdDriftPerDay');
+  for (const [id, sp] of Object.entries(SPECIES)) {
+    if (sp.mass < 20) continue;
+    const N = s.animals[id],
+      next = N.slice();
+    for (let c = 0; c < N.length; c++) {
+      const to = [c - 1, c + 1, c - CW, c + CW].filter(
+        k => k >= 0 && k < N.length && Math.abs((k % CW) - (c % CW)) <= 1 && capacity(sp, k) > 0,
+      );
+      if (!to.length || !N[c]) continue;
+      next[c] -= m * N[c];
+      for (const k of to) next[k] += (m * N[c]) / to.length;
+    }
+    s.animals[id] = next;
+  }
 }
 // The herds' need for the day, met from the herb layer (share met)
 function grazing(s) {
@@ -172,14 +274,41 @@ const landKm2 = () => (LAND_KM2 ??= habitat().reduce((t, h) => t + Object.values
 function speciesDay(s, id, sp, kf, met) {
   const N = s.animals[id],
     r = rMax(sp.mass),
-    dt = 1 / 365;
+    dt = 1 / 365,
+    day = animalsReal(s) ? herdCondition(s, id, met) : { breed: 1, starve: 0 };
   for (let c = 0; c < N.length; c++) {
     const K = capacity(sp, c) * kf;
     if (K <= 0) continue;
     const n = N[c],
-      births = r * n * dt,
-      deaths = ((r * n * n) / K) * dt + starveDeaths(n, met);
+      births = r * n * dt * day.breed,
+      deaths = ((r * n * n) / K) * dt + n * day.starve;
     N[c] = Math.max(0, n + births - deaths);
+    maybeCarcass(s, c, id, sp, deaths);
+  }
+}
+// The energy law (fauna.js) for a herd today: its diet's energy against its need moves its body reserves; it breeds
+// while they last and starves once they are gone. With the real animals this holds for every herd, field-count or not.
+function herdCondition(s, id, met) {
+  const cond = (s.condition ??= {}),
+    day = conditionDay(cond[id] ?? R('herdStarveDays'), energyRatio(s.plants?.greenShare ?? 1, met));
+  cond[id] = day.reserve;
+  return day;
+}
+// A herd limited by its food, not by a field count: births at up to the most a mammal of its mass can grow (Fenchel
+// 1974) in proportion to how much of its need it met today; background deaths (herbivoreDeathRate) and hunger deaths;
+// predators take their share in predatorDay. Animals live only where their habitat is.
+function grassHerdDay(s, id, sp, kf, met) {
+  const N = s.animals[id],
+    d = R('herbivoreDeathRate'),
+    r = rMax(sp.mass),
+    dt = 1 / 365;
+  const day = herdCondition(s, id, met);
+  for (let c = 0; c < N.length; c++) {
+    if (capacity(sp, c) <= 0) continue;
+    const n = N[c],
+      deaths = d * n * dt + n * day.starve;
+    N[c] = Math.max(0, n + (r + d) * day.breed * n * dt - deaths);
+    (s.carrion ??= new Float64Array(N.length))[c] += deaths * sp.mass * MEAT.edible; // for scavengers today
     maybeCarcass(s, c, id, sp, deaths);
   }
 }
@@ -373,13 +502,7 @@ export function wildfireDay(s) {
     f = (((s.tick % C.year) + C.year) % C.year) / C.year;
   // with weather: grass burns when it has cured (dry soil, no rain for three days), and more often when last year's
   // rain grew more grass to burn (fuel); without weather, the dry season by the calendar
-  const odds = s.weather
-    ? soilMoisture(s) < 0.3 && rainLastDays(s, 3) < 1
-      ? Math.max(0.3, Math.min(1.6, rainYearRatio(s)))
-      : 0
-    : f < 7 / 12
-      ? 0
-      : 1;
+  const odds = s.weather ? (soilMoisture(s) < 0.3 && rainLastDays(s, 3) < 1 ? fuelOdds(s) : 0) : f < 7 / 12 ? 0 : 1;
   if (!odds) return;
   if (draw(s, 1, SALT.fire) < (odds * T.LAND_KM2) / 1000) {
     const c = Math.floor(draw(s, 2, SALT.fire) * CW * CH),
@@ -388,9 +511,28 @@ export function wildfireDay(s) {
     const x = ((c % CW) * CELL + CELL / 2) | 0,
       y = (Math.floor(c / CW) * CELL + CELL / 2) | 0;
     s.wildfires.push({ x, y, cell: c, until: s.tick + C.day });
+    burnFuel(s, h);
     roastedByFire(s, x, y, C);
   }
   s.wildfires = s.wildfires.filter(w => w.until > s.tick);
+}
+// How readily grass fire runs. With the real plants: in proportion to the cured grass standing (fires in savanna
+// are limited by fuel, not by sparks: Archibald et al. 2010; fuel follows the past years' rain: Govender et al.
+// 2006), against its usual level on days fire is possible (fuelRefGm2); no dead grass, no fire. Before that, the
+// rain-year shortcut.
+function fuelOdds(s) {
+  if (s.plants && (s.config?.layers?.plants ?? LAYERS.plants.status) === 'real')
+    return Math.min(1.6, s.plants.dead / R('fuelRefGm2'));
+  return Math.max(0.3, Math.min(1.6, rainYearRatio(s)));
+}
+// The fire burns the cured grass on its ground: the island's dead grass falls by the burnt share of the land (only
+// grass not eaten is fuel, and what burns is no longer there to burn or eat)
+function burnFuel(s, h) {
+  const P = s.plants;
+  if (!P || (s.config?.layers?.plants ?? LAYERS.plants.status) !== 'real') return;
+  const burnt = (P.dead * ((h.grass ?? 0) + (h.woodland ?? 0))) / T.LAND_KM2;
+  P.dead -= burnt;
+  P.burnedTotal = (P.burnedTotal ?? 0) + burnt;
 }
 // small animals caught by the fire: roasted carcasses for anyone who comes
 function roastedByFire(s, x, y, C) {

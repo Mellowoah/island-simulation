@@ -1,5 +1,6 @@
 // Island small world: people.js (split from world.js, build plan change 4; behaviour unchanged).
 import { noise2, seedKey, STREAMS, fieldPath, fieldDist, mapOf, path } from './sim.js';
+import { placesChanged } from './w-memo.js';
 import {
   R,
   clockOf,
@@ -440,6 +441,7 @@ export function die(s, p, cause) {
   p.seenCount = p.seen.reduce((n, v) => n + v, 0);
   p.seen = null;
   p.places = {};
+  placesChanged(p);
   p.waters = {};
   p.carcasses = {};
   p.plan = [];

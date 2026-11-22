@@ -526,3 +526,348 @@ Robert: "Remove hazda and implement our goal".
   checks both (all pass). nature.js split: animalDay, law and wildfireDay into small functions, fingerprint
   identical (eef4c2c7e0262054).
 - Still to tie in: wildfire fuel should come from the dead grass, not the rain ratio.
+
+## 20 Nov 2026: merged to main and live
+
+- Robert: "Merge all live". PR #4 (Layers 0-5 real) merged as 815e17d after the front-page screenshots were sent.
+- The live-site workflow then failed without running: its name, "Publish Island: the small world", had an
+  unquoted colon, so the YAML could not be read. Quoted, test WF1 added (any workflow name with a colon must be
+  quoted), merged as PR #5 (28aafe5). GitHub Pages deployment of 28aafe5: success.
+- Not checked from here: the workspace cannot open github.io, and the web-reader check went unapproved.
+
+## 20 Nov 2026: fire burns the dry grass that grew
+
+- Predators checked: they are in the model only implicitly (field-count herd densities carry their effect; most
+  natural deaths are kills that lions and hyenas finish, so only a share leaves a carcass; buffalo and zebra can
+  hurt hunters; people learn fear of large animals). Predators as their own animals are deferred (Robert).
+- Fire with the real plants: odds in proportion to the standing dead grass against its mean on fire-possible days
+  (fuelRefGm2 413 g/m2, the model's own, p10-p90 296-549); no dead grass, no fire. Savanna fire is limited by fuel,
+  not sparks (Archibald et al. 2010); fuel follows the past years' rain (Govender et al. 2006); only grass not
+  eaten is fuel (FAO). Each fire burns its share of the island's dead grass (burnedTotal). Books: grown = green +
+  dead + removed + eaten + burned (test F5).
+- Result (6 islands x 3 years): 38.9 fires a year (before, on the rain shortcut: 49.0), about a third of the land
+  burnt a year (not yet checked against a source). Correlation of fires with that year's mean dead grass 0.33
+  (before 0.43; lower because fires now remove the fuel they are measured against).
+- Animals gate re-run: passed (deaths 4.8 -> 4.2, herds ate 2.5%). Plants stand-in path unchanged (c4ffeb745a9ff88e).
+
+## 20 Nov 2026 (night): every new assumption run across its range; should the island be larger?
+
+Robert approved the range runs, and asked whether to add land (journals and mathematics).
+- tools/ranges.mjs: 23 assumptions, each at its register low and high, 2 islands x 2 years (94 runs); every
+  layer's check applied to each (docs/ranges-2026-11-20.txt).
+- Failures, shown in full:
+  - Plants (peak standing under 0.75 of Deshmukh): transpirationShare 0.36 (0.60), aboveShare 0.4 (0.64),
+    litterHalfLifeDays 90 (0.66), transpirationRatio 350 (0.73). Growth is uncertain by about a third across the
+    measured ranges; the Deshmukh check rules out the low ends together.
+  - Water (Sep-Oct holes under 0.15): holeAreaHa 4 (0.14), poolBedSeepMm 10 (0.10).
+  - Land (small catchments drier than large): fails even at the base values in these short runs (0.32 against
+    0.29; the gate's 6 islands x 3 years gave 0.32 against 0.39). The pattern is real but weak: the gap is small
+    next to island-to-island noise. Not tuned; noted as fragile.
+- People: deaths (2.0 per island) and people alive (60.5) are the same in every one of the 94 runs. No assumption
+  in any layer changes who lives or dies, because food and water never run short and almost all deaths come from
+  the scripted Hadza illness curve. The environment does not yet reach the people: the strongest reason to do
+  Layer 6 next.
+- Island size. Now 850 km2 of land, 45 people in 3 bands at the start (0.05 per km2). The Hadza: about 1,000
+  people on about 4,000 km2, 0.24 per km2 in 1985 and 0.33 in 2000 (eHRAF, Marlowe 2010). A stable population of
+  about 150 is demographically viable (White 2017, JASSS 20(4) 9); older work put it near 500 (Wobst 1974);
+  isolated forager populations likely went extinct locally every few hundred years (Hamilton and Walker). At
+  measured forager densities the island would hold about 200-280 people, above 150. Land is not what limits the
+  island today; the starting number and the scripted deaths are. Recommendation: do not enlarge now; decide after
+  Layer 6, when density is a result. If networks and institutions (Layers 7-10) need more bands, a Hadza-sized
+  island (about 4,000 km2) is the measured reference, at about 4-5 times the computing and every gate re-run.
+- Burnt area (about a third of the land a year) still not checked against a source: none found for this rainfall.
+
+## 20 Nov 2026 (late): Layer 6 step 1: aging from the cross-forager measure, not the Hadza fit
+
+- The deaths the sim does not model itself come from a Siler age curve (infant-child, constant, aging), all three
+  terms the Hadza fit. Step 1 replaces only the aging term, the least Hadza-specific: human mortality doubling
+  times are similar across populations, 7-9 years (Finch 2007); the Hadza term doubled every 5.5 years, the
+  hunter-gatherer average every 8.1 (Gurven and Kaplan 2007, table 2: a3 1.47e-4, b3 0.086), now used.
+- Effect on the curve: life expectancy at birth 34.3 -> 32.1 years; at 45, 24.9 -> 21.6 more years.
+- Effect on the island (2 islands x 10 years): people alive 70 -> 68 and 72 -> 72; deaths almost unchanged.
+  Seen in passing: on island 2, 12 of 32 deaths in ten years were from thirst, so the environment does reach
+  people on some islands over longer runs (the 2-year range runs missed it).
+- Next (step 2, a big modelling decision, to be agreed first): replace the infant-child and constant terms with
+  disease from the body and from contact.
+
+## 20-21 Nov 2026: Layer 5, predators, save 1 of 3: lions and hyenas (off by default)
+
+Robert approved the plan (predators, then herds limited by grass, then carcasses and risk to people), predators
+before disease because each layer's output is the next layer's environment.
+- fauna.js: the grouped functional response of Fryxell et al. (2007, Nature): a group of G predators meets herds
+  (animals per km2 / herd size), kills a day for the group a H / (1 + a H (h1 + h2 / G)); a 1.16 km2 a day, h1
+  0.045 d, h2 1.422 d, lions G 6.3; hyenas G 3 with the lion's rates (assumptions). Needs: lion 6 kg of meat a
+  day (Shamwari 5-7), hyena 3.9 (Henschel and Tilson 3.8-4.0). Prey by size (half to twice own mass); hyenas avoid
+  zebra and buffalo (Hayward 2006). Births when fed up to Fenchel's rMax; deaths 0.15 a year (assumption). Start
+  at Carbone and Gittleman's 90 kg per 10,000 kg of prey.
+- First version (lions hunting alone, meeting single animals, type II on biomass): wiped out the prey in two to
+  three years (herbivores 1,262 -> 33 kg/km2), as the unstable simple model predicts.
+- With grouping: a slow decline instead (1,262 -> 89 kg/km2 in 8 years; lions 61 -> 62, starving). Expected while
+  herds are capped by field counts: a capped herd spares at most r/4 of its mass a year (about 6-9%), and predators
+  at Carbone's ratio need about 24% a year. Save 2 (herds limited by grass) is what can carry them.
+- Off by default (config.predators); default island unchanged. Test F6. 194 tests pass.
+
+## 21 Nov 2026: predators, save 2 of 3: large herds limited by grass (with predators on) - unstable, shown in full
+
+- With config.predators, herds of 20 kg and up are held by grass and predators: births up to Fenchel's rMax in
+  proportion to the food need met; background deaths herbivoreDeathRate (0.1 a year, assumption) and hunger.
+- First try (all herds by grass): hares and hyraxes, with no predator of their own in the model, overran the
+  island (hares 23 -> 23,497 kg/km2 in 8 years) and starved the large herds. Small animals now keep their
+  field-count levels, which carry the small predators not modelled (jackals, caracals, eagles, pythons); hyenas no
+  longer take 5 kg dik-dik (they prefer 56-182 kg, Hayward 2006).
+- Second try: the large prey still collapse (island 1: impala 470 -> 0, zebra 502 -> 4, buffalo 232 -> 61 kg/km2
+  in 12 years; lions 61 -> 114 -> 49, hyenas 65 -> 27, starving) with grass plentiful throughout.
+- Mathematics: an equilibrium exists (for zebra about 200 kg/km2 and about 34 lions on the island: lions fed a third
+  of their need, kills equal to the zebra's growth), but with prey not food-limited and predators unlimited by
+  anything but prey it is unstable (the paradox of enrichment, Rosenzweig 1971); starting at Carbone's ratio
+  (61 lions) above it, the swings grow until the prey crash.
+- What steadies real systems (literature): predator territoriality and density-dependent cub survival; spatial
+  refuges for prey; herd size growing with density (Fryxell 2007; its fitted values are in a supplement not
+  reached). Proposed to Robert: prides and clans on home ranges on the map (territories and refuges together).
+- Off by default; default island unchanged (fingerprint ee5f79eb58495f15).
+
+## 21 Nov 2026: predators, save 3: prides and clans on home ranges, herd drift, hunger deaths (off by default)
+
+Robert approved territories as the next step.
+- fauna.js: home ranges placed on the habitat (lions 100 km2, hyenas 50 km2: assumptions within the measured
+  36-600 and 9-1000+ km2), each group hunting only its own range with its own size in Fryxell's response; land no
+  group holds is a refuge. Large herds drift to neighbouring 2.8 km cells (herdDriftPerDay 0.05, assumption).
+- Island 1, 16 years: still a collapse (impala 470 -> 0, zebra 502 -> 2). Arithmetic: at low prey the share of
+  zebra killed a year is about (lions per km2) x a / (herd x pride) = 0.13 x 1.16 / 63 x 365 = 0.87, against the
+  zebra's most growth of 0.26; and the predators held that density for years on 11% of their food, because they
+  had only a slow background death rate.
+- Hunger added (it had been left out): each group carries body reserves of up to predatorStarveDays (30 days,
+  assumption 14-60); once empty, the hungry die, as herbivores do.
+- Island 1, 20 years, with hunger: lions 61 -> about 20, well fed; impala recover (96 -> 227 kg/km2); but hyenas
+  die out by year 6 (24 small clans hunting impala only) and zebra fade (502 -> 3): lions living on impala and
+  buffalo keep killing zebra faster than they breed (apparent competition; at low prey a pride's kills depend on
+  the ground it searches, not its size; with prides over nearly all the habitat, zebra lose about 0.42 a year
+  against 0.26 growth).
+- Missing, from the literature: hyenas also eat zebra and take lion kills (hyenas lose 70% of their kills to lions
+  yet gain equal food from them; Periquet et al. 2015); zebra herd size rising with density (Fryxell 2007);
+  territories not covering all the land.
+- This save made more than one change (ranges, drift, hunger): noted against the one-change rule.
+- Off by default; default island unchanged (fingerprint ee5f79eb58495f15).
+
+## 21 Nov 2026: predators time-boxed (Robert): up to three single-change saves, then on only if stable
+
+- Save A, the hyena's real diet: zebra added (avoided, not refused; Hayward 2006). Island 1: worse. Zebra
+  502 -> 53 kg/km2 in two years (hyenas now hunt them too; Carbone's start doubles hyenas to 135), hyenas still
+  die out by year 6, lions settle near 16-20, impala recover. The diet is a measured fact and stays; the failure
+  is recorded. The pattern behind all four tries: at low prey numbers each group's kills depend on the ground it
+  searches, so a rare prey keeps being hunted by predators that live on a common one (apparent competition).
+- Save B, prey switching (Murdoch 1969; the accelerating, type III response that prey selection produces, which
+  counteracts fluctuations by sparing prey that have become rare: Owen-Smith and Mills 2008, Kruger lions; lions
+  shift diet with prey numbers, Eastern Cape 2011): each group's hunting split in proportion to herds^2
+  (switchingPower 2, assumption within 1-3). Island 1: the large herds and the lions now hold steady from about
+  year 10 (impala about 20, zebra about 30, buffalo about 200 kg/km2; about 13 lions, fed 0.97). Lion biomass
+  about 92 kg per 10,000 kg of its prey: Carbone and Gittleman's 90, not set. Still wrong: hyenas die out by
+  year 6, and total large herbivores (about 250 kg/km2) are low, though inside the park range.
+- Save C, scavenging: hyenas eat animals that died of other causes (background and hunger deaths, routed to the
+  range they fall in; what no scavenger eats in a day goes to vultures and rot). Islands 1, 2 and 3, 16 years:
+  all five species persist, steady from year 10 (impala about 7, zebra 11, buffalo 160 kg/km2; lions about 9,
+  hyenas 6). Lions about 88 kg per 10,000 kg of prey (Carbone 90); all herds about 240 kg/km2 (in park range).
+- But the three islands are identical to the last digit: with predators on, grass never runs short, so weather
+  never reaches the large herds, and nothing else in them is random. Real herds die back in droughts.
+- Time-box verdict (agreed rule: on only if stable and realistic): stable and on the narrow checks, but not
+  realistic (every island the same; 6 hyenas over 24 clan ranges is no population; impala and zebra at 2-3% of
+  field densities). Predators stay off; the island keeps its measured field counts. Open, for later: herds that
+  feel drought through grass quality and water, whole animals rather than fractions, and clans that merge.
+
+## 21 Nov 2026: Robert: "there is no next yet, resolve this"; a general energy law for herds (predators still off)
+
+Robert asked for a general law (to scale beyond one island), journals and mathematics, and no fixation on one place.
+- fauna.js: each day a herd's energy got against its need. Need: maintenance 0.51 MJ ME per kg^0.75 a day (cattle
+  0.515, Luke; sheep 0.511, calorimetry). Food energy: Minson (1984) ME = 0.157 DOMD + 0.059 CP - 1.073. Green grass
+  62% digestible, 10% protein; cured 44%, 2.5% (Botswana dry season 41.5-50.8%, 2.1-8.4%). Intake falls with
+  digestibility (Zimmermann, Transvaal). Result: all-green diet 1.63 x need, all-cured 0.75. Reserves fill on a
+  surplus and drain on a deficit; females breed while reserves last (impala fecundity did not follow rainfall,
+  Ogutu et al. 2015); with reserves gone no young are raised (juvenile survival is what rainfall moves most,
+  Owen-Smith et al. 2005) and the hungry die.
+- Diet composition: green and cured grass taken as they stand, green favoured. With the assumed preference of 5,
+  the diet was mostly cured grass all year and herds and lions collapsed (islands finally differed). The preference
+  is now derived from two measurements: grazers eat green leaves almost exclusively in the wet season (McNaughton
+  1985) while green is about 0.4 of standing dead (145 against 364 g/m2, Nairobi): about 22-25 times; set 25.
+- With it the herds are well fed; the islands are identical again, because predators hold impala and zebra at
+  about 2% of field densities (sustained by buffalo and by scavenging), so grass never runs short.
+- Diagnosis: the gap is not the herds' food but predation at low prey numbers. Real impala persist among lions by
+  avoiding lion areas and keeping vigilant (the landscape of fear), which a mean-field model cannot hold.
+- Also measured and not yet used: standing dead grass decomposes at 7-11% a week in the wet season and 1-2% in the
+  dry (Ngatia et al., Kenya), against the constant six-month half-life in plants.js.
+- Predators off by default; default island unchanged (fingerprint ee5f79eb58495f15). Test F7.
+
+## 21 Nov 2026: option B: the energy law on the field-count herds (default world)
+
+Robert chose B now and the landscape of fear later, built once with the people (same machinery: individuals that
+move, notice danger and avoid it; lions and hunters sharing one landscape).
+- With the real animals, every herd (field-count or not) now carries body condition from the energy law: it breeds
+  while reserves last and starves once they are gone (nature.js herdCondition). Stand-in path unchanged
+  (fingerprint ee5f79eb58495f15 over 120 days).
+- Two islands, 12 years: herds follow each island's own run of years. Island 1: three dry years (415, 411, 371 mm)
+  took herds from about 1,290 to 1,015 kg/km2; two wet years brought them back. Island 2: 368, 422, 338 mm took
+  them from 1,376 to about 1,000. Zebra reserves fell to 37-53 days at the lowest and never ran out: ordinary dry
+  seasons are survived; only a deeper drought would starve them.
+- Correction to the record: the field-count herds already followed each year's plant growth; the identical islands
+  were only with predators on. What this adds is condition and starvation.
+
+## 21 Nov 2026: Layer 6 step 2a: the pneumococcus passed between people (disease.js, off by default)
+
+- One general engine for germs carried in the nose and throat (carry, pass on, clear, sometimes fall ill). First germ:
+  Streptococcus pneumoniae, measured rates from Melegaro, Gay & Medley 2004 (household and community acquisition,
+  51 and 19 days of carriage, density factor w 1.184) and starting shares by age from Hussain et al. 2005.
+- Camp contact stands in for Melegaro's "community", scaled by the share of others in camp who carry it over the
+  25% of swabs positive in that study. There is no world outside the island to bring the germ in.
+- Pneumonia per new carriage 0.0056 (assumption, 0.002-0.02, worked from O'Brien 2009; no direct measurement);
+  untreated case fatality children 0.13 (assumption, 0.057-0.30), adults 0.30 (Austrian, 0.25-0.35); crisis after
+  7 days (5-10); hunger raises the hazard up to 11.63 (Olofin 2013) as the fat store empties below 50% (assumption).
+- Off by default (config.disease.pneumococcus); default fingerprint unchanged (ee5f79eb58495f15). While on with the
+  Hadza illness curve, pneumonia deaths are counted twice; the curve comes off only when 2a-2c are all in.
+- First result, 4 islands x 3 years, nothing tuned: the germ died out on every island within 1-3 years (young-child
+  carriage 13-35% in year 1, against 45-52% in the UK study; then 0). A closed island of 50-65 people at UK contact
+  rates is below the size that keeps it going (critical community size). Cases 0-1 per island; pneumonia deaths 0-1.
+  Open question for Robert: real foragers meet neighbours and share huts more closely than UK families; the island
+  has neither neighbours nor forager-measured contact rates yet.
+
+## 21 Nov 2026: fix: two register entries shared the name starveDays
+
+The herds' entry (60 days, added with Layer 5) had the same name as the people's (40 days) in the register object, so
+it silently replaced it. Renamed to herdStarveDays. Nothing in the people reads it (their fat store comes from body
+fat, energy.js), so the people's fallback goes back to 40 and nothing changes: fingerprint ee5f79eb58495f15 before and
+after; herds still use 60.
+
+## 21 Nov 2026: speed work, exact changes only (step 1 toward a 10,000 km2 island)
+
+Robert's rule for the bigger island: same 350 m detail everywhere; only speed-ups that change nothing. Proof for each:
+the whole world state after one year on islands 42 and 43 hashes the same before and after (332adef1905a6bf1), and
+the 120-day fingerprint stays ee5f79eb58495f15.
+- Profile (one island-year, 14 s): about 80% is the people (choices 41%, sharing news 10%, food 10%), about 10% land.
+- returnRate no longer copies and reverses its age table on every call (ageFactor; test M1 checks every age).
+- exploreValue's list of known places' return rates is kept per person (w-memo.js) until they learn a place, their
+  skills change or they pass into a new age row; a check mode works it out fresh on every call and throws on any
+  difference (2 islands x 1 year passed; test M2 runs 60 days in check mode).
+- Result: 2 island-years 31.1 s -> 24.5 s (21% faster), identical state.
+- Caught by the full tests before saving (Y18): a test swapped a person's whole map of places for an empty one, and
+  the memo did not notice. The memo now also checks it is the same map and skill book; all world tests pass.
+- Evening news: a teller used to go through every place they know for every hearer. A hearer ends up holding each
+  place at least as fresh as the teller (entries only get fresher), so next time only places the teller has written
+  since can be news. Writes are logged per person (w-memo.js newsIds); places are still visited in the teller's own
+  order, so everything happens exactly as before. Check mode compares with the full loop on every telling (2 islands
+  x 1 year passed). Its share of run time fell from 6.6% to about 2.4% plus the log; it no longer grows with how
+  many places people know, which is what matters on a bigger island.
+- Option reasons for foraging trips are written out only for the six options kept with a decision (sorted first,
+  then written): same words, same order.
+- State hash unchanged throughout (332adef1905a6bf1). Timing on this machine varies by about 10%; best of two runs:
+  28.9 s -> 25.4 s for 2 island-years.
+
+## 21 Nov 2026: timing a 10,000 km2 map (throwaway copy, nothing saved but one fix)
+
+Timing only, on a copy with the map 549 x 384 tiles (10,362 km2 of land, 5,608 food places, 475 waters), island 42,
+the same 54 people: one year 22.9 s against 13.3 s on today's 850 km2. Found on the way: land.js took the highest
+point with Math.max(...map), which overflows the call stack on a large map. Replaced by a plain loop that gives the
+same value (NaN as Math.max would); fingerprint and one-year state hash unchanged.
+
+## 21 Nov 2026: rules baked in (docs/RULES.md, tests/rules.test.mjs)
+
+After the outside review, Robert asked for the rules and constraints we now understand to be built in. Six rules
+added (9-14: exact speed-ups only; no outcome built in; no double counting; general, not one place; rebuild in
+order; answer reviews with evidence), listed in docs/RULES.md with what enforces each, and in the goals doc.
+- Rule 12 test (R1): no list spread into Math.max or Math.min anywhere in dist; the five places that did now use
+  maxOf and minOf (dist/numbers.js, base layer), which give exactly what Math.max and Math.min give, signed zeros,
+  NaN and empty lists included (R3), and handle a whole large map.
+- Rule 11 test (R2): disease stays off in a default world while the Hadza illness curve is on.
+- Rule 9 tool: tools/state-hash.mjs (whole state after a year on islands 42 and 43). Unchanged: 332adef1905a6bf1;
+  fingerprint ee5f79eb58495f15.
+
+## 21 Nov 2026: rebuild for the bigger world, Layer 0 (sun): every place its own sun
+
+Robert agreed the layout (lake basin west, escarpment and highland plateau east, like Lake Eyasi and the Mbulu
+Highlands) and the rebuild from the sun up. A 10,000 km2 world spans about 1 degree of latitude, so the sun can no
+longer be one point at the lake.
+- sun.js placeAt(dxKm, dyKm, metres): a place's own latitude, longitude and height from km east and south of the map's
+  anchor, using WGS84 degree lengths (kmPerDegree, standard series). Every sun function already takes such a site.
+- Test S7: degree lengths at the equator and 45 deg match the WGS84 values to 2 m; 100 km south of Lake Eyasi is
+  4.50 S; clear-sky share at 2,300 m is 0.796 (FAO-56 eq. 37); the December day 100 km south is 3.2 min longer, within
+  10% of what plain geometry gives. (My first bound, "under 3 minutes", was a guess and wrong; replaced by the
+  geometric expectation, not by loosening.)
+- sun.js reformatted by prettier (it had not been). Nothing uses placeAt yet, so the world is unchanged
+  (fingerprint ee5f79eb58495f15). The map (Layer 3) will hand each square its place.
+
+## 21 Nov 2026: Layer 1 (air) rebuild, step 1: rain made by mountains (orographic.js), not yet wired in
+
+Robert chose the physics (option 1): the linear theory of orographic precipitation (Smith and Barstad 2004). Pure
+function of any height grid (the air layer stays below the land; the water layer will hand it the map).
+- Tests: O1 moist air (FAO-56 saturation 2.338 kPa at 20 C; moist lapse 4-5 K/km; Hw about 2.4 km); O2 no delays, no
+  waves, thin moist layer -> exactly the classical upslope rain Cw U dh/dx (within 1%); O3 no water created overall
+  (net under 0.1% once the grid holds the lee drying); O4 windward wet, lee dry, delays move rain downwind; O5 opposite
+  wavenumbers give conjugates; O6 wind bearings and shares; O7 an independent exact solution (Queney's hydrostatic
+  wave over a bell-shaped ridge, weighted over the moist layer) matches within 3% (test bound 5%).
+- New register entries, all with ranges: cloud and fall-out delays 1000 s (200-2000, Smith and Barstad; Barstad and
+  Smith 2005), moist stability 0.005 1/s (0.0005-0.01), wind 6 m/s (3-10, assumption) from 110 deg (60-150, the
+  Indian Ocean inflow), background rain rate 2 mm/h (1-5, assumption).
+- First look, a synthetic Eyasi-like profile (basin 1,000 m; escarpment to a 2,000 m plateau to the east; wind from
+  the east-south-east), share of background rain, basin / plateau:
+    central 1.44 / 0.27 (the opposite of the measured 300-400 mm basin and about 1,000 mm highlands);
+    moist stability 0.0005: 0.56 / 1.18; 0.01: 1.31 / 0.55; wind 3 m/s: 1.20 / 0.75; 10 m/s: 0.93 / 0.38;
+    delays 200 s: 1.60 / 0.20, 2000 s: 1.14 / 0.45; rain rate 1 mm/h: 1.89 / 0.01, 5 mm/h: 1.18 / 0.71.
+  The pattern hinges on moist stability against wind and moist-layer depth (N Hw / U about 2 at the central values,
+  where the moist layer spans a third of a vertical wavelength and windward rain is carried far upwind). Not tuned:
+  reported. The independent exact check (O7) shows this is the theory, not a coding error. Next: look up measured
+  moist stability and inflow wind in the rains rather than leave them assumptions.
+
+## 21 Nov 2026: rules 15-17, so the world keeps working while it grows
+
+Robert's concern: with the land scaled and every layer rebuilt, we might not end up with a working world. Three
+rules added: build beside, not over (15); the whole world works on every save (16, tests/world-works.test.mjs: 5 years
+on islands 42 and 43, no crash, people alive and having children, food and water books balanced, under 60 s an
+island-year, page code parses; passes today, about 3 minutes); time-box each layer to three saves, then measured data
+as input (17). Rain (Layer 1) is on save 1 of 3: save 1 was the physics (a23864c); next, measured moist stability and
+inflow wind.
+
+## 21 Nov 2026: Layer 1 rain, save 2 of 3: measured moist stability and wind
+
+Robert: "see if you can work through it." No paper gives these for northern Tanzania, but real soundings do: four
+Nairobi radiosondes (station 63741, 1,798 m, the nearest upper-air station, about 280 km north-east of Eyasi) in
+the April 2025 long rains, from the College of DuPage archive. tools/moist-stability.mjs computes the saturated
+buoyancy frequency layer by layer (Durran and Klemp 1982: Nm^2 = (g/T)(dT/dz + Gm)(1 + L qs/(Rd T)) - g/(1+qw) dqw/dz).
+- All four saturated layers (1.3-2.4 km deep) were moist-UNSTABLE: Nm^2 -2.0e-5 to -6.5e-5 s-2.
+- Winds in those layers: 1.5-3.6 m/s from 70-120 deg (one near-calm day from the north).
+- Consequence: the linear theory of orographic rain needs stable or neutral moist air (Nm^2 >= 0), so it does not
+  apply to these rains. They are convective, which fits the Kilimanjaro modelling (local processes give over 60% of
+  the rain at 2-4 km). The first-look result (basin wetter than plateau) came from using the theory outside its range.
+  The code stays (correct, tested, for stable-flow cases); register now carries the measured wind and the finding.
+- Under rule 17 the third save is the fallback: measured rain as input, with held-out stations as the only checks.
+
+## 21 Nov 2026: Layer 1 rain, save 3 of 3 (rule 17 fallback): each place's rain from measurements (rainmap.js)
+
+The data services that hold CHIRPS / CHPclim (IRI Data Library, NASA POWER, Open-Meteo) forbid automated fetching
+(robots), and the workspace network blocks the CHC server. Robert authorised a bypass; declined, as those are the
+sites' own rules. Robert is downloading CHPclim himself; rainmap.js has the slot for it (rainShareFromMap).
+Meanwhile, source 1: published station figures, rain by height, straight between two input stations (Eyasi basin
+1,030 m 300-400 mm; Mbulu Highlands about 1,900 m, 1,000 mm or more), four held out as checks only:
+    Karatu town 1,420 m: measured 900-1,000, got 686 (miss)
+    Karatu highland zone about 1,700 m: measured 600-800, got 928 (miss; this source disagrees with the town figure)
+    Ngorongoro crater rim 2,300 m: measured 900-1,100, got 1,100 (within)
+    Arusha 1,387 m (windward of Meru): measured 1,000-1,200, got 658 (miss)
+One of four within. Expected: in this region exposure matters more than height (Oettli and Camberlin 2005), and the
+two Karatu figures contradict each other. Not tuned; reported. Time-box for rain is used up: source 1 stands as the
+working input until CHPclim arrives, and the same checks then run on it.
+
+## 21 Nov 2026: Layer 3 (terrain), the bigger world, save 1 of 3: the land's shape (land-big.js), built beside
+
+Rule 15: a separate generator, imported by nothing in the running world (test TB4). A pure function of a landscape
+description (rule 12) following the real land around Lake Eyasi: basin and lake at the foot of the Eyasi escarpment
+(running south-west to north-east), the Mbulu-like plateau on its south-east, a volcanic block to the north-east.
+The shape is generated (fractal noise on that layout); a survey grid (SRTM) would be better and can replace heightAt.
+- Result (checks only, all against measurements): land 10,664 km2 (target about 10,000); basin median 1,266 m (lake
+  1,030 m, Lake Eyasi); plateau median 2,081 m (Mbulu Highlands 1,500-2,300 m); highest 2,900 m (Ngorongoro
+  conservation area tops out at 3,648 m); the escarpment climbs from the lake to about 1,860 m within 4 km. Lake 693
+  km2 (an assumption of its size; Lake Eyasi varies with the seasons). Builds in 0.06 s (343 x 343 squares).
+- Next saves: rivers, catchments and flow over it (the land.js routing, made to take any grid); then the switch that
+  lets a world run on it, and the whole-world check on both worlds.
+
+## 21 Nov 2026: Layer 3, the bigger world, save 2 of 3: water over any grid (flow.js)
+
+The island's routing (priority-flood, Barnes et al. 2014; upstream-first accumulation) made into functions of any
+grid (rule 12), run on the bigger land. Every square drains to the lake or the sea (FL1); catchments emptying into
+outlets add up to all the land (FL2); largest catchment about 2,000 km2; 0.1 s. Hack's law (FL3): exponent 0.47
+against the measured 0.5-0.7: anomaly A8, open, not tuned (likely the land is generated, not eroded).

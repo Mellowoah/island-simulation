@@ -1,7 +1,19 @@
 // Island: a body on the real clock (Eden and the savanna). Legacy worlds never call this file.
 // The law of energy is in energy.js, the rates and pairs in clock.js. This file applies them to one creature.
 
-import { clockOf, body, eatKcal, burnKcal, storedKcal, sleepTime, ticksUntilWake, isNight, hourOf, SLEEP_UNTIL } from './clock.js';
+import {
+  clockOf,
+  body,
+  eatKcal,
+  burnKcal,
+  storedKcal,
+  sleepTime,
+  ticksUntilWake,
+  isNight,
+  hourOf,
+  SLEEP_UNTIL,
+} from './clock.js';
+import { skillsChanged } from './w-memo.js';
 import { isDark } from './sun.js';
 import { heatFactor } from './weather.js';
 import * as EN from './energy.js';
@@ -167,6 +179,7 @@ export function practise(s, c, id, hours) {
   (c.learned ??= {})[id] = learned;
   (c.lastPractice ??= {})[id] = s.tick;
   c.skills[id] = learned;
+  skillsChanged(c);
 }
 export function forget(s, c) {
   if (!c.learned) return;
@@ -176,6 +189,7 @@ export function forget(s, c) {
     const days = ((s.tick - c.lastPractice[id]) * C.hours) / 24;
     c.skills[id] = c.learned[id] * (1 + days / B.forgetDays) ** -B.forgetExp;
   }
+  skillsChanged(c);
 }
 export function fadeHabits(s, c) {
   const k = Math.exp((-body(s).habitDecayMonth * 12) / 365);

@@ -50,6 +50,12 @@ export const SALTS = {
   newsBlur: X + 18,
   newsBlur2: X + 19,
   newsFlip: X + 20,
+  // disease.js (germs passed between people)
+  pncStart: X + 21,
+  pncClear: X + 22,
+  pncCatch: X + 23,
+  pncIll: X + 24,
+  pncFatal: X + 25,
   // nature.js (animals, materials, fire)
   animals: K + 30,
   encounter: K + 31,

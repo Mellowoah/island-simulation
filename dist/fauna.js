@@ -24,20 +24,57 @@ const HA_PER_KM2 = 100;
 // Dry matter a herbivore eats in a day (kg)
 export const intakeKgDay = massKg => R('intakePerKgMetabolic') * massKg ** 0.75;
 
-// The herds graze the island's herb layer: green grass first, then dead. Returns the share of their need met.
+// The herds graze the island's herb layer, green and cured grass together. Returns the share of their need met.
 export function grazeDay(P, demandKg, landKm2) {
   const want = (demandKg / (landKm2 * 1e6)) * 1000 || 0; // g/m2 over the island's land
   if (!P || want <= 0) return 1;
-  const green = Math.min(P.green, want),
-    dead = Math.min(P.dead, want - green);
+  // the diet is green and cured grass as they stand, green preferred (greenPreference): grazers cannot pick every
+  // scattered green blade, so in the dry season most of what they eat is cured grass
+  const w = R('greenPreference') * P.green,
+    share = w + P.dead > 0 ? w / (w + P.dead) : 0;
+  let green = Math.min(P.green, want * share);
+  const dead = Math.min(P.dead, want - green);
+  green += Math.min(P.green - green, want - green - dead);
   P.green -= green;
   P.dead -= dead;
   P.eatenTotal = (P.eatenTotal ?? 0) + green + dead;
+  P.greenShare = green + dead > 0 ? green / (green + dead) : 0; // what today's diet was made of
   return (green + dead) / want;
 }
 
-// Extra deaths in a day for a herd of n that got only `met` of its food (it lasts about starveDays on reserves)
-export const starveDeaths = (n, met) => (met < 1 ? (n * (1 - met)) / R('starveDays') : 0);
+// ---------- energy balance of a herd (a general law: any herbivore, any place) ----------
+// - Need: maintenance metabolizable energy about 0.51 MJ per kg^0.75 a day (cattle 0.515, Luke feed tables;
+//   sheep 0.511 by calorimetry, Animal 2021): the same scaling with mass across mammals.
+// - Food energy from digestibility and protein: ME (MJ/kg DM) = 0.157 DOMD + 0.059 CP - 1.073 (Minson 1984).
+// - Grass quality: green leaf about 62% digestible, 10% protein (assumption near ILRI's 60-62%); cured grass in the
+//   dry season about 44% digestible, 2.5% protein (Botswana hardveld, 41.5-50.8% and 2.1-8.4%; Arch. Zootec. 2005).
+// - Intake falls with digestibility (cattle on Transvaal savanna; Zimmermann): eaten = intake x digestibility / 62%.
+// - Condition: a surplus builds body reserves (up to herdStarveDays of need), a deficit drains them. Females breed at
+//   full rate while reserves last (impala fecundity did not follow rainfall, Ogutu et al. 2015); once reserves are
+//   gone no young are raised (juvenile survival is what rainfall moves most, Owen-Smith et al. 2005) and the
+//   hungry die. Drought reaches herds through poorer, scarcer grass:
+//   malnutrition is the main cause of adult deaths in African ungulates (Owen-Smith 2005).
+export const FORAGE = { green: { dmd: 62, cp: 10 }, dead: { dmd: 44, cp: 2.5 } };
+export const meOf = f => 0.157 * f.dmd + 0.059 * f.cp - 1.073;
+// Energy got today against energy needed (1 = maintenance), from the green share of the diet and the share of the
+// herd's intake that the grass could supply (met)
+export function energyRatio(greenShare, met) {
+  const g = greenShare,
+    dmd = g * FORAGE.green.dmd + (1 - g) * FORAGE.dead.dmd;
+  const intake = R('intakePerKgMetabolic') * (dmd / FORAGE.green.dmd) * met; // kg DM per kg^0.75 a day
+  const me = g * meOf(FORAGE.green) + (1 - g) * meOf(FORAGE.dead);
+  return (intake * me) / R('maintenanceMJ');
+}
+// One day of a herd's condition (reserve in days of need): returns its births share (0..1) and hunger deaths share
+export function conditionDay(reserve, ratio) {
+  const most = R('herdStarveDays'),
+    r = Math.min(most, reserve + ratio - 1);
+  if (r > 0) return { reserve: r, breed: 1, starve: 0 }; // fecundity holds while reserves last (Ogutu 2015)
+  return { reserve: 0, breed: 0, starve: (1 - Math.min(1, ratio)) / most };
+}
+
+// Extra deaths in a day for a herd of n that got only `met` of its food (it lasts about herdStarveDays on reserves)
+export const starveDeaths = (n, met) => (met < 1 ? (n * (1 - met)) / R('herdStarveDays') : 0);
 
 // Lake fish yield (kg/ha/yr) by lake area (km2): log-log interpolation through Marshall's (1984) points
 const MARSHALL = [
@@ -61,3 +98,79 @@ export const FAUNA_KCAL_PER_KM2 = {
   honey: () => 6.8 * 6.5 * 3040,
   shellfish: () => 88 * 1e6 * R('intertidalShare') * 5 * ((Math.LN2 * 365) / R('shellfishHalfLifeDays')),
 };
+
+// ---------- predators (on with config.predators; until herds are limited by grass, field counts already hold them
+// down, so with both on predation would be counted twice) ----------
+// The grouped functional response of Fryxell, Mosser, Sinclair and Packer (2007, Nature 449: 1041-1043), measured on
+// Serengeti lions: a group of G predators searches as one, meets prey herds (not single animals: prey-group density is
+// lower than individual density), and each success is one whole animal shared by the group. Kills a day for the group:
+//   a H / (1 + a H (h1 + h2 / G)),  H = herds per km2 = animals per km2 / herd size.
+// - a = 1.16 km2 a day: a 0.4 km search path x 10 km a day x 0.29 success (Serengeti lions, wildebeest).
+// - h1 = 0.045 days to attack and subdue; h2 = 1.422 days of digestive pause per carcass, shared by the group.
+// - G: lions 6.3 adults a pride (Fryxell 2007); hyenas hunt in small groups (assumption 3). Hyenas are given the
+//   lion's search rate and handling times (assumption).
+// - Grouping by both predators and prey is what steadies the system (Fryxell 2007); without it, lions here wiped out
+//   their prey in two to three years (20 Nov 2026).
+// - Need: lions about 5-7 kg of meat a day (Shamwari); hyenas 3.8-4.0 kg (Henschel and Tilson 1988).
+// - Prey: carnivores favour prey of about half to twice their own mass (Owen-Smith and Mills 2008); hyenas prefer
+//   56-182 kg and avoid buffalo and zebra (Hayward 2006).
+// - Births when fed, at the most a mammal of that mass can grow (Fenchel 1974); adults die at predatorDeathRate.
+// - Check: about 90 kg of a carnivore species per 10,000 kg of its prey (Carbone and Gittleman 2002).
+export const PREDATORS = {
+  lion: { mass: 150, needKg: 6, group: 'lionGroup', prey: ['impala', 'zebra', 'buffalo'] },
+  // hyenas: zebra avoided, not refused (Hayward 2006); they also eat animals that died of other causes (scavenges)
+  hyena: { mass: 55, needKg: 3.9, group: 'hyenaGroup', prey: ['impala', 'zebra'], scavenges: true },
+};
+// Kills a day by one predator of each prey kind, given herds per km2 of each (type II over all its prey together)
+export function killsPerDay(P, herds, group = R(P.group)) {
+  const a = R('predatorSearchKm2'),
+    G = Math.max(1, group),
+    h = R('handleDays') + R('digestDays') / G;
+  const total = herds.reduce((t, H) => t + H, 0),
+    groupKills = (a * total) / (1 + a * total * h),
+    // prey switching (Murdoch 1969): the group's hunting goes disproportionately to the commonest prey, in
+    // proportion to herds^switchingPower (1: no switching); rare prey get a refuge (Owen-Smith and Mills 2008)
+    pull = herds.map(H => H ** R('switchingPower')),
+    pulls = pull.reduce((t, p) => t + p, 0);
+  return pull.map(p => (pulls ? (groupKills * p) / pulls / G : 0));
+}
+// A year's change in a predator population of n with fed share `fed` (0..1): growth at full food, decline when hungry
+export const predatorChange = (n, fed, mass) => {
+  const d = R('predatorDeathRate'),
+    rMax = 1.1 * mass ** -0.26;
+  return n * ((rMax + d) * fed - d);
+};
+// Starting numbers from Carbone and Gittleman's ratio (the check then sees where the island takes them)
+export const startPredators = (preyKg, mass) => (0.009 * preyKg) / mass;
+
+// ---------- territories ----------
+// Prides and clans each hold a home range and hunt in it. Measured: lion pride ranges about 36-43 km2 where prey is
+// rich (Ishasha, Uganda) to 300-600 km2 where it is sparse; range shrinks as prey biomass rises (Loveridge et al.
+// 2009); spotted hyena clan territories 9 to over 1000 km2, smaller where prey is rich (East and Hofer 2013).
+// Ranges here are fixed in size (lionRangeKm2, hyenaRangeKm2: assumptions within those ranges); land between them is
+// hunted by nobody, so prey there is in a refuge until it moves.
+export const RANGE = { lion: 'lionRangeKm2', hyena: 'hyenaRangeKm2' };
+// Cells within r cells of a centre (square grid w x h), keeping only those `ok` allows
+export function cellsAround(c, r, w, h, ok) {
+  const out = [],
+    cx = c % w,
+    cy = Math.floor(c / w);
+  for (let y = Math.max(0, cy - r); y <= Math.min(h - 1, cy + r); y++)
+    for (let x = Math.max(0, cx - r); x <= Math.min(w - 1, cx + r); x++)
+      if ((x - cx) ** 2 + (y - cy) ** 2 <= r * r && ok(y * w + x)) out.push(y * w + x);
+  return out;
+}
+// Place ranges one by one on unclaimed habitat, each about areaKm2, none sharing a cell
+export function placeRanges(habitatCells, areaKm2, cellKm2, w, h) {
+  const r = Math.max(1, Math.round(Math.sqrt(areaKm2 / cellKm2 / Math.PI))),
+    free = new Set(habitatCells),
+    ranges = [];
+  for (const c of habitatCells) {
+    if (!free.has(c)) continue;
+    const cells = cellsAround(c, r, w, h, k => free.has(k));
+    if (cells.length * cellKm2 < areaKm2 / 2) continue;
+    cells.forEach(k => free.delete(k));
+    ranges.push(cells);
+  }
+  return ranges;
+}

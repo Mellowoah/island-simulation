@@ -14,6 +14,7 @@
 // Figures marked (approx.) are reasonable values not yet pinned to one source; they are listed in THEORY-CHECK.md.
 
 import { registerMap, noise2, seedKey, STREAMS } from './sim.js';
+import { maxOf, minOf } from './numbers.js';
 import { R, clockOf, body, growPatch } from './clock.js';
 import { rainOf } from './rain-years.js';
 import { rainYearRatio } from './weather.js';
@@ -58,7 +59,7 @@ function segDist(px, py, [ax, ay], [bx, by]) {
     t = Math.max(0, Math.min(1, ((px - ax) * vx + (py - ay) * vy) / (vx * vx + vy * vy)));
   return Math.hypot(px - (ax + t * vx), py - (ay + t * vy));
 }
-const riverDist = (x, y) => Math.min(...RIVER.slice(1).map((b, i) => segDist(x + 0.5, y + 0.5, RIVER[i], b)));
+const riverDist = (x, y) => minOf(RIVER.slice(1).map((b, i) => segDist(x + 0.5, y + 0.5, RIVER[i], b)));
 
 // Region of each tile, computed once.
 export const REGIONS = ['sea', 'lake', 'river', 'rock', 'shore', 'woodland', 'grass'];
@@ -403,11 +404,15 @@ export const AGE_RETURN = {
     [18, 1],
   ],
 };
+// The age row in force: the last row whose age has been reached (same as reverse().find, without copying the table).
+export function ageFactor(ageYears, hard) {
+  const table = AGE_RETURN[hard ? 'hard' : 'easy'];
+  for (let i = table.length - 1; i >= 0; i--) if (ageYears >= table[i][0]) return table[i][1];
+  return table[0][1];
+}
 export function returnRate(food, ageYears, skill) {
-  const F = FOODS[food],
-    table = AGE_RETURN[F.hard ? 'hard' : 'easy'];
-  const ageF = [...table].reverse().find(([a]) => ageYears >= a)?.[1] ?? table[0][1];
-  return F.kcalHour * ageF * (0.6 + 0.4 * Math.min(1, skill));
+  const F = FOODS[food];
+  return F.kcalHour * ageFactor(ageYears, F.hard) * (0.6 + 0.4 * Math.min(1, skill));
 }
 export const gatherTicks = (units, kcalHour) =>
   Math.max(2, Math.ceil((units * KCAL_PER_UNIT) / (kcalHour * TICK_HOURS)));
