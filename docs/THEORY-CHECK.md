@@ -871,3 +871,11 @@ The island's routing (priority-flood, Barnes et al. 2014; upstream-first accumul
 grid (rule 12), run on the bigger land. Every square drains to the lake or the sea (FL1); catchments emptying into
 outlets add up to all the land (FL2); largest catchment about 2,000 km2; 0.1 s. Hack's law (FL3): exponent 0.47
 against the measured 0.5-0.7: anomaly A8, open, not tuned (likely the land is generated, not eroded).
+
+## 22 Nov 2026: the map switch, step A1: the island's map built by named steps (exact)
+
+Merged live first (PR #6, Robert's OK after front-page screenshots). Then terrain.js restructured so a second map
+can reuse its steps: heights, sea and land, the main island, distance to the sea, hills, the lake, water routing,
+rivers, shore and woodland, each a function reading one set of grids (module "let"s, swapped by a coming useMap).
+The water routing now calls flow.js drainage (the same priority-flood, same order and comparisons) with the sea at
+-1 m, instead of its own copy. Exact: fingerprint ee5f79eb58495f15 and one-year state hash 332adef1905a6bf1 unchanged.

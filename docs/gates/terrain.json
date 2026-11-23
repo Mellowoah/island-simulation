@@ -1,7 +1,7 @@
 {
  "layer": "terrain",
  "pass": true,
- "date": "2026-11-22",
+ "date": "2026-11-23",
  "islands": 6,
  "years": 3,
  "tests": "# pass 4",
@@ -12,7 +12,7 @@
  "pattern": "river and stream pools wet in Sep-Oct: small catchments 0.32, large 0.39; holes with water: wet season 0.81, Sep-Oct 0.23 (want >= 0.7 and 0.15-0.75)",
  "fails": [],
  "hashes": {
-  "terrain.js": "b84b373d52c8a2128ddd8c55e656120ed6785ef2dbafa58059cb00e26acd0421",
+  "terrain.js": "38261f00ca9a9bbdd12bcebbc73ad14592895910045963826bf0caf4d1afa6fd",
   "land.js": "3b3a420162892fedee9ec6a48cef4dadd243ce180f41b94dbed8818e12828ec2",
   "land-big.js": "c1dc74503806622b7480f728be3050a249f302ff1bd5894b16a83af602a395e8",
   "flow.js": "d6e96e381b70a5e06f9ce85a7713c312fec787d7d88db3eca50797f2fd7ce9d0"
