@@ -1,7 +1,6 @@
 // Layer 3, the bigger world (dist/land-big.js): its shape against measured heights, and built beside (rule 15).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
 import { makeLandscape, heightAt, EYASI_HIGHLANDS as D } from '../dist/land-big.js';
 
 const L = makeLandscape(),
@@ -46,12 +45,9 @@ test('TB3 an escarpment: across the scarp the land climbs at least 500 m within 
   assert.ok(rise >= 500, `${rise} m`);
 });
 
-test('TB4 built beside, not over (rule 15): nothing in the running world imports it yet; the same map every time', () => {
-  const dist = new URL('../dist/', import.meta.url);
-  const users = readdirSync(dist).filter(
-    f => f.endsWith('.js') && f !== 'land-big.js' && /from\s*['"]\.\/land-big\.js['"]/.test(readFileSync(new URL(f, dist), 'utf8')),
-  );
-  assert.deepEqual(users, []);
+test('TB4 built beside, not over (rule 15): a default world still runs on the island; the same map every time', async () => {
+  const { createWorld2 } = await import('../dist/world.js');
+  assert.equal(createWorld2(42, {}).map.id, 'island');
   const again = makeLandscape();
   assert.ok(again.metres.every((v, i) => v === L.metres[i]));
 });

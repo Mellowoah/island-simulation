@@ -13,6 +13,7 @@
 import { registerMap } from './sim.js';
 import { maxOf, minOf } from './numbers.js';
 import { drainage } from './flow.js';
+import { makeLandscape } from './land-big.js';
 
 export let TW = 160,
   TH = 112;
@@ -281,6 +282,7 @@ export const mapInUse = () => CURRENT;
 export const knownMaps = () => [...BUILT.keys()];
 export function useMap(id = 'island') {
   if (id === CURRENT) return;
+  if (!BUILT.has(id) && BUILDERS[id]) (BUILDERS[id](), BUILT.set(id, snapshot()));
   if (!BUILT.has(id)) throw new Error(`unknown map: ${id}`);
   restore(BUILT.get(id));
   CURRENT = id;
@@ -289,6 +291,27 @@ export function useMap(id = 'island') {
 buildIsland();
 BUILT.set('island', snapshot());
 CURRENT = 'island';
+
+// The bigger world (land-big.js): the basin, escarpment and highlands around Lake Eyasi, about 10,000 km2, heights in
+// metres. The same steps as the island's, with its own lake; rivers in proportion to land (the island's 9 sources per
+// its 850 km2). Built on first use, then kept; the island stays the map in use until a world asks for this one.
+function buildEyasi() {
+  const L = makeLandscape();
+  [TW, TH, METRES] = [L.W, L.H, L.metres];
+  elev = L.metres;
+  grid = Uint8Array.from(L.land, (land, i) => (!land ? R.sea : L.lake[i] ? R.lake : R.grass));
+  ({ comp, main } = components());
+  coastDist = distanceFrom(i => grid[i] === R.sea);
+  hills(0.05);
+  route();
+  const islandLand = BUILT.get('island').LAND_KM2;
+  rivers(Math.round((9 * landIdx.length * TILE_KM * TILE_KM) / islandLand));
+  cover();
+  MAIN_TILES = landIdx.filter(i => grid[i] !== R.lake).length;
+  LAND_KM2 = MAIN_TILES * TILE_KM * TILE_KM;
+  registerMap({ id: 'eyasi', w: TW, h: TH, land: walkable, regionAt, tileKm: TILE_KM });
+}
+const BUILDERS = { eyasi: buildEyasi };
 
 export const regionAt = (x, y) => (inside(x, y) ? REGIONS[grid[y * TW + x]] : 'sea');
 export const onMainland = (x, y) => inside(x, y) && comp[y * TW + x] === main;

@@ -887,3 +887,14 @@ once redoes it through onMapChange: land.js (heights, flow accumulation, cover u
 in metres uses them as they are), w-core.js (map width and height), nature.js (the animals' cell grid, habitat, land
 area). A world selects its map when it is made (config.map, the island unless asked) and before every step. Exact:
 fingerprint ee5f79eb58495f15 and state hash 332adef1905a6bf1 unchanged. Tests MP1-MP3.
+
+## 22 Nov 2026: the map switch, step B: the Eyasi map in terrain.js, and a world living on it
+
+buildEyasi runs the island's own steps on the land-big.js landscape (its heights in metres; its own lake; rock the
+top 5% as on the island; rivers in proportion to land, the island's 9 per its 850 km2), built on first use. Result:
+343 x 343 squares, 9,971 km2 of land, lake 693 km2, 48 rivers, grass 6,805 km2, woodland 2,165, rock 533; 2,244 food
+sites, 580 water sites; built in 0.3 s. createWorld2(seed, { map: 'eyasi' }) runs on it: island 42, 3 bands, 54 then
+56 people after two years, 8 births, about 22 s an island-year (limit 60). The whole-world check (rule 16) now runs
+both maps every save. The island is unchanged: state hash 332adef1905a6bf1, and the same when island worlds are
+stepped in turn with an Eyasi world. Not yet on this map: its own rain (the station rain map) and sun by place;
+plants, animals and people still use the island's single-point climate. Those are the next rebuild steps.

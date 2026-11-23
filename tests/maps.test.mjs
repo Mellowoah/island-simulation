@@ -23,3 +23,13 @@ test('MP3 a world made without a map runs on the island and says so', async () =
   assert.deepEqual(s.map, { id: 'island' });
   assert.equal(s.config.map, undefined, 'the default config is unchanged');
 });
+
+test('MP4 the Eyasi map: built on first use, its own size and heights; switching back leaves the island exactly as it was', () => {
+  const island = [T.TW, T.TH, T.LAND_KM2, Land.REF_M, T.RIVERS.length, Land.metresAt(80, 56)];
+  T.useMap('eyasi');
+  assert.equal(T.mapInUse(), 'eyasi');
+  assert.ok(T.LAND_KM2 > 9000 && T.LAND_KM2 < 11000, `${T.LAND_KM2}`);
+  assert.ok(Land.metresAt(T.TW >> 1, T.TH >> 1) > 1000);
+  T.useMap('island');
+  assert.deepEqual([T.TW, T.TH, T.LAND_KM2, Land.REF_M, T.RIVERS.length, Land.metresAt(80, 56)], island);
+});
