@@ -58,6 +58,7 @@ function fbm(x, y, k, oct = 5) {
 // island, step by step in the same order as before, so the island is the same to the last bit (state hash).
 let elev, grid, comp, main, coastDist, landIdx, byElev;
 export let RIVERS, DOWN, MAIN_TILES, LAND_KM2;
+export let METRES = null; // heights in metres, for maps that have them (the island's come from land.js scaling)
 const N4 = [
   [1, 0],
   [-1, 0],
@@ -249,7 +250,45 @@ function buildIsland() {
   MAIN_TILES = landIdx.filter(i => grid[i] !== R.lake).length;
   LAND_KM2 = MAIN_TILES * TILE_KM * TILE_KM;
 }
+// ---------- more than one map ----------
+// Each built map is kept as its set of grids; useMap swaps one in, and code that worked something out from the map
+// once (land.js, w-core.js, nature.js) redoes it through onMapChange. A world selects its map when it is made and
+// before every step (world.js), so worlds on different maps can run in turn.
+const BUILT = new Map(),
+  HOOKS = [];
+let CURRENT = null;
+const snapshot = () => ({
+  TW,
+  TH,
+  elev,
+  grid,
+  comp,
+  main,
+  coastDist,
+  landIdx,
+  byElev,
+  RIVERS,
+  DOWN,
+  MAIN_TILES,
+  LAND_KM2,
+  METRES,
+});
+function restore(m) {
+  ({ TW, TH, elev, grid, comp, main, coastDist, landIdx, byElev, RIVERS, DOWN, MAIN_TILES, LAND_KM2, METRES } = m);
+}
+export const onMapChange = fn => HOOKS.push(fn);
+export const mapInUse = () => CURRENT;
+export const knownMaps = () => [...BUILT.keys()];
+export function useMap(id = 'island') {
+  if (id === CURRENT) return;
+  if (!BUILT.has(id)) throw new Error(`unknown map: ${id}`);
+  restore(BUILT.get(id));
+  CURRENT = id;
+  for (const fn of HOOKS) fn(id);
+}
 buildIsland();
+BUILT.set('island', snapshot());
+CURRENT = 'island';
 
 export const regionAt = (x, y) => (inside(x, y) ? REGIONS[grid[y * TW + x]] : 'sea');
 export const onMainland = (x, y) => inside(x, y) && comp[y * TW + x] === main;

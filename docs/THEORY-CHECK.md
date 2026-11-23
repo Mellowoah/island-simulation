@@ -879,3 +879,11 @@ can reuse its steps: heights, sea and land, the main island, distance to the sea
 rivers, shore and woodland, each a function reading one set of grids (module "let"s, swapped by a coming useMap).
 The water routing now calls flow.js drainage (the same priority-flood, same order and comparisons) with the sea at
 -1 m, instead of its own copy. Exact: fingerprint ee5f79eb58495f15 and one-year state hash 332adef1905a6bf1 unchanged.
+
+## 22 Nov 2026: the map switch, step A2: useMap and redo-on-switch (exact)
+
+terrain.js keeps each built map's grids and swaps one in with useMap(id); code that worked something out from the map
+once redoes it through onMapChange: land.js (heights, flow accumulation, cover upstream; a map with its own heights
+in metres uses them as they are), w-core.js (map width and height), nature.js (the animals' cell grid, habitat, land
+area). A world selects its map when it is made (config.map, the island unless asked) and before every step. Exact:
+fingerprint ee5f79eb58495f15 and state hash 332adef1905a6bf1 unchanged. Tests MP1-MP3.

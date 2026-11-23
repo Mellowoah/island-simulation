@@ -122,8 +122,9 @@ export const changed = s => {
 export const bandOf = (s, p) => s.bands[s.households[p.household]?.band ?? 0];
 export const campOf = (s, p) => bandOf(s, p).camp;
 export const bandMembers = (s, b) => living(s).filter(p => (s.households[p.household]?.band ?? 0) === b.id);
-export const W = T.TW,
+export let W = T.TW,
   H = T.TH;
+T.onMapChange(() => ((W = T.TW), (H = T.TH)));
 
 export const placeName = q => `${Math.round(q.x * T.TILE_KM)} km east, ${Math.round(q.y * T.TILE_KM)} km south`;
 export function note(s, p, text) {
