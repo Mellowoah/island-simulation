@@ -908,3 +908,8 @@ opening it catches up from its start (about 3 s on 27 Nov; the same seed always 
 each passing hour, people drawn gliding between hourly positions, night and dawn/dusk shading from the world's own
 sun. Land no one has seen is dimmed. frame.js reads and steps the world only; no rule changed (island state hash
 unchanged). Catching up grows about 3-4 s per world year since the start; saved checkpoints can come later if needed.
+- 27 Nov, later: high-quality rendering for the frame (frame-render.js, Robert: "I want high quality rendering"). Drawn
+  at 6 points a square, smoothed (box blur run twice, close to Gaussian) so coasts are round; relief lit by the
+  world's own sun for the hour (sun.js elevation and azimuth, heights 2.5 times steeper so relief reads); grass to
+  straw with the plants layer's dead share; light by sun height (golden near the horizon, blue at night); camp fires
+  glow brighter the darker it is; people as soft lights; unseen land dimmed with a soft edge. Presentation only.
