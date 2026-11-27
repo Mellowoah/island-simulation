@@ -898,3 +898,13 @@ sites, 580 water sites; built in 0.3 s. createWorld2(seed, { map: 'eyasi' }) run
 both maps every save. The island is unchanged: state hash 332adef1905a6bf1, and the same when island worlds are
 stepped in turn with an Eyasi world. Not yet on this map: its own rain (the station rain map) and sun by place;
 plants, animals and people still use the island's single-point climate. Those are the next rebuild steps.
+
+## 27 Nov 2026: the picture frame page (frame.html), presentation only
+
+Robert's Tokenframe: a full-screen page with nothing to press, the island living in time with the viewer's day. One
+world hour per real hour by the local clock and calendar; the world's year starts on 1 November (clock.js), so it began
+06:00 on 1 November 2026 (?since=YYYY for an older world) and its dawns, months and rains run with the viewer's. On
+opening it catches up from its start (about 3 s on 27 Nov; the same seed always gives the same history), then steps
+each passing hour, people drawn gliding between hourly positions, night and dawn/dusk shading from the world's own
+sun. Land no one has seen is dimmed. frame.js reads and steps the world only; no rule changed (island state hash
+unchanged). Catching up grows about 3-4 s per world year since the start; saved checkpoints can come later if needed.
