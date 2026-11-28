@@ -11,6 +11,7 @@ import { jdOfTick } from './sun.js';
 import { prepareLand, paintLand, sunVector, knownField, seaAt } from './frame-render.js';
 import { WINTER_HAVEN, followLive, worldSky, lakeCountry } from './frame-weather.js';
 import { drawSky } from './frame-sky.js';
+import { drawFigure, heightOf } from './frame-people.js';
 
 const Q = new URLSearchParams(location.search);
 const seed = Number(Q.get('seed')) || 41;
@@ -105,23 +106,20 @@ function drawCamps(g, v, night) {
     g.fill();
   }
 }
-// People as small soft lights, gliding between where they were and where they are this hour.
+// People as small figures (frame-people.js), gliding between where they were and where they are this hour;
+// walking when they are on their way somewhere. Drawn from the back of the picture to the front.
 function drawPeople(g, v, f, night) {
-  for (const p of living(s)) {
-    const [x0, y0] = prev.get(p.id) ?? [p.x, p.y],
-      jx = (((p.id * 37) % 7) - 3) / 8,
-      jy = (((p.id * 53) % 7) - 3) / 8;
-    const x = v.ox + (x0 + (p.x - x0) * f + 0.5 + jx) * v.px,
-      y = v.oy + (y0 + (p.y - y0) * f + 0.5 + jy) * v.px,
-      r = Math.max(2, v.px * 0.42);
-    const col = p.body.age < 14 ? '159,224,255' : p.sex === 'F' ? '255,255,255' : '255,216,74',
-      dot = g.createRadialGradient(x, y, 0, x, y, r * 2);
-    dot.addColorStop(0, `rgba(${col},${1 - 0.45 * night})`);
-    dot.addColorStop(0.45, `rgba(${col},${0.85 - 0.45 * night})`);
-    dot.addColorStop(1, `rgba(${col},0)`);
-    g.fillStyle = dot;
-    g.fillRect(x - 2 * r, y - 2 * r, 4 * r, 4 * r);
-  }
+  const now = performance.now(),
+    at = living(s).map(p => {
+      const [x0, y0] = prev.get(p.id) ?? [p.x, p.y],
+        jx = (((p.id * 37) % 7) - 3) / 8,
+        jy = (((p.id * 53) % 7) - 3) / 8;
+      const x = v.ox + (x0 + (p.x - x0) * f + 0.5 + jx) * v.px,
+        y = v.oy + (y0 + (p.y - y0) * f + 0.5 + jy) * v.px;
+      return { p, x, y, moving: x0 !== p.x || y0 !== p.y };
+    });
+  for (const { p, x, y, moving } of at.sort((a, b) => a.y - b.y))
+    drawFigure(g, p, x, y, heightOf(p, v.px), moving ? Math.sin(now / 170 + p.id) : 0, sun, night);
 }
 // The two skies: the live one over Winterhaven, the world's own everywhere else.
 function drawSkies(g, v, night) {

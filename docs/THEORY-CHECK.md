@@ -918,3 +918,8 @@ unchanged). Catching up grows about 3-4 s per world year since the start; saved 
   weather at Winter Haven, Florida (Open-Meteo, the city centre, every 15 minutes; WMO weather codes). Everywhere
   else the frame shows the world's own sky for its day (weather.js rain, atmosphere.js sunshine and wind; the
   world has no wind direction, so its clouds drift from the east). Not a model of Florida: a window onto it.
+- 27 Nov, night: people on the frame drawn as small human figures (frame-people.js; Robert: "a more human like
+  appearance, smaller"): head, body in their own cloth, arms and legs swinging while walking, children smaller by
+  age, a shadow away from the world's sun, a warm halo at night. Canvas 2D; no engine needed at this size. Found
+  while doing it: the frame's sun vector had its north-south part reversed, so relief was lit from the wrong side
+  (east-west was right); fixed (frame-render.js sunVector y). Presentation only.

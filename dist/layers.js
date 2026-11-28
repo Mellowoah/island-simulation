@@ -30,7 +30,7 @@ export const LAYERS = {
     note: 'the existing people; to be rebuilt on one currency (survival and reproduction) and body heat balance' },
   measures: { rank: 7, plan: null, status: 'real', files: ['patterns.js', 'price.js'],
     note: 'scoring and measuring only; nothing in the world reads them' },
-  display: { rank: 8, plan: null, status: 'real', files: ['world-app.js', 'frame.js', 'frame-render.js', 'frame-weather.js', 'frame-sky.js'], note: 'the pages that draw the world (the app, and the picture frame)' },
+  display: { rank: 8, plan: null, status: 'real', files: ['world-app.js', 'frame.js', 'frame-render.js', 'frame-weather.js', 'frame-sky.js', 'frame-people.js'], note: 'the pages that draw the world (the app, and the picture frame)' },
 };
 
 // The layer a file belongs to (null if none: rule 1 of tests/layers.test.mjs forbids that)

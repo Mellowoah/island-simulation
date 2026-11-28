@@ -33,7 +33,7 @@ export function sunVector(jd) {
   return {
     el: (el * 180) / Math.PI,
     x: -Math.cos(el) * Math.sin(az),
-    y: -Math.cos(el) * Math.cos(az),
+    y: Math.cos(el) * Math.cos(az), // toward the south, down the picture (was north: relief lit from the wrong side)
     z: Math.sin(el),
   };
 }
