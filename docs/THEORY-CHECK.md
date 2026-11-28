@@ -913,3 +913,8 @@ unchanged). Catching up grows about 3-4 s per world year since the start; saved 
   world's own sun for the hour (sun.js elevation and azimuth, heights 2.5 times steeper so relief reads); grass to
   straw with the plants layer's dead share; light by sun height (golden near the horizon, blue at night); camp fires
   glow brighter the darker it is; people as soft lights; unseen land dimmed with a soft edge. Presentation only.
+- 27 Nov, evening: weather on the frame (frame-weather.js, frame-sky.js), presentation only; the world never reads
+  it (FW3). Robert named the island's lake country Winterhaven and asked for his own weather there: it shows the live
+  weather at Winter Haven, Florida (Open-Meteo, the city centre, every 15 minutes; WMO weather codes). Everywhere
+  else the frame shows the world's own sky for its day (weather.js rain, atmosphere.js sunshine and wind; the
+  world has no wind direction, so its clouds drift from the east). Not a model of Florida: a window onto it.

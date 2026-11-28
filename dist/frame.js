@@ -9,6 +9,8 @@ import { clockOf, START_HOUR, dateOf } from './clock.js';
 import * as T from './terrain.js';
 import { jdOfTick } from './sun.js';
 import { prepareLand, paintLand, sunVector, knownField, seaAt } from './frame-render.js';
+import { WINTER_HAVEN, followLive, worldSky, lakeCountry } from './frame-weather.js';
+import { drawSky } from './frame-sky.js';
 
 const Q = new URLSearchParams(location.search);
 const seed = Number(Q.get('seed')) || 41;
@@ -18,7 +20,12 @@ const canvas = document.getElementById('world'),
 const s = createWorld2(seed, {}),
   C = clockOf(s);
 let prev = new Map(),
-  land = null; // the land's fixed blends and its picture (frame-render.js), made after catching up
+  land = null, // the land's fixed blends and its picture (frame-render.js), made after catching up
+  sun = null, // the world's sun this hour (painted with the land)
+  live = null, // Winterhaven's sky: the live weather at Winter Haven, Florida (frame-weather.js)
+  view = null,
+  layer = null; // where each sky is drawn before it is cut to its area
+const haven = lakeCountry(T.regionAt, T.TW, T.TH); // Winterhaven: the lake country
 
 // Where the world should be now, in ticks (fractional), from the local calendar and clock (so daylight saving and
 // time zones keep the world's hour equal to the viewer's).
@@ -58,19 +65,23 @@ function paint() {
     land = { L, off, img: new ImageData(L.W, L.H), seen: -1 };
   }
   if (land.seen !== s.discovered) ((land.known = knownField(land.L, s.seenAt)), (land.seen = s.discovered));
-  const sun = sunVector(jdOfTick(s.tick + frac(), C.hours));
+  sun = sunVector(jdOfTick(s.tick + frac(), C.hours));
   paintLand(land.L, land.img, sun, dryness(), land.known, performance.now());
   land.off.getContext('2d').putImageData(land.img, 0, 0);
-  return sun;
 }
 const frac = () => Math.min(1, Math.max(0, targetTick() - s.tick));
 
+// The canvas fitted to the screen (only when the screen changes), the island letterboxed in it.
 function fit() {
-  const dpr = window.devicePixelRatio || 1;
-  canvas.width = Math.round(innerWidth * dpr);
-  canvas.height = Math.round(innerHeight * dpr);
-  const px = Math.min(canvas.width / T.TW, canvas.height / T.TH);
-  return { px, ox: (canvas.width - T.TW * px) / 2, oy: (canvas.height - T.TH * px) / 2 };
+  const dpr = window.devicePixelRatio || 1,
+    w = Math.round(innerWidth * dpr),
+    h = Math.round(innerHeight * dpr);
+  if (view && canvas.width === w && canvas.height === h) return view;
+  ((canvas.width = w), (canvas.height = h));
+  layer = new OffscreenCanvas(Math.ceil(w / 2), Math.ceil(h / 2));
+  const px = Math.min(w / T.TW, h / T.TH);
+  view = { px, ox: (w - T.TW * px) / 2, oy: (h - T.TH * px) / 2 };
+  return view;
 }
 // Camps, and their fires glowing in the dark (brighter the darker it is).
 function drawCamps(g, v, night) {
@@ -112,26 +123,51 @@ function drawPeople(g, v, f, night) {
     g.fillRect(x - 2 * r, y - 2 * r, 4 * r, 4 * r);
   }
 }
+// The two skies: the live one over Winterhaven, the world's own everywhere else.
+function drawSkies(g, v, night) {
+  const t = performance.now(),
+    a = haven && { x: v.ox + haven.x * v.px, y: v.oy + haven.y * v.px, r: haven.r * v.px };
+  drawSky(g, layer, worldSky(s.weather), a, false, t, night);
+  drawSky(g, layer, live, a, true, t, night);
+  if (!a) return;
+  g.font = `italic ${Math.round(v.px * 2.4)}px Georgia, 'Times New Roman', serif`;
+  g.textAlign = 'center';
+  g.fillStyle = `rgba(255,255,255,${0.78 - 0.3 * night})`;
+  g.shadowColor = 'rgba(0,0,0,0.6)';
+  g.shadowBlur = v.px;
+  g.fillText(WINTER_HAVEN.name, a.x, a.y - a.r * 0.62);
+  g.shadowBlur = 0;
+}
+const skyWords = () =>
+  live ? `\n${WINTER_HAVEN.name} · ${Math.round(live.tempF)}°F, ${live.words} · live from ${WINTER_HAVEN.place}` : '';
 function draw(f) {
   const v = fit(),
     g = canvas.getContext('2d'),
-    sun = paint(),
     night = Math.min(1, Math.max(0, -sun.el / 8));
   g.fillStyle = `rgb(${seaAt(sun.el).map(Math.round).join(',')})`; // the sea runs to the frame's edges
   g.fillRect(0, 0, canvas.width, canvas.height);
   g.imageSmoothingEnabled = true;
   g.imageSmoothingQuality = 'high';
   g.drawImage(land.off, v.ox, v.oy, T.TW * v.px, T.TH * v.px);
+  drawSkies(g, v, night);
   drawCamps(g, v, night);
   drawPeople(g, v, f, night);
   const d = dateOf(C, s.tick);
-  note.textContent = `Island ${seed} · Year ${d.year}, ${d.month} · ${living(s).length} people`;
+  note.textContent = `Island ${seed} · Year ${d.year}, ${d.month} · ${living(s).length} people${skyWords()}`;
 }
-// Real time: every few seconds, step whatever hours have passed and draw where everyone is within the hour.
+// Real time: every few seconds, step whatever hours have passed and repaint the land for the sun's place.
 function tick() {
   const t = targetTick();
   while (s.tick < Math.floor(t)) stepOne();
-  draw(Math.min(1, Math.max(0, t - s.tick)));
+  paint();
+}
+// Between, about 15 times a second: the skies move, people glide.
+let last = 0;
+function animate(now) {
+  requestAnimationFrame(animate);
+  if (now - last < 66) return;
+  last = now;
+  draw(frac());
 }
 async function stayAwake() {
   try {
@@ -142,7 +178,8 @@ async function stayAwake() {
 }
 catchUp(() => {
   stayAwake();
+  followLive(sky => (live = sky));
   tick();
   setInterval(tick, 3000);
-  addEventListener('resize', () => tick());
+  requestAnimationFrame(animate);
 });
