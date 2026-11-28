@@ -1,9 +1,9 @@
 // People on the frame as small human figures (presentation only): a head, a body in their own cloth, arms and legs
 // that swing while they walk, a shadow cast away from the world's sun by day, a faint warm halo at night so they
 // can still be seen. Children are drawn smaller by age. Canvas 2D is enough for figures this size.
-const SKIN = ['94,62,44', '84,54,38', '104,70,48', '76,50,36'];
-const CLOTH = ['176,112,62', '158,74,48', '214,196,160', '120,84,52', '196,150,80', '92,96,70'];
-const pick = (list, id, k) => list[(id * k) % list.length];
+export const SKIN = ['94,62,44', '84,54,38', '104,70,48', '76,50,36'];
+export const CLOTH = ['176,112,62', '158,74,48', '214,196,160', '120,84,52', '196,150,80', '92,96,70'];
+export const pick = (list, id, k) => list[(id * k) % list.length];
 
 // The shadow on the ground, away from the sun (sun.x east, sun.y south, as frame-render.js gives it).
 function shadow(g, x, y, h, sun) {

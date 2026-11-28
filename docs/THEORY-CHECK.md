@@ -923,3 +923,8 @@ unchanged). Catching up grows about 3-4 s per world year since the start; saved 
   age, a shadow away from the world's sun, a warm halo at night. Canvas 2D; no engine needed at this size. Found
   while doing it: the frame's sun vector had its north-south part reversed, so relief was lit from the wrong side
   (east-west was right); fixed (frame-render.js sunVector y). Presentation only.
+- 27 Nov, late: the diorama (frame3d.html; Robert chose the miniature look). The same world, drawn in 3D by the
+  graphics chip (three.js r187, MIT, vendored in dist/vendor). Presentation only. Heights from the map, measured
+  from its lowest land as sea level and drawn 3 times steeper; trees where the map has woodland (four a square)
+  and now and then on the grass; people, trees and fires at model size, far larger than true; the world's sun
+  casts the shadows. The frames' world loop now lives in frame-world.js (FW5); frame.js keeps its own copy for now.

@@ -7,7 +7,7 @@ import * as T from './terrain.js';
 import { metresAt } from './land.js';
 import { sunAt, clockHourOf, elevation, SITE, jdOfTick } from './sun.js';
 
-const RES = 6;
+export const RES = 6;
 const COL = {
   sea: [22, 66, 118],
   lake: [44, 116, 170],
@@ -150,13 +150,15 @@ export function paintLand(L, img, sun, dryness, known, time) {
     img.data[k * 4 + 3] = 255;
   }
 }
-function landColour(L, k, sun, up, dryness) {
+// The ground's own colour at a point, before light: its land, the season's straw on grass, lakes and rivers.
+export function groundColour(L, k, dryness) {
+  if (L.wet[k] > 0.5) return COL.lake.slice();
   const g = L.kind[k] * dryness,
     own = landOnly(L, k);
-  let r = own[0] * (1 - g) + STRAW[0] * g,
-    gr = own[1] * (1 - g) + STRAW[1] * g,
-    b = own[2] * (1 - g) + STRAW[2] * g;
-  if (L.wet[k] > 0.5) [r, gr, b] = COL.lake;
+  return own.map((v, i) => v * (1 - g) + STRAW[i] * g);
+}
+function landColour(L, k, sun, up, dryness) {
+  const [r, gr, b] = groundColour(L, k, dryness);
   const n = L.normal,
     lit = n[k * 3] * sun.x + n[k * 3 + 1] * sun.y + n[k * 3 + 2] * sun.z;
   const shade = 0.55 + 0.6 * Math.max(0, lit) * (up > 0 ? 1 : 0) + 0.25 * (1 - up),

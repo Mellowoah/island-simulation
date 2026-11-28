@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Island, the diorama</title>
+    <style>
+      html,body{margin:0;height:100%;background:#000;overflow:hidden;cursor:none}
+      canvas{display:block;width:100vw;height:100vh}
+      #note{position:fixed;left:2vmin;bottom:2vmin;font:1.7vmin/1.4 ui-monospace,Menlo,monospace;color:rgba(255,255,255,.6);letter-spacing:.04em;pointer-events:none;white-space:pre-line;text-shadow:0 0 .4vmin rgba(0,0,0,.6)}
+    </style>
+  </head>
+  <body>
+    <canvas id="world"></canvas>
+    <div id="note">The island is waking up…</div>
+    <script type="module" src="frame3d.js"></script>
+  </body>
+</html>

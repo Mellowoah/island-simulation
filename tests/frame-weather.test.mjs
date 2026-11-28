@@ -52,3 +52,13 @@ test('FW4 Winterhaven sits on the lake: its middle is lake, its reach takes in t
   assert.ok(h.r > 6 && h.r < T.TW / 3);
   assert.equal(WINTER_HAVEN.place, 'Winter Haven, FL');
 });
+test("FW5 the frames' world runs in step with the viewer's clock: dawn on its first day is its first tick", async () => {
+  const { frameWorld, dryness } = await import('../dist/frame-world.js');
+  const w = frameWorld(41, new Date(2026, 10, 1));
+  assert.equal(w.target(new Date(2026, 10, 1, 6, 0)), 0);
+  assert.equal(w.target(new Date(2026, 10, 2, 6, 0)), 24 / w.C.hours);
+  w.step();
+  assert.equal(w.s.tick, 1);
+  const d = dryness(w.s);
+  assert.ok(d >= 0 && d <= 1);
+});
