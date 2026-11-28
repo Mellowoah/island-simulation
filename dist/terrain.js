@@ -12,10 +12,12 @@
 
 import { registerMap } from './sim.js';
 import { maxOf, minOf } from './numbers.js';
+import { drainage } from './flow.js';
+import { makeLandscape } from './land-big.js';
 
-export const TW = 160,
-  TH = 112,
-  TILE_KM = 0.35;
+export let TW = 160,
+  TH = 112;
+export const TILE_KM = 0.35;
 const LAND_SEED = 20261117;
 export const REGIONS = ['sea', 'lake', 'river', 'rock', 'shore', 'woodland', 'grass'];
 const R = Object.fromEntries(REGIONS.map((r, i) => [r, i]));
@@ -52,37 +54,12 @@ function fbm(x, y, k, oct = 5) {
   return s / n;
 }
 
-// ---------- elevation ----------
-const elev = new Float32Array(TW * TH);
-for (let y = 0; y < TH; y++)
-  for (let x = 0; x < TW; x++) {
-    const u = x / TW,
-      v = y / TH;
-    const wx = (fbm(u * 3, v * 3, 101) - 0.5) * 0.7,
-      wy = (fbm(u * 3, v * 3, 202) - 0.5) * 0.7; // domain warp
-    const dx = (u + wx * 0.45 - 0.5) / 0.5,
-      dy = (v + wy * 0.45 - 0.5) / 0.48,
-      d = Math.hypot(dx, dy);
-    const rise = 1 - Math.min(1, d) ** 2;
-    elev[y * TW + x] =
-      0.55 * fbm(u * 6 + wx * 2, v * 6 + wy * 2, 303, 6) +
-      0.2 * (fbm(u * 20, v * 20, 313, 3) - 0.5) +
-      0.55 * rise -
-      0.09;
-  }
-const SEA = 0.42;
-const grid = new Uint8Array(TW * TH);
-for (let i = 0; i < TW * TH; i++) grid[i] = elev[i] > SEA ? R.grass : R.sea;
-// keep the edge sea
-for (let x = 0; x < TW; x++) {
-  grid[x] = R.sea;
-  grid[(TH - 1) * TW + x] = R.sea;
-}
-for (let y = 0; y < TH; y++) {
-  grid[y * TW] = R.sea;
-  grid[y * TW + TW - 1] = R.sea;
-}
-
+// ---------- the map in use: one set of grids at a time ----------
+// Every function below reads these; a world on another map swaps them in (useMap, to come). Built here for the
+// island, step by step in the same order as before, so the island is the same to the last bit (state hash).
+let elev, grid, comp, main, coastDist, landIdx, byElev;
+export let RIVERS, DOWN, MAIN_TILES, LAND_KM2;
+export let METRES = null; // heights in metres, for maps that have them (the island's come from land.js scaling)
 const N4 = [
   [1, 0],
   [-1, 0],
@@ -90,6 +67,35 @@ const N4 = [
   [0, -1],
 ];
 const inside = (x, y) => x >= 0 && y >= 0 && x < TW && y < TH;
+
+// ---------- elevation ----------
+function islandHeights() {
+  const out = new Float32Array(TW * TH);
+  for (let y = 0; y < TH; y++)
+    for (let x = 0; x < TW; x++) {
+      const u = x / TW,
+        v = y / TH;
+      const wx = (fbm(u * 3, v * 3, 101) - 0.5) * 0.7,
+        wy = (fbm(u * 3, v * 3, 202) - 0.5) * 0.7; // domain warp
+      const dx = (u + wx * 0.45 - 0.5) / 0.5,
+        dy = (v + wy * 0.45 - 0.5) / 0.48,
+        d = Math.hypot(dx, dy);
+      const rise = 1 - Math.min(1, d) ** 2;
+      out[y * TW + x] =
+        0.55 * fbm(u * 6 + wx * 2, v * 6 + wy * 2, 303, 6) +
+        0.2 * (fbm(u * 20, v * 20, 313, 3) - 0.5) +
+        0.55 * rise -
+        0.09;
+    }
+  return out;
+}
+// Land above sea level is grass to begin with; the edge of the map is always sea.
+function seaAndLand(sea) {
+  grid = new Uint8Array(TW * TH);
+  for (let i = 0; i < TW * TH; i++) grid[i] = elev[i] > sea ? R.grass : R.sea;
+  for (let x = 0; x < TW; x++) ((grid[x] = R.sea), (grid[(TH - 1) * TW + x] = R.sea));
+  for (let y = 0; y < TH; y++) ((grid[y * TW] = R.sea), (grid[y * TW + TW - 1] = R.sea));
+}
 // The main island is the largest piece of land; the rest are islets (seen from the shore, out of reach on foot).
 function components() {
   const comp = new Int32Array(TW * TH).fill(-1),
@@ -109,26 +115,18 @@ function components() {
           const nx = x + ax,
             ny = y + ay,
             k = ny * TW + nx;
-          if (inside(nx, ny) && grid[k] !== R.sea && comp[k] < 0) {
-            comp[k] = id;
-            q.push(k);
-          }
+          if (inside(nx, ny) && grid[k] !== R.sea && comp[k] < 0) ((comp[k] = id), q.push(k));
         }
       }
       sizes.push(n);
     }
   return { comp, main: sizes.indexOf(maxOf(sizes)) };
 }
-let { comp, main } = components();
-// Distance to the sea, in tiles (for the lake, the shore and the hills).
-const coastDist = new Int32Array(TW * TH).fill(1e6);
-{
-  const q = [];
-  for (let i = 0; i < TW * TH; i++)
-    if (grid[i] === R.sea) {
-      coastDist[i] = 0;
-      q.push(i);
-    }
+// Distance in tiles from the squares where is(i) holds (breadth-first), e.g. to the sea.
+function distanceFrom(is) {
+  const dist = new Int32Array(TW * TH).fill(1e6),
+    q = [];
+  for (let i = 0; i < TW * TH; i++) if (is(i)) ((dist[i] = 0), q.push(i));
   for (let h = 0; h < q.length; h++) {
     const j = q[h],
       x = j % TW,
@@ -137,135 +135,77 @@ const coastDist = new Int32Array(TW * TH).fill(1e6);
       const nx = x + ax,
         ny = y + ay,
         k = ny * TW + nx;
-      if (inside(nx, ny) && coastDist[k] > coastDist[j] + 1) {
-        coastDist[k] = coastDist[j] + 1;
-        q.push(k);
-      }
+      if (inside(nx, ny) && dist[k] > dist[j] + 1) ((dist[k] = dist[j] + 1), q.push(k));
     }
   }
+  return dist;
 }
 
 // ---------- hills ----------
-const landIdx = [];
-for (let i = 0; i < TW * TH; i++) if (comp[i] === main) landIdx.push(i);
-const byElev = [...landIdx].sort((a, b) => elev[b] - elev[a]);
-const ROCK_SHARE = 0.05;
-for (let k = 0; k < byElev.length * ROCK_SHARE; k++) grid[byElev[k]] = R.rock;
-
-// ---------- the lake: flood the lowest inland basin ----------
-{
-  const inland = landIdx.filter(i => coastDist[i] >= 16 && grid[i] !== R.rock);
-  const seed = inland.reduce((b, i) => (elev[i] < elev[b] ? i : b), inland[0]);
-  let level = elev[seed],
-    lake = new Set([seed]);
-  for (let step = 0; step < 400 && lake.size < 260; step++) {
-    level += 0.002;
-    lake = new Set([seed]);
-    const q = [seed];
-    while (q.length) {
-      const j = q.pop(),
-        x = j % TW,
-        y = (j / TW) | 0;
-      for (const [ax, ay] of N4) {
-        const nx = x + ax,
-          ny = y + ay,
-          k = ny * TW + nx;
-        if (
-          inside(nx, ny) &&
-          !lake.has(k) &&
-          comp[k] === main &&
-          grid[k] !== R.rock &&
-          coastDist[k] >= 8 &&
-          Math.hypot(nx - (seed % TW), ny - ((seed / TW) | 0)) <= 13 &&
-          elev[k] <= level
-        ) {
-          lake.add(k);
-          q.push(k);
-        }
-      }
-    }
-  }
-  for (const i of lake) grid[i] = R.lake;
+function hills(rockShare) {
+  landIdx = [];
+  for (let i = 0; i < TW * TH; i++) if (comp[i] === main) landIdx.push(i);
+  byElev = [...landIdx].sort((a, b) => elev[b] - elev[a]);
+  for (let k = 0; k < byElev.length * rockShare; k++) grid[byElev[k]] = R.rock;
 }
 
-// ---------- rivers: water runs downhill to the lake or the sea ----------
-// Hollows are filled first (priority-flood, Barnes et al. 2014), so every drop of water has a way out; then rivers
-// start at high springs and follow the steepest way down the filled surface.
-export const RIVERS = [];
-// Which tile each tile drains to (-1 at the lake and the sea); read by the land layer (land.js)
-export let DOWN;
-{
-  const filled = new Float32Array(elev),
-    done = new Uint8Array(TW * TH),
-    heap = [];
-  const push = i => {
-    heap.push(i);
-    let k = heap.length - 1;
-    while (k > 0) {
-      const p = (k - 1) >> 1;
-      if (filled[heap[p]] <= filled[heap[k]]) break;
-      [heap[p], heap[k]] = [heap[k], heap[p]];
-      k = p;
-    }
-  };
-  const pop = () => {
-    const top = heap[0],
-      last = heap.pop();
-    if (heap.length) {
-      heap[0] = last;
-      let k = 0;
-      for (;;) {
-        const l = 2 * k + 1,
-          r = l + 1;
-        let m = k;
-        if (l < heap.length && filled[heap[l]] < filled[heap[m]]) m = l;
-        if (r < heap.length && filled[heap[r]] < filled[heap[m]]) m = r;
-        if (m === k) break;
-        [heap[m], heap[k]] = [heap[k], heap[m]];
-        k = m;
-      }
-    }
-    return top;
-  };
-  for (let i = 0; i < TW * TH; i++)
-    if (grid[i] === R.sea || grid[i] === R.lake) {
-      done[i] = 1;
-      filled[i] = grid[i] === R.lake ? elev[i] : -1;
-      push(i);
-    }
-  const down = new Int32Array(TW * TH).fill(-1);
-  DOWN = down;
-  while (heap.length) {
-    const j = pop(),
+// ---------- the lake: flood the lowest inland basin ----------
+function lakeAt(seed, level) {
+  const lake = new Set([seed]),
+    q = [seed];
+  while (q.length) {
+    const j = q.pop(),
       x = j % TW,
       y = (j / TW) | 0;
     for (const [ax, ay] of N4) {
       const nx = x + ax,
         ny = y + ay,
         k = ny * TW + nx;
-      if (!inside(nx, ny) || done[k]) continue;
-      done[k] = 1;
-      filled[k] = Math.max(filled[k], filled[j] + 1e-5);
-      down[k] = j;
-      push(k);
+      const ok = inside(nx, ny) && !lake.has(k) && comp[k] === main && grid[k] !== R.rock && coastDist[k] >= 8;
+      if (ok && Math.hypot(nx - (seed % TW), ny - ((seed / TW) | 0)) <= 13 && elev[k] <= level)
+        (lake.add(k), q.push(k));
     }
   }
+  return lake;
+}
+function floodLake() {
+  const inland = landIdx.filter(i => coastDist[i] >= 16 && grid[i] !== R.rock);
+  const seed = inland.reduce((b, i) => (elev[i] < elev[b] ? i : b), inland[0]);
+  let level = elev[seed],
+    lake = new Set([seed]);
+  for (let step = 0; step < 400 && lake.size < 260; step++) {
+    level += 0.002;
+    lake = lakeAt(seed, level);
+  }
+  for (const i of lake) grid[i] = R.lake;
+}
+
+// ---------- rivers: water runs downhill to the lake or the sea ----------
+// Hollows are filled first (priority-flood, Barnes et al. 2014, flow.js), so every drop of water has a way out (the
+// sea counts as -1, the lake as its own height); then rivers start at high springs and follow the way down.
+function route() {
+  const base = Float32Array.from(elev, (h, i) => (grid[i] === R.sea ? -1 : h)),
+    outlet = Uint8Array.from(grid, g => (g === R.sea || g === R.lake ? 1 : 0));
+  DOWN = drainage(base, TW, TH, outlet).down;
+}
+function riverSources(count) {
   const high = byElev.slice(0, Math.floor(byElev.length * 0.2)).filter(i => grid[i] !== R.lake && coastDist[i] >= 10);
   const sources = [];
   for (const i of high) {
-    if (sources.length >= 9) break;
+    if (sources.length >= count) break;
     const x = i % TW,
       y = (i / TW) | 0;
     if (sources.every(j => Math.hypot((j % TW) - x, ((j / TW) | 0) - y) > 18)) sources.push(i);
   }
-  for (const src of sources) {
+  return sources;
+}
+function rivers(count) {
+  RIVERS = [];
+  for (const src of riverSources(count)) {
     const tiles = [];
-    for (let j = src; j >= 0 && grid[j] !== R.sea && grid[j] !== R.lake; j = down[j]) {
-      if (grid[j] === R.river) {
-        tiles.push(j);
-        break;
-      }
+    for (let j = src; j >= 0 && grid[j] !== R.sea && grid[j] !== R.lake; j = DOWN[j]) {
       tiles.push(j);
+      if (grid[j] === R.river) break;
     }
     if (tiles.length < 12) continue;
     for (const i of tiles) if (grid[i] !== R.rock) grid[i] = R.river;
@@ -274,53 +214,104 @@ export let DOWN;
 }
 
 // ---------- shore, woodland, grass ----------
-{
-  const wet = new Int32Array(TW * TH).fill(1e6),
-    q = [];
-  for (let i = 0; i < TW * TH; i++)
-    if (grid[i] === R.river || grid[i] === R.lake) {
-      wet[i] = 0;
-      q.push(i);
-    }
-  for (let h = 0; h < q.length; h++) {
-    const j = q[h],
-      x = j % TW,
-      y = (j / TW) | 0;
-    for (const [ax, ay] of N4) {
-      const nx = x + ax,
-        ny = y + ay,
-        k = ny * TW + nx;
-      if (inside(nx, ny) && wet[k] > wet[j] + 1) {
-        wet[k] = wet[j] + 1;
-        q.push(k);
-      }
-    }
-  }
+const RING2 = [
+  [2, 0],
+  [-2, 0],
+  [0, 2],
+  [0, -2],
+  [1, 1],
+  [-1, 1],
+  [1, -1],
+  [-1, -1],
+];
+const near = (x, y, ring, r) => ring.some(([ax, ay]) => inside(x + ax, y + ay) && grid[(y + ay) * TW + x + ax] === r);
+function cover() {
+  const wet = distanceFrom(i => grid[i] === R.river || grid[i] === R.lake),
+    highWood = elev[byElev[Math.floor(byElev.length * 0.2)]];
   for (let i = 0; i < TW * TH; i++) {
     if (grid[i] !== R.grass) continue;
     const x = i % TW,
       y = (i / TW) | 0;
-    const nearSea = coastDist[i] <= 1,
-      nearLake =
-        N4.some(([ax, ay]) => inside(x + ax, y + ay) && grid[(y + ay) * TW + x + ax] === R.lake) ||
-        [
-          [2, 0],
-          [-2, 0],
-          [0, 2],
-          [0, -2],
-          [1, 1],
-          [-1, 1],
-          [1, -1],
-          [-1, -1],
-        ].some(([ax, ay]) => inside(x + ax, y + ay) && grid[(y + ay) * TW + x + ax] === R.lake);
-    if (nearSea || nearLake) grid[i] = R.shore;
-    else if (
-      wet[i] <= 4 ||
-      (elev[i] > elev[byElev[Math.floor(byElev.length * 0.2)]] && fbm(x / 9, y / 9, 404, 3) > 0.45)
-    )
-      grid[i] = R.woodland;
+    if (coastDist[i] <= 1 || near(x, y, N4, R.lake) || near(x, y, RING2, R.lake)) grid[i] = R.shore;
+    else if (wet[i] <= 4 || (elev[i] > highWood && fbm(x / 9, y / 9, 404, 3) > 0.45)) grid[i] = R.woodland;
   }
 }
+
+// The island: the same steps as always, in the same order.
+function buildIsland() {
+  elev = islandHeights();
+  seaAndLand(0.42);
+  ({ comp, main } = components());
+  coastDist = distanceFrom(i => grid[i] === R.sea);
+  hills(0.05);
+  floodLake();
+  route();
+  rivers(9);
+  cover();
+  MAIN_TILES = landIdx.filter(i => grid[i] !== R.lake).length;
+  LAND_KM2 = MAIN_TILES * TILE_KM * TILE_KM;
+}
+// ---------- more than one map ----------
+// Each built map is kept as its set of grids; useMap swaps one in, and code that worked something out from the map
+// once (land.js, w-core.js, nature.js) redoes it through onMapChange. A world selects its map when it is made and
+// before every step (world.js), so worlds on different maps can run in turn.
+const BUILT = new Map(),
+  HOOKS = [];
+let CURRENT = null;
+const snapshot = () => ({
+  TW,
+  TH,
+  elev,
+  grid,
+  comp,
+  main,
+  coastDist,
+  landIdx,
+  byElev,
+  RIVERS,
+  DOWN,
+  MAIN_TILES,
+  LAND_KM2,
+  METRES,
+});
+function restore(m) {
+  ({ TW, TH, elev, grid, comp, main, coastDist, landIdx, byElev, RIVERS, DOWN, MAIN_TILES, LAND_KM2, METRES } = m);
+}
+export const onMapChange = fn => HOOKS.push(fn);
+export const mapInUse = () => CURRENT;
+export const knownMaps = () => [...BUILT.keys()];
+export function useMap(id = 'island') {
+  if (id === CURRENT) return;
+  if (!BUILT.has(id) && BUILDERS[id]) (BUILDERS[id](), BUILT.set(id, snapshot()));
+  if (!BUILT.has(id)) throw new Error(`unknown map: ${id}`);
+  restore(BUILT.get(id));
+  CURRENT = id;
+  for (const fn of HOOKS) fn(id);
+}
+buildIsland();
+BUILT.set('island', snapshot());
+CURRENT = 'island';
+
+// The bigger world (land-big.js): the basin, escarpment and highlands around Lake Eyasi, about 10,000 km2, heights in
+// metres. The same steps as the island's, with its own lake; rivers in proportion to land (the island's 9 sources per
+// its 850 km2). Built on first use, then kept; the island stays the map in use until a world asks for this one.
+function buildEyasi() {
+  const L = makeLandscape();
+  [TW, TH, METRES] = [L.W, L.H, L.metres];
+  elev = L.metres;
+  grid = Uint8Array.from(L.land, (land, i) => (!land ? R.sea : L.lake[i] ? R.lake : R.grass));
+  ({ comp, main } = components());
+  coastDist = distanceFrom(i => grid[i] === R.sea);
+  hills(0.05);
+  route();
+  const islandLand = BUILT.get('island').LAND_KM2;
+  rivers(Math.round((9 * landIdx.length * TILE_KM * TILE_KM) / islandLand));
+  cover();
+  MAIN_TILES = landIdx.filter(i => grid[i] !== R.lake).length;
+  LAND_KM2 = MAIN_TILES * TILE_KM * TILE_KM;
+  registerMap({ id: 'eyasi', w: TW, h: TH, land: walkable, regionAt, tileKm: TILE_KM });
+}
+const BUILDERS = { eyasi: buildEyasi };
 
 export const regionAt = (x, y) => (inside(x, y) ? REGIONS[grid[y * TW + x]] : 'sea');
 export const onMainland = (x, y) => inside(x, y) && comp[y * TW + x] === main;
@@ -330,8 +321,6 @@ const walkable = (x, y) => {
   return g !== R.sea && g !== R.lake && comp[y * TW + x] === main;
 };
 export const ISLAND_MAP = registerMap({ id: 'island', w: TW, h: TH, land: walkable, regionAt, tileKm: TILE_KM });
-export const MAIN_TILES = landIdx.filter(i => grid[i] !== R.lake).length;
-export const LAND_KM2 = MAIN_TILES * TILE_KM * TILE_KM;
 export const regionGrid = () => grid; // read-only use (renderer)
 export const elevation = (x, y) => elev[y * TW + x];
 export const isWalkable = walkable;

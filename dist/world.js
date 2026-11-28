@@ -85,6 +85,7 @@ export * from './w-social.js';
 export * from './w-checks.js';
 
 export function createWorld2(seed = 41, opts = {}) {
+  T.useMap(opts.map ?? 'island'); // the map this world runs on (rule 15: the island unless asked)
   const cfg = { ...WORLD_DEFAULTS, ...opts };
   {
     const over = activeRates();
@@ -98,7 +99,7 @@ export function createWorld2(seed = 41, opts = {}) {
     rng: 2,
     tick: 0,
     clock: { min: cfg.clockMinutes ?? REAL_MINUTES },
-    map: { id: 'island' },
+    map: { id: opts.map ?? 'island' },
     config: cfg,
     people: [],
     households: [],
@@ -231,6 +232,7 @@ export function createWorld2(seed = 41, opts = {}) {
 // Spatial index of food patches (not saved).
 // ---------- the step ----------
 export function stepWorld(s, n = 1) {
+  T.useMap(s.map?.id ?? 'island');
   const C = clockOf(s),
     day = Math.round(C.day),
     month = Math.round(C.month);

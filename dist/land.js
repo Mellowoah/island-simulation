@@ -10,7 +10,7 @@
 // - The environmental lapse rate, 6.5 deg C per km (the International Standard Atmosphere).
 // The map itself is still the generated one (terrain.js, a stand-in); this layer reads it and adds the physics.
 // Every function is under 30 lines.
-import { TW, TH, TILE_KM, DOWN, elevation, regionAt } from './terrain.js';
+import { TW, TH, TILE_KM, DOWN, METRES, elevation, regionAt, onMapChange } from './terrain.js';
 import { maxOf, minOf } from './numbers.js';
 
 export const LAPSE_C_PER_KM = 6.5;
@@ -20,15 +20,19 @@ export const LAPSE_C_PER_KM = 6.5;
 // The island is fictional: its lake, inland, comes out near 1365 m, like a highland lake. Assumption: heights are
 // scaled linearly. Temperatures are anchored at the median land height (REF_M), so the island as a whole keeps
 // the measured climate and only its hills and lowlands depart from it.
-const RAW = Float32Array.from({ length: TW * TH }, (_, i) => elevation(i % TW, (i / TW) | 0));
-const SEA_RAW = 0.42,
-  TOP_RAW = maxOf(RAW); // not Math.max(...RAW): that overflowed the call stack on a 10,000 km2 map (21 Nov 2026)
-export const metresAt = (x, y) => 1000 + ((Math.max(SEA_RAW, RAW[y * TW + x]) - SEA_RAW) / (TOP_RAW - SEA_RAW)) * 900;
-const landM = [...RAW.keys()]
-  .filter(i => !['sea', 'lake'].includes(regionAt(i % TW, (i / TW) | 0)))
-  .map(i => metresAt(i % TW, (i / TW) | 0))
-  .sort((a, b) => a - b);
-export const REF_M = landM[Math.floor(landM.length / 2)];
+// A map that has its own heights in metres (METRES) uses them as they are.
+let RAW, TOP_RAW, COVER;
+const SEA_RAW = 0.42;
+export const metresAt = (x, y) =>
+  METRES ? METRES[y * TW + x] : 1000 + ((Math.max(SEA_RAW, RAW[y * TW + x]) - SEA_RAW) / (TOP_RAW - SEA_RAW)) * 900;
+function medianLandM() {
+  const landM = [...RAW.keys()]
+    .filter(i => !['sea', 'lake'].includes(regionAt(i % TW, (i / TW) | 0)))
+    .map(i => metresAt(i % TW, (i / TW) | 0))
+    .sort((a, b) => a - b);
+  return landM[Math.floor(landM.length / 2)];
+}
+export let REF_M, FLOW;
 
 // Tiles in an order where every tile comes after all the tiles that drain into it (Kahn's topological sort)
 function upstreamFirst(down) {
@@ -60,8 +64,6 @@ function accumulate(down) {
   return { area, meanLen: Float32Array.from(len, (l, i) => l / area[i]) };
 }
 
-export const FLOW = { down: DOWN, ...accumulate(DOWN) };
-
 // Land cover upstream of every tile: for each kind of ground, how many tiles of it drain through the tile
 const COVERS = ['grass', 'woodland', 'shore', 'rock', 'river'];
 function coverUpstream(down) {
@@ -75,7 +77,17 @@ function coverUpstream(down) {
   }
   return out;
 }
-const COVER = coverUpstream(DOWN);
+
+// Everything this layer works out from the map, redone whenever a world switches maps.
+function rebuild() {
+  RAW = Float32Array.from({ length: TW * TH }, (_, i) => elevation(i % TW, (i / TW) | 0));
+  TOP_RAW = maxOf(RAW); // not Math.max(...RAW): that overflowed the call stack on a 10,000 km2 map (21 Nov 2026)
+  REF_M = medianLandM();
+  FLOW = { down: DOWN, ...accumulate(DOWN) };
+  COVER = coverUpstream(DOWN);
+}
+rebuild();
+onMapChange(rebuild);
 
 // Share of each kind of ground in the catchment of a tile (land only), and over the whole island
 export function catchmentCover(x, y) {

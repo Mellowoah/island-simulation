@@ -129,7 +129,7 @@ export const MEAT = { edible: 0.55, kcalPerKg: 1500 }; // share of live mass eat
 export const LARGE = 40; // kg: what counts as a large animal in the checks
 const rMax = m => 1.1 * m ** -0.26; // per year (Fenchel 1974 slope)
 const CELL = 8;
-export const CW = Math.ceil(T.TW / CELL),
+export let CW = Math.ceil(T.TW / CELL),
   CH = Math.ceil(T.TH / CELL);
 export const cellOf = (x, y) => Math.floor(y / CELL) * CW + Math.floor(x / CELL);
 let HAB = null; // per cell: km² of each region
@@ -271,6 +271,13 @@ function grazing(s) {
 }
 let LAND_KM2 = null;
 const landKm2 = () => (LAND_KM2 ??= habitat().reduce((t, h) => t + Object.values(h).reduce((a, b) => a + b, 0), 0));
+// A world on another map: the cell grid and what was worked out from the map are redone.
+T.onMapChange(() => {
+  CW = Math.ceil(T.TW / CELL);
+  CH = Math.ceil(T.TH / CELL);
+  HAB = null;
+  LAND_KM2 = null;
+});
 function speciesDay(s, id, sp, kf, met) {
   const N = s.animals[id],
     r = rMax(sp.mass),

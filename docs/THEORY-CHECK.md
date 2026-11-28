@@ -871,3 +871,55 @@ The island's routing (priority-flood, Barnes et al. 2014; upstream-first accumul
 grid (rule 12), run on the bigger land. Every square drains to the lake or the sea (FL1); catchments emptying into
 outlets add up to all the land (FL2); largest catchment about 2,000 km2; 0.1 s. Hack's law (FL3): exponent 0.47
 against the measured 0.5-0.7: anomaly A8, open, not tuned (likely the land is generated, not eroded).
+
+## 22 Nov 2026: the map switch, step A1: the island's map built by named steps (exact)
+
+Merged live first (PR #6, Robert's OK after front-page screenshots). Then terrain.js restructured so a second map
+can reuse its steps: heights, sea and land, the main island, distance to the sea, hills, the lake, water routing,
+rivers, shore and woodland, each a function reading one set of grids (module "let"s, swapped by a coming useMap).
+The water routing now calls flow.js drainage (the same priority-flood, same order and comparisons) with the sea at
+-1 m, instead of its own copy. Exact: fingerprint ee5f79eb58495f15 and one-year state hash 332adef1905a6bf1 unchanged.
+
+## 22 Nov 2026: the map switch, step A2: useMap and redo-on-switch (exact)
+
+terrain.js keeps each built map's grids and swaps one in with useMap(id); code that worked something out from the map
+once redoes it through onMapChange: land.js (heights, flow accumulation, cover upstream; a map with its own heights
+in metres uses them as they are), w-core.js (map width and height), nature.js (the animals' cell grid, habitat, land
+area). A world selects its map when it is made (config.map, the island unless asked) and before every step. Exact:
+fingerprint ee5f79eb58495f15 and state hash 332adef1905a6bf1 unchanged. Tests MP1-MP3.
+
+## 22 Nov 2026: the map switch, step B: the Eyasi map in terrain.js, and a world living on it
+
+buildEyasi runs the island's own steps on the land-big.js landscape (its heights in metres; its own lake; rock the
+top 5% as on the island; rivers in proportion to land, the island's 9 per its 850 km2), built on first use. Result:
+343 x 343 squares, 9,971 km2 of land, lake 693 km2, 48 rivers, grass 6,805 km2, woodland 2,165, rock 533; 2,244 food
+sites, 580 water sites; built in 0.3 s. createWorld2(seed, { map: 'eyasi' }) runs on it: island 42, 3 bands, 54 then
+56 people after two years, 8 births, about 22 s an island-year (limit 60). The whole-world check (rule 16) now runs
+both maps every save. The island is unchanged: state hash 332adef1905a6bf1, and the same when island worlds are
+stepped in turn with an Eyasi world. Not yet on this map: its own rain (the station rain map) and sun by place;
+plants, animals and people still use the island's single-point climate. Those are the next rebuild steps.
+
+## 27 Nov 2026: the picture frame page (frame.html), presentation only
+
+Robert's Tokenframe: a full-screen page with nothing to press, the island living in time with the viewer's day. One
+world hour per real hour by the local clock and calendar; the world's year starts on 1 November (clock.js), so it began
+06:00 on 1 November 2026 (?since=YYYY for an older world) and its dawns, months and rains run with the viewer's. On
+opening it catches up from its start (about 3 s on 27 Nov; the same seed always gives the same history), then steps
+each passing hour, people drawn gliding between hourly positions, night and dawn/dusk shading from the world's own
+sun. Land no one has seen is dimmed. frame.js reads and steps the world only; no rule changed (island state hash
+unchanged). Catching up grows about 3-4 s per world year since the start; saved checkpoints can come later if needed.
+- 27 Nov, later: high-quality rendering for the frame (frame-render.js, Robert: "I want high quality rendering"). Drawn
+  at 6 points a square, smoothed (box blur run twice, close to Gaussian) so coasts are round; relief lit by the
+  world's own sun for the hour (sun.js elevation and azimuth, heights 2.5 times steeper so relief reads); grass to
+  straw with the plants layer's dead share; light by sun height (golden near the horizon, blue at night); camp fires
+  glow brighter the darker it is; people as soft lights; unseen land dimmed with a soft edge. Presentation only.
+- 27 Nov, evening: weather on the frame (frame-weather.js, frame-sky.js), presentation only; the world never reads
+  it (FW3). Robert named the island's lake country Winterhaven and asked for his own weather there: it shows the live
+  weather at Winter Haven, Florida (Open-Meteo, the city centre, every 15 minutes; WMO weather codes). Everywhere
+  else the frame shows the world's own sky for its day (weather.js rain, atmosphere.js sunshine and wind; the
+  world has no wind direction, so its clouds drift from the east). Not a model of Florida: a window onto it.
+- 27 Nov, night: people on the frame drawn as small human figures (frame-people.js; Robert: "a more human like
+  appearance, smaller"): head, body in their own cloth, arms and legs swinging while walking, children smaller by
+  age, a shadow away from the world's sun, a warm halo at night. Canvas 2D; no engine needed at this size. Found
+  while doing it: the frame's sun vector had its north-south part reversed, so relief was lit from the wrong side
+  (east-west was right); fixed (frame-render.js sunVector y). Presentation only.
